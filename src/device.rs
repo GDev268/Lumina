@@ -1,5 +1,7 @@
+use crate::window::Window;
+use ash::vk::LayerProperties;
 use ash::{vk, Entry};
-use std::ffi::CStr;
+use std::ffi::{c_char, CStr};
 use std::os::raw::c_void;
 
 use ash::extensions::ext::DebugUtils;
@@ -13,7 +15,15 @@ unsafe extern "system" fn debugCallback(
     let _message = CStr::from_ptr((*p_callback_data).p_message);
 }
 
-const VALIDATION_LAYERS:[&'static str;1] = ["VK_LAYER_KHRONOS_validation"];
+pub fn convert_vk_to_string(string: &[c_char]) -> &str {
+    unsafe {
+        let pointer = string.as_ptr();
+        return CStr::from_ptr(pointer).to_str().unwrap();
+    }
+}
+
+const VALIDATION_LAYERS: [&'static str; 1] = ["VK_LAYER_KHRONOS_validation"];
+const DEVICE_EXTENSIONS: [&'static str; 1] = ["VK_KHR_swapchain"];
 struct SwapChainSupportDetails {
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
     surface_formats: Vec<vk::SurfaceFormatKHR>,
@@ -43,10 +53,15 @@ pub struct Device {
     pub graphics_queue: Option<vk::Queue>,
     pub present_queue: Option<vk::Queue>,
     pub physical_device: Option<vk::PhysicalDevice>,
+    instance: Option<vk::Instance>,
+    debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
+    window: Option<Window>,
+    game_version: u32,
+    num_devices: i32,
 }
 
 impl Device {
-    pub fn new() {
+    pub fn new() -> Self {
         let enable_validation_layers: bool = true;
         let mut device: Device = Device::none(enable_validation_layers);
 
@@ -56,6 +71,8 @@ impl Device {
         Device::pickPhysicalDevice(&mut device);
         Device::createLogicalDevice(&mut device);
         Device::getVulkanVersion(&mut device);
+
+        return device;
     }
 
     pub fn none(enable_validation: bool) -> Self {
@@ -69,6 +86,11 @@ impl Device {
             graphics_queue: None,
             present_queue: None,
             physical_device: None,
+            instance: None,
+            debug_messenger: None,
+            window: None,
+            game_version: 0,
+            num_devices: 0,
         };
     }
 
@@ -113,6 +135,22 @@ impl Device {
 
     fn checkValidationLayerSupport(entry: &ash::Entry) -> bool {
         let layer_properties = entry.enumerate_instance_layer_properties().unwrap();
+        let mut layer_found: bool = false;
+
+        for validation_layer in VALIDATION_LAYERS {
+            for layer in layer_properties.iter() {
+                let layer_name = convert_vk_to_string(&layer.layer_name);
+                if layer_name == validation_layer {
+                    layer_found = true;
+                    break;
+                }
+            }
+            
+            if !layer_found {
+                
+            }
+        }
+        
 
         return false;
     }
@@ -122,4 +160,6 @@ impl Device {
     fn checkDeviceExtensionSupport(_physical_device: vk::PhysicalDevice) -> bool {
         return false;
     }
+
+    fn getRequiredExtensions() /*-> Vec<&str>*/ {}
 }

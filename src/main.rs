@@ -9,6 +9,6 @@ use crate::device::Device;
 
 
 fn main() {
-    let device = Device::none(false);
+    let device = Device::new();
 
 }
