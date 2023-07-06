@@ -9,6 +9,7 @@ use crate::device::Device;
 
 
 fn main() {
+    println!("Hello World!");
     let device = Device::new();
 
 }

@@ -1,8 +1,9 @@
 use crate::window::Window;
 use ash::vk::LayerProperties;
 use ash::{vk, Entry};
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr,CString};
 use std::os::raw::c_void;
+use std::ptr;
 
 use ash::extensions::ext::DebugUtils;
 
@@ -115,7 +116,25 @@ impl Device {
         return 0;
     }
 
-    fn createInstance(self: &mut Device) {}
+    fn createInstance(self: &mut Device) {
+        let entry = Entry::linked();
+        if self.enable_validation_layers && !self.checkValidationLayerSupport(&entry) {
+            panic!("validation layers requested, but not available!");
+        }
+
+        let app_name = CString::new("Revier Engine").unwrap();
+        let engine_name = CString::new("Revier").unwrap();
+
+        let app_info:vk::ApplicationInfo = vk::ApplicationInfo { 
+            s_type: vk::StructureType::APPLICATION_INFO, 
+            p_next: ptr::null(), 
+            p_application_name: app_name.as_ptr(), 
+            application_version: ash::vk::make_api_version(0, 1, 0,0), 
+            p_engine_name: engine_name.as_ptr(), 
+            engine_version: ash::vk::make_api_version(0, 1, 0,0), 
+            api_version: ash::vk::make_api_version(0, 1, 0,0), 
+        };
+    }
 
     fn setupDebugMessenger(self: &mut Device) {}
 
@@ -130,10 +149,10 @@ impl Device {
     fn getVulkanVersion(self: &mut Device) {}
 
     fn isDeviceSuitable(_physical_device: vk::PhysicalDevice) -> bool {
-        return false;
+        return false;   
     }
 
-    fn checkValidationLayerSupport(entry: &ash::Entry) -> bool {
+    fn checkValidationLayerSupport(&mut self,entry: &ash::Entry) -> bool {
         let layer_properties = entry.enumerate_instance_layer_properties().unwrap();
         let mut layer_found: bool = false;
 
@@ -147,12 +166,12 @@ impl Device {
             }
             
             if !layer_found {
-                
+                return false
             }
         }
         
 
-        return false;
+        return true;
     }
 
     fn populateDebugMessengerCreateInfo(_create_info: vk::DebugUtilsMessengerCreateInfoEXT) {}
