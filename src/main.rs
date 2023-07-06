@@ -1,9 +1,14 @@
 extern crate ash;
 extern crate winit;
 
+mod game;
+mod window;
+mod device;
 
-mod Game;
-mod Window;
-mod Device;
+use crate::device::Device;
 
-fn main() {}
+
+fn main() {
+    let device = Device::none(false);
+
+}

@@ -9,8 +9,8 @@ pub struct Window {
     window: window::Window,
     width: i16,
     height: i16,
-    frameBufferResized: bool,
-    windowName: String,
+    framebuffer_resized: bool,
+    window_name: String,
 }
 
 impl Window {
@@ -28,8 +28,8 @@ impl Window {
             window: window,
             width: width,
             height: height,
-            frameBufferResized: false,
-            windowName: String::from(title),
+            framebuffer_resized: false,
+            window_name: String::from(title),
         };
     }
 
@@ -41,7 +41,7 @@ impl Window {
     }
 
     pub fn resetWindowResizedFlag(&self) -> bool {
-        return self.frameBufferResized;
+        return self.framebuffer_resized;
     }
 
     pub fn getWindow(&self) -> &window::Window {
