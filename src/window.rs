@@ -5,12 +5,13 @@ use winit::{
     window::{self, WindowBuilder},
 };
 use ash::vk;
+
 pub struct Window {
-    window: window::Window,
-    width: i16,
-    height: i16,
-    framebuffer_resized: bool,
-    window_name: String,
+    pub _window: window::Window,
+    pub width: i16,
+    pub height: i16,
+    pub framebuffer_resized: bool,
+    pub window_name: String,
 }
 
 impl Window {
@@ -21,11 +22,11 @@ impl Window {
                 f64::from(width),
                 f64::from(height),
             ))
-            .build(event_loop)
+            .build(&event_loop)            
             .unwrap();
 
         return Self {
-            window: window,
+            _window: window,
             width: width,
             height: height,
             framebuffer_resized: false,
@@ -45,7 +46,7 @@ impl Window {
     }
 
     pub fn getWindow(&self) -> &window::Window {
-        return &self.window;
+        return &self._window;
     }
 
     pub fn createWindowSurface(
