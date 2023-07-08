@@ -22,7 +22,7 @@ mod fill;
 fn main() {
     println!("Hello World!");
     let event_loop = EventLoop::new();
-    let window = Window::new(&event_loop,"ayes",1280,720);
+    let window = Window::new(&event_loop,"ayes",640,480);
     let device = Device::new(window);
 
     event_loop.run(move |event, _, control_flow| {

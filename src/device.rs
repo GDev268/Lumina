@@ -3,7 +3,7 @@ use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use ash::vk::LayerProperties;
 use ash::{vk, Entry};
 use winit::event_loop::EventLoop;
-use std::borrow::BorrowMut;
+use std::borrow::{BorrowMut, Borrow};
 use std::ffi::{c_char, CStr,CString};
 use std::ops::Deref;
 use std::os::raw::c_void;
@@ -152,6 +152,33 @@ impl Device {
         create_info.p_application_info = &app_info;
         
         let extensions = self.getRequiredExtensions();
+        create_info.enabled_extension_count = extensions.len() as u32;
+        create_info.pp_enabled_extension_names = extensions.as_ptr();
+       
+        let c_layers:Vec<std::ffi::CString> = VALIDATION_LAYERS
+        .iter()
+        .map(|&s| std::ffi::CString::new(s).expect("Failed to convert 'VALIDATION_LAYERS' to an C String"))
+        .collect();
+
+        let pointer_layers:Vec<*const i8> = c_layers.iter()
+        .map(|cl| cl.as_ptr())
+        .collect();
+
+        if self.enable_validation_layers {
+            create_info.enabled_layer_count = VALIDATION_LAYERS.len() as u32;
+            create_info.pp_enabled_layer_names = pointer_layers.as_ptr();
+        }
+
+        let debug_create_info:vk::DebugUtilsMessengerCreateInfoEXT = vk::DebugUtilsMessengerCreateInfoEXT::default();
+
+        self.populateDebugMessengerCreateInfo(debug_create_info);
+
+        println!("Required Extensions:");
+        for i in 0..extensions.len(){
+            let word = convert_vk_to_string_const(extensions[i]);
+            println!("\t{}",word);
+        }
+
     }
 
     fn setupDebugMessenger(self: &mut Device) {}
@@ -192,28 +219,20 @@ impl Device {
         return true;
     }
 
-    fn populateDebugMessengerCreateInfo(_create_info: vk::DebugUtilsMessengerCreateInfoEXT) {}
+    fn populateDebugMessengerCreateInfo(&self,_create_info: vk::DebugUtilsMessengerCreateInfoEXT) {}
 
     fn checkDeviceExtensionSupport(_physical_device: vk::PhysicalDevice) -> bool {
         return false;
     }
 
-    fn getRequiredExtensions(&self) -> Vec<&str> {
+    fn getRequiredExtensions(&self) -> Vec<*const i8> {
         let window = self.window.as_ref().unwrap();
         let mut extensions = ash_window::enumerate_required_extensions(window._window.raw_display_handle()).unwrap().to_vec();
-        println!("Required Extensions:");
 
         if self.enable_validation_layers {
             extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
         }
-
-        for i in 0..extensions.len(){
-            let word = convert_vk_to_string_const(extensions[i]);
-            println!("\t{}",word);
-        }
-
-
         
-       return Vec::new();
+       return extensions;
     }
 }
