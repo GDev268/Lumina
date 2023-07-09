@@ -25,6 +25,7 @@ fn main() {
     let window = Window::new(&event_loop,"ayes",640,480);
     let device = Device::new(window);
 
+
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
 
@@ -42,4 +43,5 @@ fn main() {
             _ => (),
         }
     });
+    
 }

@@ -53,14 +53,13 @@ impl Window {
         &self,
         instance: &ash::Instance,
         entry: &ash::Entry,
-        window: window::Window,
     ) -> vk::SurfaceKHR {
         unsafe {
             return ash_window::create_surface(
                 entry,
                 instance,
-                window.raw_display_handle(),
-                window.raw_window_handle(),
+                self._window.raw_display_handle(),
+                self._window.raw_window_handle(),
                 None,
             )
             .unwrap();
