@@ -210,6 +210,10 @@ impl Device {
             return None;
         }
 
+        if self.entry.is_none(){
+            return Some(vk::DebugUtilsMessengerEXT::default());
+        }
+
         let debug_utils_loader = ash::extensions::ext::DebugUtils::new(self.entry.as_ref().unwrap(), &self.instance.as_ref().unwrap());
 
         unsafe {
@@ -280,8 +284,13 @@ impl Device {
     }
 
     fn getRequiredExtensions(&self) -> Vec<*const i8> {
+        if self.window.is_none(){
+            return Vec::new();
+        }
+
         let window = self.window.as_ref().unwrap();
-        let mut extensions = ash_window::enumerate_required_extensions(window._window.raw_display_handle()).unwrap().to_vec();
+
+        let mut extensions = ash_window::enumerate_required_extensions(self.window.as_ref().unwrap()._window.raw_display_handle()).unwrap().to_vec();
 
         if self.enable_validation_layers {
             extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
@@ -289,4 +298,29 @@ impl Device {
         
        return extensions;
     }
+    
 }
+
+#[cfg(test)]
+mod tests{
+    
+    use super::*;
+
+    #[test]
+    fn test_instance_creation(){
+        let mut device = Device::default(true);
+        Device::createInstance(&mut device);
+
+
+        assert_eq!(device.instance.is_some(),true);
+    }
+
+    #[test]
+    fn test_debug_messenger_creation(){
+        let mut device = Device::default(true);
+        device.debug_messenger = Device::setupDebugMessenger(&mut device);
+
+        assert_eq!(device.debug_messenger.is_some(),true);
+    }
+    
+}   

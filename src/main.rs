@@ -18,11 +18,10 @@ use winit::{
 
 #[path = "testing/fill.rs"]
 mod fill;
-
 fn main() {
     println!("Hello World!");
     let event_loop = EventLoop::new();
-    let window = Window::new(&event_loop,"ayes",640,480);
+    let window = Window::new(&event_loop,"Revier:DEV BUILD #1",640,480);
     let device = Device::new(window);
 
 
