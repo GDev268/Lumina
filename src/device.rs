@@ -226,6 +226,19 @@ impl Device {
     }
 
     fn pickPhysicalDevice(self: &mut Device) {
+        unsafe {
+            let physical_devices = self.instance.as_ref().unwrap().enumerate_physical_devices();  
+        
+            for physical_device in physical_devices.unwrap().iter() {
+                if Device::isDeviceSuitable(&physical_device){
+                    self.physical_device = Some(*physical_device);
+                }
+                
+            }
+
+            self.physical_device_properties = Some(self.instance.as_ref().unwrap().get_physical_device_properties(self.physical_device.unwrap()));
+
+        }
         
     }
 
@@ -235,8 +248,8 @@ impl Device {
 
     fn getVulkanVersion(self: &mut Device) {}
 
-    fn isDeviceSuitable(_physical_device: vk::PhysicalDevice) -> bool {
-        return false;   
+    fn isDeviceSuitable(&self,_physical_device: &vk::PhysicalDevice) -> bool {
+        let indices:QueueFamily = Device::que
     }
 
     fn checkValidationLayerSupport(&mut self,entry: &ash::Entry) -> bool {
@@ -297,6 +310,31 @@ impl Device {
         }
         
        return extensions;
+    }
+
+    fn findQueueFamilies(self:&mut Device,physical_device: &vk::PhysicalDevice) ->  QueueFamily{
+        let mut indices:QueueFamily = QueueFamily { graphics_family: 0, present_family: 0, graphics_value: false, present_value: false };
+
+        let mut i:i32 = 0;
+        unsafe{
+            let queue_families = self.instance.as_ref().unwrap().get_physical_device_queue_family_properties(*physical_device);
+
+            for queue_family in queue_families{
+                if queue_family.queue_count > 0 && queue_family.queue_flags.contains(vk::QueueFlags::GRAPHICS) {
+                    indices.graphics_family = i as u32;
+                    indices.present_value = true;
+                }
+
+                 
+
+
+                i += 1;
+            }
+
+        }
+
+        return indices;
+
     }
     
 }
