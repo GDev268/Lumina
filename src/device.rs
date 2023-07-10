@@ -38,6 +38,12 @@ pub fn convert_vk_to_string_const(string: *const c_char) -> &'static str {
 
 const VALIDATION_LAYERS: [&'static str; 1] = ["VK_LAYER_KHRONOS_validation"];
 const DEVICE_EXTENSIONS: [&'static str; 1] = ["VK_KHR_swapchain"];
+
+pub struct SurfaceKHR{
+    pub surface_loader:ash::extensions::khr::Surface,
+    pub _surface:vk::SurfaceKHR,
+}
+
 struct SwapChainSupportDetails {
     surface_capabilities: vk::SurfaceCapabilitiesKHR,
     surface_formats: Vec<vk::SurfaceFormatKHR>,
@@ -63,7 +69,7 @@ pub struct Device {
     pub physical_device_properties: Option<vk::PhysicalDeviceProperties>,
     pub command_pool: Option<vk::CommandPool>,
     pub _device: Option<vk::Device>,
-    pub surface: Option<vk::SurfaceKHR>,
+    pub surface: Option<SurfaceKHR>,
     pub graphics_queue: Option<vk::Queue>,
     pub present_queue: Option<vk::Queue>,
     pub physical_device: Option<vk::PhysicalDevice>,
@@ -84,7 +90,7 @@ impl Device {
         device.window = Some(window);
         Device::createInstance(&mut device);
         device.debug_messenger = Device::setupDebugMessenger(&mut device);
-        Device::createSurface(&mut device);
+        device.surface = Device::createSurface(&mut device);
         Device::pickPhysicalDevice(&mut device);
         Device::createLogicalDevice(&mut device);
         Device::getVulkanVersion(&mut device);
@@ -96,7 +102,6 @@ impl Device {
         let enable_validation_layers: bool = true;
         let mut device: Device = Device::default(enable_validation_layers);
         
-
         device.window = None;
         Device::createInstance(&mut device);    
         device.debug_messenger = Device::setupDebugMessenger(&mut device);
@@ -221,16 +226,20 @@ impl Device {
         }
     }
 
-    fn createSurface(self: &mut Device) -> Option<vk::SurfaceKHR> {
-        return Some(self.window.as_ref().unwrap().createWindowSurface(self.instance.as_ref().unwrap(),self.entry.as_ref().unwrap()));
+    fn createSurface(self: &mut Device) -> Option<SurfaceKHR> {
+        let surface:SurfaceKHR = SurfaceKHR { 
+            surface_loader: ash::extensions::khr::Surface::new(self.entry.as_ref().unwrap(), self.instance.as_ref().unwrap()), 
+            _surface: self.window.as_ref().unwrap().createWindowSurface(self.instance.as_ref().unwrap(),self.entry.as_ref().unwrap())
+        };
+        return Some(surface);
     }
 
     fn pickPhysicalDevice(self: &mut Device) {
-        unsafe {
+        /*unsafe {
             let physical_devices = self.instance.as_ref().unwrap().enumerate_physical_devices();  
         
             for physical_device in physical_devices.unwrap().iter() {
-                if Device::isDeviceSuitable(&physical_device){
+                if Device::isDeviceSuitable(self,&physical_device){
                     self.physical_device = Some(*physical_device);
                 }
                 
@@ -238,7 +247,7 @@ impl Device {
 
             self.physical_device_properties = Some(self.instance.as_ref().unwrap().get_physical_device_properties(self.physical_device.unwrap()));
 
-        }
+        }*/
         
     }
 
@@ -248,8 +257,9 @@ impl Device {
 
     fn getVulkanVersion(self: &mut Device) {}
 
-    fn isDeviceSuitable(&self,_physical_device: &vk::PhysicalDevice) -> bool {
-        let indices:QueueFamily = Device::que
+    fn isDeviceSuitable(self: &mut Device,physical_device: &vk::PhysicalDevice) -> bool {
+        let indices:QueueFamily = Device::findQueueFamilies(self, physical_device);
+        return false;
     }
 
     fn checkValidationLayerSupport(&mut self,entry: &ash::Entry) -> bool {
@@ -325,11 +335,22 @@ impl Device {
                     indices.present_value = true;
                 }
 
-                 
+                let present_support = self.surface.as_ref().unwrap().surface_loader.get_physical_device_surface_support(*physical_device, i as u32,
+                self.surface.as_ref().unwrap()._surface).unwrap();
 
+                if queue_family.queue_count > 0 && present_support {
+                    indices.present_family = i as u32; 
+                    indices.present_value = true;
+                }
 
+                if indices.isComplete(){
+                    break;
+                }
+                
                 i += 1;
             }
+
+            return indices  ;
 
         }
 
@@ -342,6 +363,8 @@ impl Device {
 #[cfg(test)]
 mod tests{
     
+    use winit::{platform::wayland::EventLoopBuilderExtWayland, event_loop::EventLoopProxy};
+
     use super::*;
 
     #[test]
@@ -360,5 +383,14 @@ mod tests{
 
         assert_eq!(device.debug_messenger.is_some(),true);
     }
+
     
 }   
+
+
+/*SOME INDICATIONS:
+    CAN'T CREATE AN EVENT_LOOP OUTSIDE OF THE MAIN THREAD (BASICALLY THE MAIN FUNCTION) BECAUSE OF PLATFORM LIMITATIONS
+    SO THE "test_surface_creation" CAN'T BE PERFORMED BECAUSE I CAN'T CREATE AN STATIC WINDOW OR I JUST DON'T KNOW HOW
+    I NEED TO STUDY THE MULITHREADING WITH EVENT_LOOP MORE BUT FOR NOW IT STAYS WITHOUT AN UNIT TEST WHILE I FIGURE AN
+    SOLUTION FOR THE CURRENT PROBLEM;
+*/
