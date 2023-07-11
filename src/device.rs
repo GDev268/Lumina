@@ -1,6 +1,7 @@
 use crate::window::Window;
 use ash::vk::LayerProperties;
 use ash::{vk, Entry};
+use cgmath::Zero;
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::borrow::{Borrow, BorrowMut};
 use std::ffi::{c_char, CStr, CString};
@@ -34,6 +35,8 @@ pub fn convert_vk_to_string_const(string: *const c_char) -> &'static str {
         return CStr::from_ptr(string).to_str().unwrap();
     }
 }
+
+
 
 const VALIDATION_LAYERS: [&'static str; 1] = ["VK_LAYER_KHRONOS_validation"];
 const DEVICE_EXTENSIONS: [&'static str; 1] = ["VK_KHR_swapchain"];
@@ -76,7 +79,7 @@ pub struct Device {
     pub debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
     pub window: Option<Window>,
     pub entry: Option<ash::Entry>,
-    pub game_version: u32,
+    pub game_version: Option<u32>,
     pub num_devices: i32,
 }
 
@@ -126,7 +129,7 @@ impl Device {
             debug_messenger: None,
             window: None,
             entry: None,
-            game_version: 0,
+            game_version: None,
             num_devices: 0,
         };
     }
@@ -271,22 +274,63 @@ impl Device {
 
     fn createCommandPool(self: &mut Device) {}
 
-    fn getVulkanVersion(self: &mut Device) {}
+    fn getVulkanVersion(self: &mut Device) {
+        self.game_version = self.entry.as_ref().unwrap().try_enumerate_instance_version().unwrap();
+
+        let driver_version = self.physical_device_properties.unwrap().driver_version;
+        let graphics_card:&str;
+        unsafe{
+        graphics_card = CStr::from_ptr(self.physical_device_properties.unwrap().device_name.as_ptr())
+        .to_str()
+        .unwrap();
+        } 
+
+
+        println!("\n======= VULKAN INFO =======");
+        println!("API Version: {:?}.{:?}.{:?}",vk::api_version_major(self.game_version.unwrap()),vk::api_version_minor(self.game_version.unwrap()),vk::api_version_patch(self.game_version.unwrap()));
+        println!("Driver Version: {:?}.{:?}.{:?}",vk::api_version_major(driver_version),vk::api_version_minor(driver_version),vk::api_version_patch(driver_version));
+        println!("Device Count: {:?}",self.num_devices);
+        println!("Graphics Card: {:?}",graphics_card);
+        println!("Physical device ID: {:?}",self.physical_device_properties.unwrap().device_id);
+
+        match self.physical_device_properties.unwrap().device_type {
+            vk::PhysicalDeviceType::OTHER => println!("Graphics device Type: OTHER"),
+            vk::PhysicalDeviceType::INTEGRATED_GPU => println!("Graphics device Type: INTEGRATED GPU"),
+            vk::PhysicalDeviceType::DISCRETE_GPU => println!("Graphics device Type: DISCRETE GPU"),
+            vk::PhysicalDeviceType::VIRTUAL_GPU => println!("Graphics device Type: VIRTUAL GPU"),
+            vk::PhysicalDeviceType::CPU => println!("Graphics device Type: CPU"),
+            _ => panic!("Physical Device Type Not existent"),
+        };
+        println!("Vendor ID: {:?}",self.physical_device_properties.unwrap().vendor_id);
+        println!("============================\n");
+    }
 
     fn isDeviceSuitable(self: &mut Device, physical_device: &vk::PhysicalDevice) -> bool {
         let indices: QueueFamily = Device::findQueueFamilies(self, physical_device);
 
         let extensions_supported = self.checkDeviceExtensionSupport(*physical_device);
 
-        let swapchain_adequate = false;
+        let mut swapchain_adequate = false;
         if extensions_supported {
-            let swapchain_support:SwapChainSupportDetails = self.querySwapchainSupport(physical_device);
+            let swapchain_support: SwapChainSupportDetails =
+                self.querySwapchainSupport(physical_device);
+
+            swapchain_adequate = !swapchain_support.surface_formats.unwrap().is_empty()
+                && !swapchain_support.present_modes.unwrap().is_empty();
         }
 
-        panic!("{:?}",extensions_supported);
-        
+        unsafe {
+            let supported_features = self
+                .instance
+                .as_ref()
+                .unwrap()
+                .get_physical_device_features(*physical_device);
 
-        return false;
+            return indices.isComplete()
+                && extensions_supported
+                && swapchain_adequate
+                && !supported_features.sampler_anisotropy.is_zero();
+        }
     }
 
     fn checkValidationLayerSupport(&mut self, entry: &ash::Entry) -> bool {
@@ -328,24 +372,26 @@ impl Device {
 
     fn checkDeviceExtensionSupport(&self, physical_device: vk::PhysicalDevice) -> bool {
         unsafe {
-            let mut required_extensions = self
+            let mut available_extensions = self
                 .instance
                 .as_ref()
                 .unwrap()
                 .enumerate_device_extension_properties(physical_device)
                 .unwrap();
 
-            let mut c_device_extension: [i8; 256] = [0; 256];
+            let mut required_extensions: Vec<&str> = Vec::new();
 
-            for device_extension in DEVICE_EXTENSIONS {
-                let extension_bytes = device_extension.as_bytes();
+            for ext in DEVICE_EXTENSIONS {
+                required_extensions.push(ext);
+            }
 
-                for (i, &extension_byte) in extension_bytes.iter().enumerate() {
-                    c_device_extension[i] = extension_byte as i8;
-                }
+            for device_extension in available_extensions {
+                let new_extension = CStr::from_ptr(device_extension.extension_name.as_ptr())
+                    .to_str()
+                    .unwrap();
 
                 required_extensions
-                    .retain(|&extension| extension.extension_name == c_device_extension);
+                    .retain(|&extension| extension != new_extension);
             }
 
             return required_extensions.is_empty();
@@ -393,7 +439,7 @@ impl Device {
                     && queue_family.queue_flags.contains(vk::QueueFlags::GRAPHICS)
                 {
                     indices.graphics_family = i as u32;
-                    indices.present_value = true;
+                    indices.graphics_value = true;
                 }
 
                 let present_support = self
@@ -424,17 +470,53 @@ impl Device {
         }
     }
 
-    fn querySwapchainSupport(&self,physical_device: &vk::PhysicalDevice) -> SwapChainSupportDetails{ 
-        let mut details:SwapChainSupportDetails = SwapChainSupportDetails { 
-            surface_capabilities: None, 
+    fn querySwapchainSupport(
+        &self,
+        physical_device: &vk::PhysicalDevice,
+    ) -> SwapChainSupportDetails {
+        let mut details: SwapChainSupportDetails = SwapChainSupportDetails {
+            surface_capabilities: None,
             surface_formats: None,
-             present_modes: None 
-            };
+            present_modes: None,
+        };
 
-            unsafe{
-            details.surface_capabilities = Some(self.surface.as_ref().unwrap().surface_loader.get_physical_device_surface_capabilities(*physical_device, 
-                self.surface.as_ref().unwrap()._surface).unwrap());
-            }
+        unsafe {
+            details.surface_capabilities = Some(
+                self.surface
+                    .as_ref()
+                    .unwrap()
+                    .surface_loader
+                    .get_physical_device_surface_capabilities(
+                        *physical_device,
+                        self.surface.as_ref().unwrap()._surface,
+                    )
+                    .unwrap(),
+            );
+
+            details.surface_formats = Some(
+                self.surface
+                    .as_ref()
+                    .unwrap()
+                    .surface_loader
+                    .get_physical_device_surface_formats(
+                        *physical_device,
+                        self.surface.as_ref().unwrap()._surface,
+                    )
+                    .unwrap(),
+            );
+
+            details.present_modes = Some(
+                self.surface
+                    .as_ref()
+                    .unwrap()
+                    .surface_loader
+                    .get_physical_device_surface_present_modes(
+                        *physical_device,
+                        self.surface.as_ref().unwrap()._surface,
+                    )
+                    .unwrap(),
+            )
+        }
 
         return details;
     }
@@ -460,4 +542,5 @@ mod tests {
 
         assert_eq!(device.debug_messenger.is_some(), true);
     }
+
 }
