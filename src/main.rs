@@ -4,6 +4,7 @@ extern crate winit;
 mod game;
 mod window;
 mod device;
+mod swapchain;
 
 use std::borrow::Borrow;
 

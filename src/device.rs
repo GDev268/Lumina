@@ -89,12 +89,12 @@ impl Device {
         let mut device: Device = Device::default(enable_validation_layers);
 
         device.window = Some(window);
-        Device::createInstance(&mut device);
-        device.debug_messenger = Device::setupDebugMessenger(&mut device);
-        device.surface = Device::createSurface(&mut device);
-        Device::pickPhysicalDevice(&mut device);
-        Device::createLogicalDevice(&mut device);
-        Device::getVulkanVersion(&mut device);
+        Device::create_instance(&mut device);
+        device.debug_messenger = Device::setup_debug_messenger(&mut device);
+        device.surface = Device::create_surface(&mut device);
+        Device::pick_physical_device(&mut device);
+        Device::create_logical_device(&mut device);
+        Device::get_vulkan_version(&mut device);
 
         return device;
     }
@@ -104,12 +104,12 @@ impl Device {
         let mut device: Device = Device::default(enable_validation_layers);
 
         device.window = None;
-        Device::createInstance(&mut device);
-        device.debug_messenger = Device::setupDebugMessenger(&mut device);
-        device.surface = Device::createSurface(&mut device);
-        Device::pickPhysicalDevice(&mut device);
-        Device::createLogicalDevice(&mut device);
-        Device::getVulkanVersion(&mut device);
+        Device::create_instance(&mut device);
+        device.debug_messenger = Device::setup_debug_messenger(&mut device);
+        device.surface = Device::create_surface(&mut device);
+        Device::pick_physical_device(&mut device);
+        Device::create_logical_device(&mut device);
+        Device::get_vulkan_version(&mut device);
 
         return device;
     }
@@ -136,7 +136,7 @@ impl Device {
 
     pub fn cleanup() {}
 
-    pub fn createBuffer(
+    pub fn create_buffer(
         size: vk::DeviceSize,
         usage: vk::BufferUsageFlags,
         properties: vk::MemoryPropertyFlags,
@@ -145,19 +145,19 @@ impl Device {
     ) {
     }
 
-    pub fn beginSingleTimeCommands() /*-> vk::CommandBuffer*/ {}
+    pub fn begin_single_time_commands() /*-> vk::CommandBuffer*/ {}
 
-    pub fn endSingleTimeCommands() {}
+    pub fn end_single_time_commands() {}
 
-    pub fn copyBuffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
+    pub fn copy_buffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
 
-    pub fn findMemoryType(filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
+    pub fn find_memory_type(filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
         return 0;
     }
 
-    fn createInstance(self: &mut Device) {
+    fn create_instance(self: &mut Device) {
         let entry = Entry::linked();
-        if self.enable_validation_layers && !self.checkValidationLayerSupport(&entry) {
+        if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
             panic!("validation layers requested, but not available!");
         }
 
@@ -178,7 +178,7 @@ impl Device {
         create_info.s_type = vk::StructureType::INSTANCE_CREATE_INFO;
         create_info.p_application_info = &app_info;
 
-        let extensions = self.getRequiredExtensions();
+        let extensions = self.get_required_extensions();
         create_info.enabled_extension_count = extensions.len() as u32;
         create_info.pp_enabled_extension_names = extensions.as_ptr();
 
@@ -197,7 +197,7 @@ impl Device {
             create_info.pp_enabled_layer_names = pointer_layers.as_ptr();
         }
 
-        let debug_create_info = self.populateDebugMessengerCreateInfo();
+        let debug_create_info = self.populate_debug_messenger_create_info();
 
         self.instance = Some(unsafe {
             entry
@@ -214,7 +214,7 @@ impl Device {
         }
     }
 
-    fn setupDebugMessenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
+    fn setup_debug_messenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
         if !self.enable_validation_layers {
             return None;
         }
@@ -231,13 +231,13 @@ impl Device {
         unsafe {
             return Some(
                 debug_utils_loader
-                    .create_debug_utils_messenger(&self.populateDebugMessengerCreateInfo(), None)
+                    .create_debug_utils_messenger(&self.populate_debug_messenger_create_info(), None)
                     .expect("Failed to create an Debug Messenger"),
             );
         }
     }
 
-    fn createSurface(self: &mut Device) -> Option<SurfaceKHR> {
+    fn create_surface(self: &mut Device) -> Option<SurfaceKHR> {
         let surface: SurfaceKHR = SurfaceKHR {
             surface_loader: ash::extensions::khr::Surface::new(
                 self.entry.as_ref().unwrap(),
@@ -251,12 +251,12 @@ impl Device {
         return Some(surface);
     }
 
-    fn pickPhysicalDevice(self: &mut Device) {
+    fn pick_physical_device(self: &mut Device) {
         unsafe {
             let physical_devices = self.instance.as_ref().unwrap().enumerate_physical_devices();
 
             for physical_device in physical_devices.unwrap().iter() {
-                if Device::isDeviceSuitable(self, &physical_device) {
+                if Device::is_device_suitable(self, &physical_device) {
                     self.physical_device = Some(*physical_device);
                 }
             }
@@ -270,8 +270,8 @@ impl Device {
         }
     }
 
-    fn createLogicalDevice(self: &mut Device) {
-        let indices: QueueFamily = self.findQueueFamilies(&self.physical_device.unwrap());
+    fn create_logical_device(self: &mut Device) {
+        let indices: QueueFamily = self.find_queue_families(&self.physical_device.unwrap());
 
         let mut queue_create_infos: Vec<vk::DeviceQueueCreateInfo> = Vec::new();
 
@@ -310,7 +310,7 @@ impl Device {
             c_extensions.push(CString::new(string).unwrap().into_bytes_with_nul());
         }
 
-        let mut pointers: Vec<*const i8> = c_extensions
+        let pointers: Vec<*const i8> = c_extensions
             .iter()
             .map(|s| s.as_ptr() as *const i8)
             .collect();
@@ -341,9 +341,9 @@ impl Device {
         }
     }
 
-    fn createCommandPool(self: &mut Device) {}
+    fn create_command_pool(self: &mut Device) {}
 
-    fn getVulkanVersion(self: &mut Device) {
+    fn get_vulkan_version(self: &mut Device) {
         self.game_version = self
             .entry
             .as_ref()
@@ -351,7 +351,7 @@ impl Device {
             .try_enumerate_instance_version()
             .unwrap();
 
-        let driver_version = Device::getDriverVersion(
+        let driver_version = Device::get_driver_version(
             self.physical_device_properties.unwrap().driver_version,
             self.physical_device_properties.unwrap().vendor_id,
         );
@@ -399,15 +399,15 @@ impl Device {
         println!("============================\n");
     }
 
-    fn isDeviceSuitable(self: &mut Device, physical_device: &vk::PhysicalDevice) -> bool {
-        let indices: QueueFamily = Device::findQueueFamilies(self, physical_device);
+    fn is_device_suitable(self: &mut Device, physical_device: &vk::PhysicalDevice) -> bool {
+        let indices: QueueFamily = Device::find_queue_families(self, physical_device);
 
-        let extensions_supported = self.checkDeviceExtensionSupport(*physical_device);
+        let extensions_supported = self.check_device_extension_support(*physical_device);
 
         let mut swapchain_adequate = false;
         if extensions_supported {
             let swapchain_support: SwapChainSupportDetails =
-                self.querySwapchainSupport(physical_device);
+                self.query_swapchain_support(physical_device);
 
             swapchain_adequate = !swapchain_support.surface_formats.unwrap().is_empty()
                 && !swapchain_support.present_modes.unwrap().is_empty();
@@ -427,7 +427,7 @@ impl Device {
         }
     }
 
-    fn checkValidationLayerSupport(&mut self, entry: &ash::Entry) -> bool {
+    fn check_validation_layer_support(&mut self, entry: &ash::Entry) -> bool {
         let layer_properties = entry.enumerate_instance_layer_properties().unwrap();
         let mut layer_found: bool = false;
 
@@ -448,7 +448,7 @@ impl Device {
         return true;
     }
 
-    fn populateDebugMessengerCreateInfo(&self) -> vk::DebugUtilsMessengerCreateInfoEXT {
+    fn populate_debug_messenger_create_info(&self) -> vk::DebugUtilsMessengerCreateInfoEXT {
         return vk::DebugUtilsMessengerCreateInfoEXT {
             s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
             message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
@@ -464,9 +464,9 @@ impl Device {
         };
     }
 
-    fn checkDeviceExtensionSupport(&self, physical_device: vk::PhysicalDevice) -> bool {
+    fn check_device_extension_support(&self, physical_device: vk::PhysicalDevice) -> bool {
         unsafe {
-            let mut available_extensions = self
+            let available_extensions = self
                 .instance
                 .as_ref()
                 .unwrap()
@@ -491,12 +491,10 @@ impl Device {
         }
     }
 
-    fn getRequiredExtensions(&self) -> Vec<*const i8> {
+    fn get_required_extensions(&self) -> Vec<*const i8> {
         if self.window.is_none() {
             return Vec::new();
         }
-
-        let window = self.window.as_ref().unwrap();
 
         let mut extensions = ash_window::enumerate_required_extensions(
             self.window.as_ref().unwrap()._window.raw_display_handle(),
@@ -511,7 +509,7 @@ impl Device {
         return extensions;
     }
 
-    fn findQueueFamilies(self: &mut Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
+    fn find_queue_families(self: &mut Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
         let mut indices: QueueFamily = QueueFamily {
             graphics_family: 0,
             present_family: 0,
@@ -563,7 +561,7 @@ impl Device {
         }
     }
 
-    fn querySwapchainSupport(
+    fn query_swapchain_support(
         &self,
         physical_device: &vk::PhysicalDevice,
     ) -> SwapChainSupportDetails {
@@ -615,7 +613,7 @@ impl Device {
     }
 
     #[cfg(all(unix, not(target_os = "windows")))]
-    fn getDriverVersion(version_raw: u32, vendor_id: u32) -> String {
+    fn get_driver_version(version_raw: u32, vendor_id: u32) -> String {
         //FOR NVIDIA GRAPHICS CARDS
         if vendor_id == 4318 {
             return sprintf!(
@@ -640,7 +638,7 @@ impl Device {
     }
 
     #[cfg(all(target_os = "windows"))]
-    fn getDriverVersion(version_raw: u32, vendor_id: u32) -> String {
+    fn get_driver_version(version_raw: u32, vendor_id: u32) -> String {
         //FOR WINDOWS
         if vendor_id == 0x8086 {
             return sprintf!("%d.%d", version_raw >> 14, version_raw & 0x3fff);
@@ -666,7 +664,7 @@ mod tests {
     #[test]
     fn test_instance_creation() {
         let mut device = Device::default(true);
-        Device::createInstance(&mut device);
+        Device::create_instance(&mut device);
 
         assert_eq!(device.instance.is_some(), true);
     }
@@ -674,7 +672,7 @@ mod tests {
     #[test]
     fn test_debug_messenger_creation() {
         let mut device = Device::default(true);
-        device.debug_messenger = Device::setupDebugMessenger(&mut device);
+        device.debug_messenger = Device::setup_debug_messenger(&mut device);
 
         assert_eq!(device.debug_messenger.is_some(), true);
     }
