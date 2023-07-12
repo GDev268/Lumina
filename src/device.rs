@@ -3,7 +3,9 @@ use ash::vk::LayerProperties;
 use ash::{vk, Entry};
 use cgmath::Zero;
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use sprintf::sprintf;
 use std::borrow::{Borrow, BorrowMut};
+use std::collections::BTreeSet;
 use std::ffi::{c_char, CStr, CString};
 use std::ops::Deref;
 use std::os::raw::c_void;
@@ -35,8 +37,6 @@ pub fn convert_vk_to_string_const(string: *const c_char) -> &'static str {
         return CStr::from_ptr(string).to_str().unwrap();
     }
 }
-
-
 
 const VALIDATION_LAYERS: [&'static str; 1] = ["VK_LAYER_KHRONOS_validation"];
 const DEVICE_EXTENSIONS: [&'static str; 1] = ["VK_KHR_swapchain"];
@@ -70,7 +70,7 @@ pub struct Device {
     pub enable_validation_layers: bool,
     pub physical_device_properties: Option<vk::PhysicalDeviceProperties>,
     pub command_pool: Option<vk::CommandPool>,
-    pub _device: Option<vk::Device>,
+    pub _device: Option<ash::Device>,
     pub surface: Option<SurfaceKHR>,
     pub graphics_queue: Option<vk::Queue>,
     pub present_queue: Option<vk::Queue>,
@@ -270,38 +270,135 @@ impl Device {
         }
     }
 
-    fn createLogicalDevice(self: &mut Device) {}
+    fn createLogicalDevice(self: &mut Device) {
+        let indices: QueueFamily = self.findQueueFamilies(&self.physical_device.unwrap());
+
+        let mut queue_create_infos: Vec<vk::DeviceQueueCreateInfo> = Vec::new();
+
+        let unique_queue_families: BTreeSet<u32> =
+            vec![indices.graphics_family, indices.present_family]
+                .into_iter()
+                .collect();
+
+        for element in &unique_queue_families {
+            println!("{}", element);
+        }
+
+        let queue_priority: *const f32 = &1.0;
+
+        for queue_family in unique_queue_families {
+            let mut queue_create_info: vk::DeviceQueueCreateInfo =
+                vk::DeviceQueueCreateInfo::default();
+
+            queue_create_info.s_type = vk::StructureType::DEVICE_QUEUE_CREATE_INFO;
+            queue_create_info.queue_family_index = queue_family;
+            queue_create_info.queue_count = 1;
+            queue_create_info.p_queue_priorities = queue_priority;
+            queue_create_infos.push(queue_create_info);
+        }
+
+        let mut device_features: vk::PhysicalDeviceFeatures = vk::PhysicalDeviceFeatures::default();
+        device_features.sampler_anisotropy = vk::TRUE;
+
+        let mut create_info: vk::DeviceCreateInfo = vk::DeviceCreateInfo::default();
+        create_info.s_type = vk::StructureType::DEVICE_CREATE_INFO;
+        create_info.queue_create_info_count = queue_create_infos.len() as u32;
+        create_info.p_enabled_features = &device_features;
+        create_info.enabled_extension_count = DEVICE_EXTENSIONS.len() as u32;
+
+        //Convert the DEVICE_EXTENSIONS([&'static str;n]) to an *const i8(or c_char)
+        let mut c_extensions: Vec<Vec<u8>> = Vec::with_capacity(DEVICE_EXTENSIONS.len());
+
+        for string in DEVICE_EXTENSIONS {
+            c_extensions.push(CString::new(string).unwrap().into_bytes_with_nul());
+        }
+
+        let mut pointers: Vec<*const i8> = c_extensions
+            .iter()
+            .map(|s| s.as_ptr() as *const i8)
+            .collect();
+
+        create_info.pp_enabled_extension_names = pointers.as_ptr();
+
+        unsafe {
+            self._device = Some(
+                self.instance
+                    .as_ref()
+                    .unwrap()
+                    .create_device(self.physical_device.unwrap(), &create_info, None)
+                    .expect("Failed to create logical Device!"),
+            );
+
+            self.graphics_queue = Some(
+                self._device
+                    .as_ref()
+                    .unwrap()
+                    .get_device_queue(indices.graphics_family, 0),
+            );
+            self.present_queue = Some(
+                self._device
+                    .as_ref()
+                    .unwrap()
+                    .get_device_queue(indices.present_family, 0),
+            );
+        }
+    }
 
     fn createCommandPool(self: &mut Device) {}
 
     fn getVulkanVersion(self: &mut Device) {
-        self.game_version = self.entry.as_ref().unwrap().try_enumerate_instance_version().unwrap();
+        self.game_version = self
+            .entry
+            .as_ref()
+            .unwrap()
+            .try_enumerate_instance_version()
+            .unwrap();
 
-        let driver_version = self.physical_device_properties.unwrap().driver_version;
-        let graphics_card:&str;
-        unsafe{
-        graphics_card = CStr::from_ptr(self.physical_device_properties.unwrap().device_name.as_ptr())
-        .to_str()
-        .unwrap();
-        } 
-
+        let driver_version = Device::getDriverVersion(
+            self.physical_device_properties.unwrap().driver_version,
+            self.physical_device_properties.unwrap().vendor_id,
+        );
+        let graphics_card: &str;
+        unsafe {
+            graphics_card = CStr::from_ptr(
+                self.physical_device_properties
+                    .unwrap()
+                    .device_name
+                    .as_ptr(),
+            )
+            .to_str()
+            .unwrap();
+        }
 
         println!("\n======= VULKAN INFO =======");
-        println!("API Version: {:?}.{:?}.{:?}",vk::api_version_major(self.game_version.unwrap()),vk::api_version_minor(self.game_version.unwrap()),vk::api_version_patch(self.game_version.unwrap()));
-        println!("Driver Version: {:?}.{:?}.{:?}",vk::api_version_major(driver_version),vk::api_version_minor(driver_version),vk::api_version_patch(driver_version));
-        println!("Device Count: {:?}",self.num_devices);
-        println!("Graphics Card: {:?}",graphics_card);
-        println!("Physical device ID: {:?}",self.physical_device_properties.unwrap().device_id);
+        println!(
+            "API Version: {:?}.{:?}.{:?}",
+            vk::api_version_major(self.game_version.unwrap()),
+            vk::api_version_minor(self.game_version.unwrap()),
+            vk::api_version_patch(self.game_version.unwrap())
+        );
+        println!("Driver Version: {}", driver_version);
+        println!("Device Count: {:?}", self.num_devices);
+        println!("Graphics Card: {}", graphics_card);
+        println!(
+            "Physical device ID: {:?}",
+            self.physical_device_properties.unwrap().device_id
+        );
 
         match self.physical_device_properties.unwrap().device_type {
             vk::PhysicalDeviceType::OTHER => println!("Graphics device Type: OTHER"),
-            vk::PhysicalDeviceType::INTEGRATED_GPU => println!("Graphics device Type: INTEGRATED GPU"),
+            vk::PhysicalDeviceType::INTEGRATED_GPU => {
+                println!("Graphics device Type: INTEGRATED GPU")
+            }
             vk::PhysicalDeviceType::DISCRETE_GPU => println!("Graphics device Type: DISCRETE GPU"),
             vk::PhysicalDeviceType::VIRTUAL_GPU => println!("Graphics device Type: VIRTUAL GPU"),
             vk::PhysicalDeviceType::CPU => println!("Graphics device Type: CPU"),
             _ => panic!("Physical Device Type Not existent"),
         };
-        println!("Vendor ID: {:?}",self.physical_device_properties.unwrap().vendor_id);
+        println!(
+            "Vendor ID: {:?}",
+            self.physical_device_properties.unwrap().vendor_id
+        );
         println!("============================\n");
     }
 
@@ -390,8 +487,7 @@ impl Device {
                     .to_str()
                     .unwrap();
 
-                required_extensions
-                    .retain(|&extension| extension != new_extension);
+                required_extensions.retain(|&extension| extension != new_extension);
             }
 
             return required_extensions.is_empty();
@@ -520,6 +616,49 @@ impl Device {
 
         return details;
     }
+
+    #[cfg(all(unix, not(target_os = "windows")))]
+    fn getDriverVersion(version_raw: u32, vendor_id: u32) -> String {
+        //FOR NVIDIA GRAPHICS CARDS
+        if vendor_id == 4318 {
+            return sprintf!(
+                "%d.%d.%d.%d",
+                version_raw >> 22 & 0x3ff,
+                version_raw >> 14 & 0x0ff,
+                version_raw >> 6 & 0x0ff,
+                version_raw & 0x003f
+            )
+            .unwrap();
+        }
+        //DEFAULT
+        else {
+            return sprintf!(
+                "%d.%d.%d",
+                version_raw >> 22,
+                version_raw >> 12 & 0x3ff,
+                version_raw & 0xfff
+            )
+            .unwrap();
+        }
+    }
+
+    #[cfg(all(target_os = "windows"))]
+    fn getDriverVersion(version_raw: u32, vendor_id: u32) -> String {
+        //FOR WINDOWS
+        if vendor_id == 0x8086 {
+            return sprintf!("%d.%d", version_raw >> 14, version_raw & 0x3fff);
+        }
+        //DEFAULT
+        else {
+            return sprintf!(
+                "%d.%d.%d",
+                version_raw >> 22,
+                version_raw >> 12 & 0x3ff,
+                version_raw & 0xfff
+            )
+            .unwrap();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -542,5 +681,4 @@ mod tests {
 
         assert_eq!(device.debug_messenger.is_some(), true);
     }
-
 }
