@@ -7,8 +7,9 @@ mod device;
 mod swapchain;
 
 use std::borrow::Borrow;
+use std::rc::Rc;
 
-use crate::device::Device;
+use crate::{device::Device, swapchain::Swapchain};
 use crate::window::Window;
 use simple_logger::SimpleLogger;
 use winit::{
@@ -23,9 +24,12 @@ mod fill;
 fn main() {
     println!("Hello World!");
     let event_loop = EventLoop::new();
-    let window = Window::new(&event_loop,"Revier:DEV BUILD #1",640,480);
-    let device = Device::new(window);
+    let window = Rc::new(Window::new(&event_loop,"Revier:DEV BUILD #1",640,480));
+    let mut device = Device::new(window.as_ref());
 
+    let swapchain = Swapchain::default(&device);
+
+    device.get_vulkan_version();
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
@@ -42,7 +46,17 @@ fn main() {
                 fill::fill_window(&device.window.as_ref().unwrap()._window);
             }
             _ => (),
+            
         }
     });
     
+}
+
+
+fn asdasda(device: &mut Device){
+    asdas(device);
+}
+
+fn asdas(device:&mut Device){
+    println!("{:?}",device.game_version);
 }

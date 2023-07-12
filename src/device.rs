@@ -65,7 +65,7 @@ impl QueueFamily {
     }
 }
 
-pub struct Device {
+pub struct Device<'a> {
     pub debug_utils: Option<DebugUtils>,
     pub enable_validation_layers: bool,
     pub physical_device_properties: Option<vk::PhysicalDeviceProperties>,
@@ -77,18 +77,17 @@ pub struct Device {
     pub physical_device: Option<vk::PhysicalDevice>,
     pub instance: Option<ash::Instance>,
     pub debug_messenger: Option<vk::DebugUtilsMessengerEXT>,
-    pub window: Option<Window>,
+    pub window: Option<&'a Window>,
     pub entry: Option<ash::Entry>,
     pub game_version: Option<u32>,
     pub num_devices: i32,
 }
 
-impl Device {
-    pub fn new(window: Window) -> Self {
+impl<'a> Device<'a> {
+    pub fn new(window: &'a Window) -> Device<'a> {
         let enable_validation_layers: bool = true;
-        let mut device: Device = Device::default(enable_validation_layers);
+        let mut device: Device = Device::default(enable_validation_layers,Some(window));
 
-        device.window = Some(window);
         Device::create_instance(&mut device);
         device.debug_messenger = Device::setup_debug_messenger(&mut device);
         device.surface = Device::create_surface(&mut device);
@@ -99,9 +98,9 @@ impl Device {
         return device;
     }
 
-    pub fn new_test() -> Self {
+    pub fn new_test() -> Device<'a> {
         let enable_validation_layers: bool = true;
-        let mut device: Device = Device::default(enable_validation_layers);
+        let mut device: Device = Device::default(enable_validation_layers,None);
 
         device.window = None;
         Device::create_instance(&mut device);
@@ -114,8 +113,8 @@ impl Device {
         return device;
     }
 
-    pub fn default(enable_validation: bool) -> Self {
-        return Self {
+    pub fn default(enable_validation: bool,window:Option<&'a Window>) -> Device<'a> {
+        return Device {
             debug_utils: None,
             enable_validation_layers: enable_validation,
             physical_device_properties: None,
@@ -127,7 +126,7 @@ impl Device {
             physical_device: None,
             instance: None,
             debug_messenger: None,
-            window: None,
+            window: window,
             entry: None,
             game_version: None,
             num_devices: 0,
@@ -155,7 +154,7 @@ impl Device {
         return 0;
     }
 
-    fn create_instance(self: &mut Device) {
+    fn create_instance(self: &mut Device<'a>) {
         let entry = Entry::linked();
         if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
             panic!("validation layers requested, but not available!");
@@ -214,7 +213,7 @@ impl Device {
         }
     }
 
-    fn setup_debug_messenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
+    fn setup_debug_messenger(self: &mut Device<'a>) -> Option<vk::DebugUtilsMessengerEXT> {
         if !self.enable_validation_layers {
             return None;
         }
@@ -237,7 +236,7 @@ impl Device {
         }
     }
 
-    fn create_surface(self: &mut Device) -> Option<SurfaceKHR> {
+    fn create_surface(self: &mut Device<'a>) -> Option<SurfaceKHR> {
         let surface: SurfaceKHR = SurfaceKHR {
             surface_loader: ash::extensions::khr::Surface::new(
                 self.entry.as_ref().unwrap(),
@@ -251,7 +250,7 @@ impl Device {
         return Some(surface);
     }
 
-    fn pick_physical_device(self: &mut Device) {
+    fn pick_physical_device(self: &mut Device<'a>) {
         unsafe {
             let physical_devices = self.instance.as_ref().unwrap().enumerate_physical_devices();
 
@@ -270,7 +269,7 @@ impl Device {
         }
     }
 
-    fn create_logical_device(self: &mut Device) {
+    fn create_logical_device(self: &mut Device<'a>) {
         let indices: QueueFamily = self.find_queue_families(&self.physical_device.unwrap());
 
         let mut queue_create_infos: Vec<vk::DeviceQueueCreateInfo> = Vec::new();
@@ -341,9 +340,9 @@ impl Device {
         }
     }
 
-    fn create_command_pool(self: &mut Device) {}
+    fn create_command_pool(self: &mut Device<'a>) {}
 
-    fn get_vulkan_version(self: &mut Device) {
+    pub fn get_vulkan_version(self: &mut Device<'a>) {
         self.game_version = self
             .entry
             .as_ref()
@@ -399,7 +398,7 @@ impl Device {
         println!("============================\n");
     }
 
-    fn is_device_suitable(self: &mut Device, physical_device: &vk::PhysicalDevice) -> bool {
+    fn is_device_suitable(self: &mut Device<'a>, physical_device: &vk::PhysicalDevice) -> bool {
         let indices: QueueFamily = Device::find_queue_families(self, physical_device);
 
         let extensions_supported = self.check_device_extension_support(*physical_device);
@@ -509,7 +508,7 @@ impl Device {
         return extensions;
     }
 
-    fn find_queue_families(self: &mut Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
+    fn find_queue_families(self: &mut Device<'a>, physical_device: &vk::PhysicalDevice) -> QueueFamily {
         let mut indices: QueueFamily = QueueFamily {
             graphics_family: 0,
             present_family: 0,
@@ -663,7 +662,7 @@ mod tests {
 
     #[test]
     fn test_instance_creation() {
-        let mut device = Device::default(true);
+        let mut device = Device::default(true,None);
         Device::create_instance(&mut device);
 
         assert_eq!(device.instance.is_some(), true);
@@ -671,7 +670,7 @@ mod tests {
 
     #[test]
     fn test_debug_messenger_creation() {
-        let mut device = Device::default(true);
+        let mut device = Device::default(true,None);
         device.debug_messenger = Device::setup_debug_messenger(&mut device);
 
         assert_eq!(device.debug_messenger.is_some(), true);
