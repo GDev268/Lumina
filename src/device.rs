@@ -278,11 +278,7 @@ impl Device {
         let unique_queue_families: BTreeSet<u32> =
             vec![indices.graphics_family, indices.present_family]
                 .into_iter()
-                .collect();
-
-        for element in &unique_queue_families {
-            println!("{}", element);
-        }
+                .collect(); 
 
         let queue_priority: *const f32 = &1.0;
 
@@ -303,6 +299,7 @@ impl Device {
         let mut create_info: vk::DeviceCreateInfo = vk::DeviceCreateInfo::default();
         create_info.s_type = vk::StructureType::DEVICE_CREATE_INFO;
         create_info.queue_create_info_count = queue_create_infos.len() as u32;
+        create_info.p_queue_create_infos = queue_create_infos.as_ptr();
         create_info.p_enabled_features = &device_features;
         create_info.enabled_extension_count = DEVICE_EXTENSIONS.len() as u32;
 
@@ -681,4 +678,5 @@ mod tests {
 
         assert_eq!(device.debug_messenger.is_some(), true);
     }
+
 }
