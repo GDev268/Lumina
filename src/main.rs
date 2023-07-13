@@ -8,7 +8,7 @@ mod swapchain;
 
 use std::borrow::Borrow;
 use std::rc::Rc;
-
+use std::cell::RefCell;
 use crate::{device::Device, swapchain::Swapchain};
 use crate::window::Window;
 use simple_logger::SimpleLogger;
@@ -24,26 +24,23 @@ mod fill;
 fn main() {
     println!("Hello World!");
     let event_loop = EventLoop::new();
-    let window = Rc::new(Window::new(&event_loop,"Revier:DEV BUILD #1",640,480));
-    let mut device = Device::new(window.as_ref());
+    let window = Window::new(&event_loop,"Revier:DEV BUILD #1",640,480);
+    let mut device = Device::new(&window);
 
-    let swapchain = Swapchain::default(&device);
 
-    device.get_vulkan_version();
-
-    event_loop.run(move |event, _, control_flow| {
+        event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
 
         match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
-            } if window_id == device.window.as_ref().unwrap()._window.id() => control_flow.set_exit(),
+            } if window_id == window._window.id() => control_flow.set_exit(),
             Event::MainEventsCleared => {
-                &device.window.as_ref().unwrap()._window.request_redraw();
+                &window._window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                fill::fill_window(&device.window.as_ref().unwrap()._window);
+                fill::fill_window(&window._window);
             }
             _ => (),
             
