@@ -43,17 +43,17 @@ pub struct SurfaceKHR {
     pub _surface: vk::SurfaceKHR,
 }
 
-struct SwapChainSupportDetails {
-    surface_capabilities: Option<vk::SurfaceCapabilitiesKHR>,
-    surface_formats: Option<Vec<vk::SurfaceFormatKHR>>,
-    present_modes: Option<Vec<vk::PresentModeKHR>>,
+pub struct SwapChainSupportDetails {
+    pub surface_capabilities: Option<vk::SurfaceCapabilitiesKHR>,
+    pub surface_formats: Option<Vec<vk::SurfaceFormatKHR>>,
+    pub present_modes: Option<Vec<vk::PresentModeKHR>>,
 }
 
-struct QueueFamily {
-    graphics_family: u32,
-    present_family: u32,
-    graphics_value: bool,
-    present_value: bool,
+pub struct QueueFamily {
+    pub graphics_family: u32,
+    pub present_family: u32,
+    pub graphics_value: bool,
+    pub present_value: bool,
 }
 
 impl QueueFamily {
@@ -117,6 +117,45 @@ impl Device {
 
     pub fn cleanup() {}
 
+
+    pub fn get_command_pool(&self) -> vk::CommandPool {
+        return self.command_pool.unwrap();
+    }
+
+    pub fn device(&self) -> &ash::Device {
+        return self._device.as_ref().unwrap();
+    }
+
+    pub fn surface(&self) -> vk::SurfaceKHR{
+        return self.surface.as_ref().unwrap()._surface;
+    }
+
+    pub fn graphics_queue(&self) -> vk::Queue{
+        return self.graphics_queue.unwrap();
+    }
+
+    pub fn present_queue(&self) -> vk::Queue{
+        return self.present_queue.unwrap();
+    }
+
+    pub fn get_swapchain_support(&self) -> SwapChainSupportDetails {
+        return self.query_swapchain_support(&self.physical_device.unwrap());
+    }
+
+    pub fn find_memory_type(&self,filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
+        return 0;
+    }
+
+    pub fn find_physical_queue_families(&self) -> QueueFamily {
+        let indices =  self.find_queue_families(&self.physical_device.unwrap());
+        return indices;
+    }
+
+    pub fn find_support_format(candidates:&Vec<vk::Format>,tiling:vk::ImageTiling,features:vk::FormatFeatureFlags)/* -> vk::Format*/{
+
+    }
+
+
     pub fn create_buffer(
         size: vk::DeviceSize,
         usage: vk::BufferUsageFlags,
@@ -132,9 +171,7 @@ impl Device {
 
     pub fn copy_buffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
 
-    pub fn find_memory_type(filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
-        return 0;
-    }
+
 
     fn create_instance(self: &mut Device,window:&Window) {
         let entry = Entry::linked();
@@ -324,7 +361,7 @@ impl Device {
 
     fn create_command_pool(self: &mut Device) {}
 
-    pub fn get_vulkan_version(self: &mut Device) {
+    fn get_vulkan_version(self: &mut Device) {
         self.game_version = self
             .entry
             .as_ref()
@@ -486,7 +523,7 @@ impl Device {
         return extensions;
     }
 
-    fn find_queue_families(self: &mut Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
+    fn find_queue_families(self: &Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
         let mut indices: QueueFamily = QueueFamily {
             graphics_family: 0,
             present_family: 0,
