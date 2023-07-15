@@ -52,7 +52,7 @@ impl Swapchain {
             device,
             Some(&mut old_swapchain.unwrap().swapchain.as_ref().unwrap()),
         );
-        Swapchain::create_image_views(self);
+        Swapchain::create_image_views(self,device);
         Swapchain::create_renderpass(self);
         Swapchain::create_depth_resources(self);
         Swapchain::create_framebuffers(self);
@@ -180,7 +180,7 @@ impl Swapchain {
 
         if indices.graphics_family != indices.present_family {
             create_info.image_sharing_mode = vk::SharingMode::CONCURRENT;
-            create_info.queue_family_index_count = 2;
+            create_info.queue_family_index_count = 0;
             create_info.p_queue_family_indices = queue_family_indices.as_ptr();
         } else {
             create_info.image_sharing_mode = vk::SharingMode::EXCLUSIVE;
@@ -210,10 +210,32 @@ impl Swapchain {
                 .swapchain_loader
                 .create_swapchain(&create_info, None)
                 .expect("Failed to create swapchain!");
+
+            self.swapchain_images = Some(self.swapchain.as_ref().unwrap().swapchain_loader.get_swapchain_images(self.swapchain.as_ref().unwrap().swapchain).unwrap());
+        
+            self.swapchain_image_format = Some(surface_format.format);
+            self.swapchain_extent = Some(extent);
         }
     }
 
-    fn create_image_views(self: &mut Swapchain) {}
+    fn create_image_views(self: &mut Swapchain,device: &Device) {
+        for i in 0..self.swapchain_images.as_ref().unwrap().len() {
+            let mut view_info:vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
+            view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
+            view_info.image = self.swapchain_images.as_ref().unwrap()[i];
+            view_info.view_type = vk::ImageViewType::TYPE_2D;
+            view_info.format = self.swapchain_image_format.unwrap();
+            view_info.subresource_range.aspect_mask = vk::ImageAspectFlags::COLOR;
+            view_info.subresource_range.base_mip_level = 0;
+            view_info.subresource_range.level_count = 1;
+            view_info.subresource_range.base_array_layer = 0;
+            view_info.subresource_range.layer_count = 1;
+
+            unsafe{
+                self.swapchain_image_views.as_mut().unwrap()[i] = device.device().create_image_view(&view_info, None).expect("Failed to create image view!");
+            }
+        }
+    }
 
     fn create_depth_resources(self: &mut Swapchain) {}
 

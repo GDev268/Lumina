@@ -1,6 +1,3 @@
-extern crate ash;
-extern crate winit;
-
 mod game;
 mod window;
 mod device;
@@ -17,7 +14,6 @@ use winit::{
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-
 
 #[path = "testing/fill.rs"]
 mod fill;
@@ -47,13 +43,4 @@ fn main() {
         }
     });
     
-}
-
-
-fn asdasda(device: &mut Device){
-    asdas(device);
-}
-
-fn asdas(device:&mut Device){
-    println!("{:?}",device.game_version);
 }

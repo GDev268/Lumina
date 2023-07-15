@@ -1,5 +1,5 @@
 use crate::window::Window;
-use ash::{vk, Entry};
+use ash::{vk::{self,KhrGetPhysicalDeviceProperties2Fn}, Entry};
 use cgmath::Zero;
 use raw_window_handle::HasRawDisplayHandle;
 use sprintf::sprintf;
@@ -8,18 +8,27 @@ use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_void;
 use std::ptr::{self};
 use std::rc::Rc; 
+use color_print::cprintln;
+
 
 use ash::extensions::ext::DebugUtils;
 
 unsafe extern "system" fn vulkan_debug_callback(
-    _message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
-    _message_type: vk::DebugUtilsMessageTypeFlagsEXT,
+    message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
+    message_type: vk::DebugUtilsMessageTypeFlagsEXT,
     p_callback_data: *const vk::DebugUtilsMessengerCallbackDataEXT,
     _p_user_data: *mut c_void,
 ) -> vk::Bool32 {
-    let _message = CStr::from_ptr((*p_callback_data).p_message);
+    let message = CStr::from_ptr((*p_callback_data).p_message);
 
-    return vk::FALSE;
+    match message_severity {
+        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => cprintln!("[Debug][Verbose]{:?}", message),
+        vk::DebugUtilsMessageSeverityFlagsEXT::WARNING => cprintln!("<yellow>[Debug][Warning]{:?}", message),
+        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR =>   cprintln!("<red>[Debug][Error]{:?}", message),
+        vk::DebugUtilsMessageSeverityFlagsEXT::INFO =>    cprintln!("<green>[Debug][Info]{:?}", message),
+        _ => println!("[Debug][n/a]{:?}", message),
+    };
+    vk::FALSE
 }
 
 pub fn convert_vk_to_string(string: &[c_char]) -> &str {
@@ -467,19 +476,21 @@ impl Device {
     }
 
     fn populate_debug_messenger_create_info(&self) -> vk::DebugUtilsMessengerCreateInfoEXT {
-        return vk::DebugUtilsMessengerCreateInfoEXT {
-            s_type: vk::StructureType::DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            message_severity: vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE
+        let mut debug_info = vk::DebugUtilsMessengerCreateInfoEXT::default();
+        debug_info.message_severity = 
+            vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
                 | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                | vk::DebugUtilsMessageSeverityFlagsEXT::ERROR,
-            message_type: vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
+                | vk::DebugUtilsMessageSeverityFlagsEXT::INFO;
+        
+        debug_info.message_type = 
+            vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
                 | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
-                | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE,
-            pfn_user_callback: Some(vulkan_debug_callback),
-            p_user_data: ptr::null_mut(),
-            p_next: ptr::null(),
-            flags: vk::DebugUtilsMessengerCreateFlagsEXT::empty(),
-        };
+                | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE;
+        
+        debug_info.pfn_user_callback = Some(vulkan_debug_callback);
+
+        return debug_info;
+
     }
 
     fn check_device_extension_support(&self, physical_device: vk::PhysicalDevice) -> bool {
