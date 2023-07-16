@@ -160,8 +160,19 @@ impl Device {
         return indices;
     }
 
-    pub fn find_support_format(candidates:&Vec<vk::Format>,tiling:vk::ImageTiling,features:vk::FormatFeatureFlags)/* -> vk::Format*/{
-
+    pub fn find_support_format(&self,candidates:&Vec<vk::Format>,tiling:vk::ImageTiling,features:vk::FormatFeatureFlags) -> vk::Format{
+        for format in candidates {
+            unsafe{
+                let properties = self.instance.as_ref().unwrap().get_physical_device_format_properties(self.physical_device.unwrap(), *format);
+                if tiling == vk::ImageTiling::LINEAR && (properties.linear_tiling_features & features) == features {
+                    return *format;
+                }
+                else if tiling == vk::ImageTiling::OPTIMAL && (properties.linear_tiling_features & features) == features{
+                    return *format;
+                }
+            }
+        }
+        panic!("Failed to find an supported format!");
     }
 
 

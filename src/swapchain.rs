@@ -52,8 +52,8 @@ impl Swapchain {
             device,
             Some(&mut old_swapchain.unwrap().swapchain.as_ref().unwrap()),
         );
-        Swapchain::create_image_views(self,device);
-        Swapchain::create_renderpass(self);
+        Swapchain::create_image_views(self, device);
+        Swapchain::create_renderpass(self, device);
         Swapchain::create_depth_resources(self);
         Swapchain::create_framebuffers(self);
         Swapchain::create_sync_objects(self);
@@ -110,7 +110,17 @@ impl Swapchain {
             / self.swapchain_extent.unwrap().height as f64;
     }
 
-    pub fn find_depth_format() /*-> vk::Format*/ {}
+    pub fn find_depth_format(&self, device: &Device) -> vk::Format {
+        return device.find_support_format(
+            &vec![
+                vk::Format::D32_SFLOAT,
+                vk::Format::D32_SFLOAT_S8_UINT,
+                vk::Format::D24_UNORM_S8_UINT,
+            ],
+            vk::ImageTiling::OPTIMAL,
+            vk::FormatFeatureFlags::DEPTH_STENCIL_ATTACHMENT,
+        );
+    }
 
     pub fn acquire_next_image(image_index: u32) /*-> vk::Result*/ {}
 
@@ -211,16 +221,23 @@ impl Swapchain {
                 .create_swapchain(&create_info, None)
                 .expect("Failed to create swapchain!");
 
-            self.swapchain_images = Some(self.swapchain.as_ref().unwrap().swapchain_loader.get_swapchain_images(self.swapchain.as_ref().unwrap().swapchain).unwrap());
-        
+            self.swapchain_images = Some(
+                self.swapchain
+                    .as_ref()
+                    .unwrap()
+                    .swapchain_loader
+                    .get_swapchain_images(self.swapchain.as_ref().unwrap().swapchain)
+                    .unwrap(),
+            );
+
             self.swapchain_image_format = Some(surface_format.format);
             self.swapchain_extent = Some(extent);
         }
     }
 
-    fn create_image_views(self: &mut Swapchain,device: &Device) {
+    fn create_image_views(self: &mut Swapchain, device: &Device) {
         for i in 0..self.swapchain_images.as_ref().unwrap().len() {
-            let mut view_info:vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
+            let mut view_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
             view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
             view_info.image = self.swapchain_images.as_ref().unwrap()[i];
             view_info.view_type = vk::ImageViewType::TYPE_2D;
@@ -231,15 +248,50 @@ impl Swapchain {
             view_info.subresource_range.base_array_layer = 0;
             view_info.subresource_range.layer_count = 1;
 
-            unsafe{
-                self.swapchain_image_views.as_mut().unwrap()[i] = device.device().create_image_view(&view_info, None).expect("Failed to create image view!");
+            unsafe {
+                self.swapchain_image_views.as_mut().unwrap()[i] = device
+                    .device()
+                    .create_image_view(&view_info, None)
+                    .expect("Failed to create image view!");
             }
         }
     }
 
-    fn create_depth_resources(self: &mut Swapchain) {}
+    fn create_renderpass(self: &mut Swapchain, device: &Device) {
+        let mut depth_attachment: vk::AttachmentDescription = vk::AttachmentDescription::default();
+        depth_attachment.format = self.find_depth_format(device);
+        depth_attachment.samples = vk::SampleCountFlags::TYPE_1;
+        depth_attachment.load_op = vk::AttachmentLoadOp::CLEAR;
+        depth_attachment.store_op = vk::AttachmentStoreOp::DONT_CARE;
+        depth_attachment.stencil_load_op = vk::AttachmentLoadOp::DONT_CARE;
+        depth_attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
+        depth_attachment.initial_layout = vk::ImageLayout::UNDEFINED;
+        depth_attachment.final_layout = vk::ImageLayout::ATTACHMENT_OPTIMAL;
 
-    fn create_renderpass(self: &mut Swapchain) {}
+        let mut depth_attachment_ref: vk::AttachmentReference = vk::AttachmentReference::default();
+        depth_attachment_ref.attachment = 1;
+        depth_attachment_ref.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        let mut color_attachment: vk::AttachmentDescription = vk::AttachmentDescription::default();
+        color_attachment.format = self.get_swapchain_image_format();
+        color_attachment.samples = vk::SampleCountFlags::TYPE_1;
+        depth_attachment.load_op = vk::AttachmentLoadOp::CLEAR;
+        depth_attachment.store_op = vk::AttachmentStoreOp::STORE;
+        depth_attachment.stencil_load_op = vk::AttachmentLoadOp::DONT_CARE;
+        depth_attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
+        depth_attachment.initial_layout = vk::ImageLayout::UNDEFINED;
+        depth_attachment.final_layout = vk::ImageLayout::PRESENT_SRC_KHR;
+
+        let mut color_attachment_ref: vk::AttachmentReference = vk::AttachmentReference::default();
+        depth_attachment_ref.attachment = 1;
+        depth_attachment_ref.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+        let mut subpass_description:vk::SubpassDescription = vk::SubpassDescription::default();
+        subpass_description.pipeline_bind_point = vk::PipelineBindPoint::GRAPHICS;
+        
+    }
+
+    fn create_depth_resources(self: &mut Swapchain) {}
 
     fn create_framebuffers(self: &mut Swapchain) {}
 
