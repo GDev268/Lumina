@@ -9,38 +9,36 @@ use std::cell::RefCell;
 use crate::{device::Device, swapchain::Swapchain};
 use crate::window::Window;
 use simple_logger::SimpleLogger;
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::EventLoop,
-    window::WindowBuilder,
-};
+use glfw::{self};
+use glfw::{Action, Context, Key};
 
-#[path = "testing/fill.rs"]
-mod fill;
+
 fn main() {
     println!("Hello World!");
-    let event_loop = EventLoop::new();
-    let window = Window::new(&event_loop,"Revier:DEV BUILD #1",640,480);
-    let mut device = Device::new(&window);
+    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
-
-        event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();
-
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } if window_id == window._window.id() => control_flow.set_exit(),
-            Event::MainEventsCleared => {
-                &window._window.request_redraw();
-            }
-            Event::RedrawRequested(_) => {
-                fill::fill_window(&window._window);
-            }
-            _ => (),
-            
-        }
-    });
+    glfw.window_hint(glfw::WindowHint::Visible(true));
+    glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
     
+    let mut window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+    let mut device = Device::new(&window,&glfw);
+    let mut swapchain = Swapchain::new(&device,window.getExtent());
+
+    window._window.set_key_polling(true);
+
+    while !window._window.should_close() {
+
+        // Poll for and process events
+        glfw.poll_events();
+        for (_, event) in glfw::flush_messages(&window.events) {
+            println!("{:?}", event);
+            print!("AAAAAAAAEEEEEEEEEEEEEEOOOOOOOOOOOOUUUUUUUU");
+            match event {
+                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                    window._window.set_should_close(true)
+                },
+                _ => {},
+            }
+        }
+    }
 }

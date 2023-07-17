@@ -1,32 +1,27 @@
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use std::cell::RefCell;
-use winit::{
-    event_loop::EventLoop,
-    window::{self, WindowBuilder},
-};
 use ash::vk;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use std::{cell::RefCell, sync::mpsc::Receiver};
+use glfw::{Action, Context, Key,Glfw, WindowEvent};
 
 pub struct Window {
-    pub _window: window::Window,
-    pub width: i16,
-    pub height: i16,
+    pub _window: glfw::Window,
+    pub events:Receiver<(f64, WindowEvent)>,
+    pub width: u32,
+    pub height: u32,
     pub framebuffer_resized: bool,
     pub window_name: String,
 }
 
 impl Window {
-    pub fn new(event_loop: &EventLoop<()>, title: &str, width: i16, height: i16) -> Self {
-        let window = WindowBuilder::new()
-            .with_title(title)
-            .with_inner_size(winit::dpi::LogicalSize::new(
-                f64::from(width),
-                f64::from(height),
-            ))
-            .build(&event_loop)            
-            .unwrap();
+    pub fn new(glfw: &mut Glfw, title: &str, width: u32, height: u32) -> Self {
+        let (mut window, events) = glfw
+            .create_window(width, height, title, glfw::WindowMode::Windowed)
+            .expect("Failed to create GLFW window.");
+
 
         return Self {
             _window: window,
+            events:events,
             width: width,
             height: height,
             framebuffer_resized: false,
@@ -45,7 +40,7 @@ impl Window {
         return self.framebuffer_resized;
     }
 
-    pub fn getWindow(&self) -> &window::Window {
+    pub fn getWindow(&self) -> &glfw::Window {
         return &self._window;
     }
 
@@ -55,16 +50,11 @@ impl Window {
         entry: &ash::Entry,
     ) -> vk::SurfaceKHR {
         unsafe {
-            return ash_window::create_surface(
-                entry,
-                instance,
-                self._window.raw_display_handle(),
-                self._window.raw_window_handle(),
-                None,
-            )
-            .unwrap();
+            let mut surface: std::mem::MaybeUninit<vk::SurfaceKHR> = std::mem::MaybeUninit::uninit();
+            self._window.create_window_surface(instance.handle(), std::ptr::null(), surface.as_mut_ptr());
+            return surface.assume_init_read();
         }
     }
 
-    fn framebufferResizeCallback(window: WindowBuilder, width: i16, height: i16) {}
+    fn framebufferResizeCallback(window: &Glfw, width: i16, height: i16) {}
 }

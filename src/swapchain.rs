@@ -31,14 +31,18 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
-    fn new(device: &Device, window_extent: vk::Extent2D) -> Swapchain {
+    pub fn new(device: &Device, window_extent: vk::Extent2D) -> Swapchain {
         let mut swapchain = Swapchain::default();
         Swapchain::init(&mut swapchain, None, device);
 
         return swapchain;
     }
 
-    fn renew(device: &Device, window_extent: vk::Extent2D, previous: &mut Swapchain) -> Swapchain {
+    pub fn renew(
+        device: &Device,
+        window_extent: vk::Extent2D,
+        previous: &mut Swapchain,
+    ) -> Swapchain {
         let mut swapchain = Swapchain::default();
 
         Swapchain::init(&mut swapchain, Some(previous), device);
@@ -47,14 +51,18 @@ impl Swapchain {
     }
 
     fn init(self: &mut Swapchain, old_swapchain: Option<&mut Swapchain>, device: &Device) {
-        Swapchain::create_swapchain(
-            self,
-            device,
-            Some(&mut old_swapchain.unwrap().swapchain.as_ref().unwrap()),
-        );
+        if old_swapchain.is_some() {
+            Swapchain::create_swapchain(
+                self,
+                device,
+                Some(&mut old_swapchain.unwrap().swapchain.as_ref().unwrap()),
+            );
+        } else {
+            Swapchain::create_swapchain(self, device, None);
+        }
         Swapchain::create_image_views(self, device);
         Swapchain::create_renderpass(self, device);
-        Swapchain::create_depth_resources(self);
+        Swapchain::create_depth_resources(self, device);
         Swapchain::create_framebuffers(self);
         Swapchain::create_sync_objects(self);
     }
@@ -70,7 +78,7 @@ impl Swapchain {
             depth_image_memories: None,
             depth_image_views: None,
             swapchain_images: None,
-            swapchain_image_views: None,
+            swapchain_image_views: Some(Vec::new()),
             window_extent: None,
             swapchain: None,
             image_available_semaphores: None,
@@ -112,7 +120,7 @@ impl Swapchain {
 
     pub fn find_depth_format(&self, device: &Device) -> vk::Format {
         return device.find_support_format(
-            &vec![
+            &[
                 vk::Format::D32_SFLOAT,
                 vk::Format::D32_SFLOAT_S8_UINT,
                 vk::Format::D24_UNORM_S8_UINT,
@@ -171,7 +179,7 @@ impl Swapchain {
 
         let mut create_info: vk::SwapchainCreateInfoKHR = vk::SwapchainCreateInfoKHR::default();
 
-        self.swapchain.as_mut().unwrap().swapchain_loader = ash::extensions::khr::Swapchain::new(
+        let swapchain_loader = ash::extensions::khr::Swapchain::new(
             &device.instance.as_ref().unwrap(),
             &device.device(),
         );
@@ -207,19 +215,20 @@ impl Swapchain {
         create_info.clipped = vk::TRUE;
 
         if old_swapchain.is_none() {
-            create_info.old_swapchain = self.swapchain.as_ref().unwrap().swapchain;
+            create_info.old_swapchain = vk::SwapchainKHR::default();
         } else {
             create_info.old_swapchain = old_swapchain.unwrap().swapchain;
         }
 
         unsafe {
-            self.swapchain.as_mut().unwrap().swapchain = self
-                .swapchain
-                .as_ref()
-                .unwrap()
-                .swapchain_loader
+            let _swapchain = swapchain_loader
                 .create_swapchain(&create_info, None)
                 .expect("Failed to create swapchain!");
+
+            self.swapchain = Some(SwapchainKHR {
+                swapchain: _swapchain,
+                swapchain_loader: swapchain_loader,
+            });
 
             self.swapchain_images = Some(
                 self.swapchain
@@ -236,6 +245,10 @@ impl Swapchain {
     }
 
     fn create_image_views(self: &mut Swapchain, device: &Device) {
+        self.swapchain_image_views.as_mut().unwrap().resize(
+            self.swapchain_images.as_ref().unwrap().len(),
+            vk::ImageView::default(),
+        );
         for i in 0..self.swapchain_images.as_ref().unwrap().len() {
             let mut view_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
             view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
@@ -258,40 +271,94 @@ impl Swapchain {
     }
 
     fn create_renderpass(self: &mut Swapchain, device: &Device) {
-        let mut depth_attachment: vk::AttachmentDescription = vk::AttachmentDescription::default();
-        depth_attachment.format = self.find_depth_format(device);
-        depth_attachment.samples = vk::SampleCountFlags::TYPE_1;
-        depth_attachment.load_op = vk::AttachmentLoadOp::CLEAR;
-        depth_attachment.store_op = vk::AttachmentStoreOp::DONT_CARE;
-        depth_attachment.stencil_load_op = vk::AttachmentLoadOp::DONT_CARE;
-        depth_attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
-        depth_attachment.initial_layout = vk::ImageLayout::UNDEFINED;
-        depth_attachment.final_layout = vk::ImageLayout::ATTACHMENT_OPTIMAL;
+        let color_attachment = vk::AttachmentDescription {
+            flags: vk::AttachmentDescriptionFlags::empty(),
+            format: self.get_swapchain_image_format(),
+            samples: vk::SampleCountFlags::TYPE_1,
+            load_op: vk::AttachmentLoadOp::CLEAR,
+            store_op: vk::AttachmentStoreOp::STORE,
+            stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
+            stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
+            initial_layout: vk::ImageLayout::UNDEFINED,
+            final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
+        };
 
-        let mut depth_attachment_ref: vk::AttachmentReference = vk::AttachmentReference::default();
-        depth_attachment_ref.attachment = 1;
-        depth_attachment_ref.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        let color_attachment_ref = vk::AttachmentReference {
+            attachment: 0,
+            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        };
 
-        let mut color_attachment: vk::AttachmentDescription = vk::AttachmentDescription::default();
-        color_attachment.format = self.get_swapchain_image_format();
-        color_attachment.samples = vk::SampleCountFlags::TYPE_1;
-        depth_attachment.load_op = vk::AttachmentLoadOp::CLEAR;
-        depth_attachment.store_op = vk::AttachmentStoreOp::STORE;
-        depth_attachment.stencil_load_op = vk::AttachmentLoadOp::DONT_CARE;
-        depth_attachment.stencil_store_op = vk::AttachmentStoreOp::DONT_CARE;
-        depth_attachment.initial_layout = vk::ImageLayout::UNDEFINED;
-        depth_attachment.final_layout = vk::ImageLayout::PRESENT_SRC_KHR;
+        let depth_attachment = vk::AttachmentDescription {
+            flags: vk::AttachmentDescriptionFlags::empty(),
+            format: self.find_depth_format(device),
+            samples: vk::SampleCountFlags::TYPE_1,
+            load_op: vk::AttachmentLoadOp::CLEAR,
+            store_op: vk::AttachmentStoreOp::DONT_CARE,
+            stencil_load_op: vk::AttachmentLoadOp::DONT_CARE,
+            stencil_store_op: vk::AttachmentStoreOp::DONT_CARE,
+            initial_layout: vk::ImageLayout::UNDEFINED,
+            final_layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        };
 
-        let mut color_attachment_ref: vk::AttachmentReference = vk::AttachmentReference::default();
-        depth_attachment_ref.attachment = 1;
-        depth_attachment_ref.layout = vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        let depth_attachment_ref = vk::AttachmentReference {
+            attachment: 1,
+            layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        };
 
-        let mut subpass_description:vk::SubpassDescription = vk::SubpassDescription::default();
-        subpass_description.pipeline_bind_point = vk::PipelineBindPoint::GRAPHICS;
-        
+        let subpasses = [vk::SubpassDescription {
+            color_attachment_count: 1,
+            p_color_attachments: &color_attachment_ref,
+            p_depth_stencil_attachment: &depth_attachment_ref,
+            flags: vk::SubpassDescriptionFlags::empty(),
+            pipeline_bind_point: vk::PipelineBindPoint::GRAPHICS,
+            input_attachment_count: 0,
+            p_input_attachments: ptr::null(),
+            p_resolve_attachments: ptr::null(),
+            preserve_attachment_count: 0,
+            p_preserve_attachments: ptr::null(),
+        }];
+
+        let dependencies = [vk::SubpassDependency {
+            src_subpass: vk::SUBPASS_EXTERNAL,
+            dst_subpass: 0,
+            src_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+            dst_stage_mask: vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
+            src_access_mask: vk::AccessFlags::empty(),
+            dst_access_mask: vk::AccessFlags::COLOR_ATTACHMENT_READ
+                | vk::AccessFlags::COLOR_ATTACHMENT_WRITE,
+            dependency_flags: vk::DependencyFlags::empty(),
+        }];
+
+
+        let attachments: [vk::AttachmentDescription; 2] = [color_attachment, depth_attachment];
+
+        let mut create_info: vk::RenderPassCreateInfo = vk::RenderPassCreateInfo::default();
+        create_info.s_type = vk::StructureType::RENDER_PASS_CREATE_INFO;
+        create_info.attachment_count = attachments.len() as u32;
+        create_info.p_attachments = attachments.as_ptr();
+        create_info.subpass_count = subpasses.len() as u32;
+        create_info.p_subpasses = subpasses.as_ptr();
+        create_info.dependency_count = dependencies.len() as u32;
+        create_info.p_dependencies = dependencies.as_ptr();
+
+        unsafe {
+            self.renderpass = Some(
+                device
+                    .device()
+                    .create_render_pass(&create_info, None)
+                    .expect("Failed to create render pass!"),
+            );
+        }
     }
 
-    fn create_depth_resources(self: &mut Swapchain) {}
+    fn create_depth_resources(self: &mut Swapchain, device: &Device) {
+        let depth_format: vk::Format = self.find_depth_format(device);
+        self.swapchain_depth_format = Some(depth_format);
+
+        for i in 0..self.image_count() {
+            print!("{}", i);
+        }
+    }
 
     fn create_framebuffers(self: &mut Swapchain) {}
 
@@ -303,7 +370,7 @@ impl Swapchain {
     ) -> Option<vk::SurfaceFormatKHR> {
         for available_format in available_formats {
             if available_format.format == vk::Format::B8G8R8A8_SRGB
-                && available_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
+            && available_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
             {
                 return Some(*available_format);
             }
@@ -318,6 +385,9 @@ impl Swapchain {
         for present_mode in available_present_modes {
             if *present_mode == vk::PresentModeKHR::MAILBOX {
                 println!("Present mode: Mailbox");
+                return Some(*present_mode);
+            } else if *present_mode == vk::PresentModeKHR::FIFO {
+                println!("Present mode: V-Sync");
                 return Some(*present_mode);
             }
         }

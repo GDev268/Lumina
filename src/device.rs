@@ -9,6 +9,7 @@ use std::os::raw::c_void;
 use std::ptr::{self};
 use std::rc::Rc; 
 use color_print::cprintln;
+use glfw::Glfw;
 
 
 use ash::extensions::ext::DebugUtils;
@@ -89,11 +90,11 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(window:&Window) -> Device {
+    pub fn new(window:&Window,glfw:&Glfw) -> Device {
         let enable_validation_layers: bool = true;
         let mut device: Device = Device::default(enable_validation_layers);
 
-        Device::create_instance(&mut device,window);
+        Device::create_instance(&mut device,window,glfw);
         device.debug_messenger = Device::setup_debug_messenger(&mut device);
         device.surface = Device::create_surface(&mut device,window);
         Device::pick_physical_device(&mut device);
@@ -160,14 +161,15 @@ impl Device {
         return indices;
     }
 
-    pub fn find_support_format(&self,candidates:&Vec<vk::Format>,tiling:vk::ImageTiling,features:vk::FormatFeatureFlags) -> vk::Format{
-        for format in candidates {
+    pub fn find_support_format(&self,candidates:&[vk::Format],tiling:vk::ImageTiling,features:vk::FormatFeatureFlags) -> vk::Format{
+        for format in candidates.into_iter() {
             unsafe{
                 let properties = self.instance.as_ref().unwrap().get_physical_device_format_properties(self.physical_device.unwrap(), *format);
-                if tiling == vk::ImageTiling::LINEAR && (properties.linear_tiling_features & features) == features {
+
+                if tiling == vk::ImageTiling::LINEAR && properties.linear_tiling_features.contains(features) {
                     return *format;
                 }
-                else if tiling == vk::ImageTiling::OPTIMAL && (properties.linear_tiling_features & features) == features{
+                else if tiling == vk::ImageTiling::OPTIMAL && properties.optimal_tiling_features.contains(features) {
                     return *format;
                 }
             }
@@ -193,7 +195,7 @@ impl Device {
 
 
 
-    fn create_instance(self: &mut Device,window:&Window) {
+    fn create_instance(self: &mut Device,window:&Window,glfw:&Glfw) {
         let entry = Entry::linked();
         if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
             panic!("validation layers requested, but not available!");
@@ -216,9 +218,9 @@ impl Device {
         create_info.s_type = vk::StructureType::INSTANCE_CREATE_INFO;
         create_info.p_application_info = &app_info;
 
-        let extensions = self.get_required_extensions(window);
-        create_info.enabled_extension_count = extensions.len() as u32;
-        create_info.pp_enabled_extension_names = extensions.as_ptr();
+        let extensions = self.get_required_extensions(window,glfw);
+        create_info.enabled_extension_count = extensions.1.len() as u32;
+        create_info.pp_enabled_extension_names = extensions.1.as_ptr();
 
         let c_layers: Vec<std::ffi::CString> = VALIDATION_LAYERS
             .iter()
@@ -237,6 +239,11 @@ impl Device {
 
         let debug_create_info = self.populate_debug_messenger_create_info();
 
+        println!("Required Extensions:");
+        for extension in &extensions.0 {
+            println!("\t{}", extension.to_str().unwrap());
+        }
+
         self.instance = Some(unsafe {
             entry
                 .create_instance(&create_info, None)
@@ -245,11 +252,6 @@ impl Device {
 
         self.entry = Some(entry);
 
-        println!("Required Extensions:");
-        for i in 0..extensions.len() {
-            let word = convert_vk_to_string_const(extensions[i]);
-            println!("\t{}", word);
-        }
     }
 
     fn setup_debug_messenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
@@ -531,18 +533,28 @@ impl Device {
         }
     }
 
-    fn get_required_extensions(&self,window:&Window) -> Vec<*const i8> {
-        let mut extensions = ash_window::enumerate_required_extensions(
-            window._window.raw_display_handle(),
-        )
-        .unwrap()
-        .to_vec();
+    fn get_required_extensions(&self,window:&Window,glfw:&Glfw) -> (Vec<CString>,Vec<*const i8>) {
+        let mut extensions = glfw.get_required_instance_extensions().unwrap_or(vec![]);
 
         if self.enable_validation_layers {
-            extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
+            extensions.push(ash::extensions::ext::DebugUtils::name().to_str().unwrap().to_owned());
         }
 
-        return extensions;
+        let c_extensions = extensions
+        .iter()
+        .cloned()
+        .map(|str| CString::new(str).unwrap())
+        .collect::<Vec<CString>>();
+
+        let mut ptrs_extensions = c_extensions
+        .iter()
+        .map(|cstr| cstr.as_ptr())
+        .collect::<Vec<*const c_char>>();
+
+
+        println!("{:?}",ptrs_extensions);
+
+        return (c_extensions,ptrs_extensions);
     }
 
     fn find_queue_families(self: &Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
