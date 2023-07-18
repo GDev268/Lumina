@@ -734,91 +734,90 @@ impl Device {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
 
-    use crate::window::Window;
     use crate::device::Device;
-    
+    use crate::window::Window;
+
     #[test]
-    fn create_instance_test(){
+    fn create_instance_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
 
-        let mut device:Device = Device::default(true);
-        
+        let mut device: Device = Device::default(true);
+
         Device::create_instance(&mut device, &window, &glfw);
 
-        assert_eq!(device.instance.is_some(),true);
+        assert_eq!(device.instance.is_some(), true);
     }
 
     #[test]
-    fn setup_debug_messenger_test(){
+    fn setup_debug_messenger_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
 
-        let mut device:Device = Device::default(true);
+        let mut device: Device = Device::default(true);
 
         Device::create_instance(&mut device, &window, &glfw);
-        device.debug_messenger =  Device::setup_debug_messenger(&mut device);
+        device.debug_messenger = Device::setup_debug_messenger(&mut device);
 
-        assert_eq!(device.debug_messenger.is_some(),true);
-
+        assert_eq!(device.debug_messenger.is_some(), true);
     }
 
     #[test]
-    fn create_surface_test(){
+    fn create_surface_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
 
-        let mut device:Device = Device::default(true);
+        let mut device: Device = Device::default(true);
 
         Device::create_instance(&mut device, &window, &glfw);
         device.surface = Device::create_surface(&mut device, &window);
 
-        assert_eq!(device.surface.is_some(),true);
+        assert_eq!(device.surface.is_some(), true);
     }
 
     #[test]
-    fn pick_physical_device_test(){
+    fn pick_physical_device_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
 
-        let mut device:Device = Device::default(true);
+        let mut device: Device = Device::default(true);
 
         Device::create_instance(&mut device, &window, &glfw);
         device.surface = Device::create_surface(&mut device, &window);
         Device::pick_physical_device(&mut device);
 
-        assert_eq!(device.physical_device.is_some(),true);
+        assert_eq!(device.physical_device.is_some(), true);
     }
 
     #[test]
-    fn create_logical_device_test(){
+    fn create_logical_device_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
 
-        let mut device:Device = Device::default(true);
+        let mut device: Device = Device::default(true);
 
         Device::create_instance(&mut device, &window, &glfw);
         device.surface = Device::create_surface(&mut device, &window);
         Device::pick_physical_device(&mut device);
         Device::create_logical_device(&mut device);
 
-        assert_eq!(device._device.is_some(),true);
+        assert_eq!(device._device.is_some(), true);
     }
 }

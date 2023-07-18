@@ -2,6 +2,7 @@ mod game;
 mod window;
 mod device;
 mod swapchain;
+mod pipeline;
 
 use std::borrow::Borrow;
 use std::rc::Rc;
@@ -23,6 +24,8 @@ fn main() {
     let mut window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
     let mut device = Device::new(&window,&glfw);
     let mut swapchain = Swapchain::new(&device,window.getExtent());
+
+    println!("{:?}",&swapchain.swapchain_image_views.unwrap().len());
 
     window._window.set_key_polling(true);
 

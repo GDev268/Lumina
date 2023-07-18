@@ -5,6 +5,8 @@ use ash::{
 };
 use std::ptr::{self};
 
+const MAX_FRAMES_IN_FLIGHT: usize = 2;
+
 struct SwapchainKHR {
     swapchain_loader: ash::extensions::khr::Swapchain,
     swapchain: vk::SwapchainKHR,
@@ -20,7 +22,7 @@ pub struct Swapchain {
     depth_image_memories: Option<Vec<vk::DeviceMemory>>,
     depth_image_views: Option<Vec<vk::ImageView>>,
     swapchain_images: Option<Vec<vk::Image>>,
-    swapchain_image_views: Option<Vec<vk::ImageView>>,
+    pub swapchain_image_views: Option<Vec<vk::ImageView>>,
     window_extent: Option<vk::Extent2D>,
     swapchain: Option<SwapchainKHR>,
     image_available_semaphores: Option<Vec<vk::Semaphore>>,
@@ -63,8 +65,8 @@ impl Swapchain {
         Swapchain::create_image_views(self, device);
         Swapchain::create_renderpass(self, device);
         Swapchain::create_depth_resources(self, device);
-        Swapchain::create_framebuffers(self);
-        Swapchain::create_sync_objects(self);
+        Swapchain::create_framebuffers(self, device);
+        Swapchain::create_sync_objects(self, device);
     }
 
     pub fn default() -> Swapchain {
@@ -77,14 +79,14 @@ impl Swapchain {
             depth_images: None,
             depth_image_memories: None,
             depth_image_views: None,
-            swapchain_images: None,
+            swapchain_images: Some(Vec::new()),
             swapchain_image_views: Some(Vec::new()),
             window_extent: None,
             swapchain: None,
-            image_available_semaphores: None,
-            render_finished_semaphores: None,
-            in_flight_fences: None,
-            images_in_flight: None,
+            image_available_semaphores: Some(Vec::new()),
+            render_finished_semaphores: Some(Vec::new()),
+            in_flight_fences: Some(Vec::new()),
+            images_in_flight: Some(Vec::new()),
             current_frame: 0,
         };
     }
@@ -342,7 +344,7 @@ impl Swapchain {
             p_dependencies: dependencies.as_ptr(),
             p_next: std::ptr::null(),
         };
-        
+
         unsafe {
             self.renderpass = Some(
                 device
@@ -353,18 +355,78 @@ impl Swapchain {
         }
     }
 
-    fn create_depth_resources(self: &mut Swapchain, device: &Device) {
-        let depth_format: vk::Format = self.find_depth_format(device);
-        self.swapchain_depth_format = Some(depth_format);
+    fn create_framebuffers(self: &mut Swapchain, device: &Device) {
+        for i in 0..self.swapchain_images.as_ref().unwrap().len() {
+            let mut view_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
+            view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
+            view_info.image = self.swapchain_images.as_ref().unwrap()[i];
+            view_info.view_type = vk::ImageViewType::TYPE_2D;
+            view_info.format = self.swapchain_image_format.unwrap();
+            view_info.subresource_range.aspect_mask = vk::ImageAspectFlags::COLOR;
+            view_info.subresource_range.base_mip_level = 0;
+            view_info.subresource_range.level_count = 1;
+            view_info.subresource_range.base_array_layer = 0;
+            view_info.subresource_range.layer_count = 1;
 
-        for i in 0..self.image_count() {
-            print!("{}", i);
+            unsafe {
+                self.swapchain_image_views.as_mut().unwrap().push(
+                    device
+                        .device()
+                        .create_image_view(&view_info, None)
+                        .expect("Failed to create an image view"),
+                );
+            }
         }
     }
 
-    fn create_framebuffers(self: &mut Swapchain) {}
+    fn create_sync_objects(self: &mut Swapchain, device: &Device) {
+        self.image_available_semaphores
+            .as_mut()
+            .unwrap()
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::default());
+        self.render_finished_semaphores
+            .as_mut()
+            .unwrap()
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::default());
+        self.in_flight_fences
+            .as_mut()
+            .unwrap()
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::default());
+        self.images_in_flight
+            .as_mut()
+            .unwrap()
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::default());
 
-    fn create_sync_objects(self: &mut Swapchain) {}
+        let semaphore_info: vk::SemaphoreCreateInfo = vk::SemaphoreCreateInfo::default();
+
+        let fence_info: vk::FenceCreateInfo = vk::FenceCreateInfo {
+            s_type: vk::StructureType::FENCE_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::FenceCreateFlags::SIGNALED,
+        };
+
+        for i in 0..MAX_FRAMES_IN_FLIGHT {
+            unsafe {
+                self.image_available_semaphores.as_mut().unwrap()[i] = device
+                    .device()
+                    .create_semaphore(&semaphore_info, None)
+                    .expect("Failed to create the first sync object semaphore!");
+                self.render_finished_semaphores.as_mut().unwrap()[i] = device
+                    .device()
+                    .create_semaphore(&semaphore_info, None)
+                    .expect("Failed to create the second sync object semaphore!");
+                self.in_flight_fences.as_mut().unwrap()[i] = device
+                    .device()
+                    .create_fence(&fence_info, None)
+                    .expect("Failed to create the sync object fence!");
+            }
+        }
+    }
+
+    fn create_depth_resources(self: &mut Swapchain, device: &Device) {
+        let depth_format: vk::Format = self.find_depth_format(device);
+        self.swapchain_depth_format = Some(depth_format);
+    }
 
     fn choose_swap_surface_format(
         &self,
