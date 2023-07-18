@@ -329,18 +329,20 @@ impl Swapchain {
             dependency_flags: vk::DependencyFlags::empty(),
         }];
 
-
         let attachments: [vk::AttachmentDescription; 2] = [color_attachment, depth_attachment];
 
-        let mut create_info: vk::RenderPassCreateInfo = vk::RenderPassCreateInfo::default();
-        create_info.s_type = vk::StructureType::RENDER_PASS_CREATE_INFO;
-        create_info.attachment_count = attachments.len() as u32;
-        create_info.p_attachments = attachments.as_ptr();
-        create_info.subpass_count = subpasses.len() as u32;
-        create_info.p_subpasses = subpasses.as_ptr();
-        create_info.dependency_count = dependencies.len() as u32;
-        create_info.p_dependencies = dependencies.as_ptr();
-
+        let create_info: vk::RenderPassCreateInfo = vk::RenderPassCreateInfo {
+            flags: vk::RenderPassCreateFlags::empty(),
+            s_type: vk::StructureType::RENDER_PASS_CREATE_INFO,
+            attachment_count: attachments.len() as u32,
+            p_attachments: attachments.as_ptr(),
+            subpass_count: subpasses.len() as u32,
+            p_subpasses: subpasses.as_ptr(),
+            dependency_count: dependencies.len() as u32,
+            p_dependencies: dependencies.as_ptr(),
+            p_next: std::ptr::null(),
+        };
+        
         unsafe {
             self.renderpass = Some(
                 device
@@ -370,7 +372,7 @@ impl Swapchain {
     ) -> Option<vk::SurfaceFormatKHR> {
         for available_format in available_formats {
             if available_format.format == vk::Format::B8G8R8A8_SRGB
-            && available_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
+                && available_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
             {
                 return Some(*available_format);
             }

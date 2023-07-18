@@ -18,6 +18,8 @@ impl Window {
             .create_window(width, height, title, glfw::WindowMode::Windowed)
             .expect("Failed to create GLFW window.");
 
+        window.set_key_polling(true);
+
 
         return Self {
             _window: window,

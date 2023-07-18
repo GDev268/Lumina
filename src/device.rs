@@ -1,16 +1,18 @@
 use crate::window::Window;
-use ash::{vk::{self,KhrGetPhysicalDeviceProperties2Fn}, Entry};
+use ash::{
+    vk::{self, KhrGetPhysicalDeviceProperties2Fn},
+    Entry,
+};
 use cgmath::Zero;
+use color_print::cprintln;
+use glfw::Glfw;
 use raw_window_handle::HasRawDisplayHandle;
 use sprintf::sprintf;
 use std::collections::BTreeSet;
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_void;
 use std::ptr::{self};
-use std::rc::Rc; 
-use color_print::cprintln;
-use glfw::Glfw;
-
+use std::rc::Rc;
 
 use ash::extensions::ext::DebugUtils;
 
@@ -23,10 +25,18 @@ unsafe extern "system" fn vulkan_debug_callback(
     let message = CStr::from_ptr((*p_callback_data).p_message);
 
     match message_severity {
-        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => cprintln!("[Debug][Verbose]{:?}", message),
-        vk::DebugUtilsMessageSeverityFlagsEXT::WARNING => cprintln!("<yellow>[Debug][Warning]{:?}", message),
-        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR =>   cprintln!("<red>[Debug][Error]{:?}", message),
-        vk::DebugUtilsMessageSeverityFlagsEXT::INFO =>    cprintln!("<green>[Debug][Info]{:?}", message),
+        vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => {
+            cprintln!("[Debug][Verbose]{:?}", message)
+        }
+        vk::DebugUtilsMessageSeverityFlagsEXT::WARNING => {
+            cprintln!("<yellow>[Debug][Warning]{:?}", message)
+        }
+        vk::DebugUtilsMessageSeverityFlagsEXT::ERROR => {
+            cprintln!("<red>[Debug][Error]{:?}", message)
+        }
+        vk::DebugUtilsMessageSeverityFlagsEXT::INFO => {
+            cprintln!("<green>[Debug][Info]{:?}", message)
+        }
         _ => println!("[Debug][n/a]{:?}", message),
     };
     vk::FALSE
@@ -90,13 +100,13 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(window:&Window,glfw:&Glfw) -> Device {
+    pub fn new(window: &Window, glfw: &Glfw) -> Device {
         let enable_validation_layers: bool = true;
         let mut device: Device = Device::default(enable_validation_layers);
 
-        Device::create_instance(&mut device,window,glfw);
+        Device::create_instance(&mut device, window, glfw);
         device.debug_messenger = Device::setup_debug_messenger(&mut device);
-        device.surface = Device::create_surface(&mut device,window);
+        device.surface = Device::create_surface(&mut device, window);
         Device::pick_physical_device(&mut device);
         Device::create_logical_device(&mut device);
         Device::create_command_pool(&mut device);
@@ -104,7 +114,6 @@ impl Device {
 
         return device;
     }
-
 
     pub fn default(enable_validation: bool) -> Device {
         return Device {
@@ -127,7 +136,6 @@ impl Device {
 
     pub fn cleanup() {}
 
-
     pub fn get_command_pool(&self) -> vk::CommandPool {
         return self.command_pool.unwrap();
     }
@@ -136,15 +144,15 @@ impl Device {
         return self._device.as_ref().unwrap();
     }
 
-    pub fn surface(&self) -> vk::SurfaceKHR{
+    pub fn surface(&self) -> vk::SurfaceKHR {
         return self.surface.as_ref().unwrap()._surface;
     }
 
-    pub fn graphics_queue(&self) -> vk::Queue{
+    pub fn graphics_queue(&self) -> vk::Queue {
         return self.graphics_queue.unwrap();
     }
 
-    pub fn present_queue(&self) -> vk::Queue{
+    pub fn present_queue(&self) -> vk::Queue {
         return self.present_queue.unwrap();
     }
 
@@ -152,31 +160,42 @@ impl Device {
         return self.query_swapchain_support(&self.physical_device.unwrap());
     }
 
-    pub fn find_memory_type(&self,filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
+    pub fn find_memory_type(&self, filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
         return 0;
     }
 
     pub fn find_physical_queue_families(&self) -> QueueFamily {
-        let indices =  self.find_queue_families(&self.physical_device.unwrap());
+        let indices = self.find_queue_families(&self.physical_device.unwrap());
         return indices;
     }
 
-    pub fn find_support_format(&self,candidates:&[vk::Format],tiling:vk::ImageTiling,features:vk::FormatFeatureFlags) -> vk::Format{
+    pub fn find_support_format(
+        &self,
+        candidates: &[vk::Format],
+        tiling: vk::ImageTiling,
+        features: vk::FormatFeatureFlags,
+    ) -> vk::Format {
         for format in candidates.into_iter() {
-            unsafe{
-                let properties = self.instance.as_ref().unwrap().get_physical_device_format_properties(self.physical_device.unwrap(), *format);
+            unsafe {
+                let properties = self
+                    .instance
+                    .as_ref()
+                    .unwrap()
+                    .get_physical_device_format_properties(self.physical_device.unwrap(), *format);
 
-                if tiling == vk::ImageTiling::LINEAR && properties.linear_tiling_features.contains(features) {
+                if tiling == vk::ImageTiling::LINEAR
+                    && properties.linear_tiling_features.contains(features)
+                {
                     return *format;
-                }
-                else if tiling == vk::ImageTiling::OPTIMAL && properties.optimal_tiling_features.contains(features) {
+                } else if tiling == vk::ImageTiling::OPTIMAL
+                    && properties.optimal_tiling_features.contains(features)
+                {
                     return *format;
                 }
             }
         }
         panic!("Failed to find an supported format!");
     }
-
 
     pub fn create_buffer(
         size: vk::DeviceSize,
@@ -193,9 +212,7 @@ impl Device {
 
     pub fn copy_buffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
 
-
-
-    fn create_instance(self: &mut Device,window:&Window,glfw:&Glfw) {
+    fn create_instance(self: &mut Device, window: &Window, glfw: &Glfw) {
         let entry = Entry::linked();
         if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
             panic!("validation layers requested, but not available!");
@@ -218,7 +235,7 @@ impl Device {
         create_info.s_type = vk::StructureType::INSTANCE_CREATE_INFO;
         create_info.p_application_info = &app_info;
 
-        let extensions = self.get_required_extensions(window,glfw);
+        let extensions = self.get_required_extensions(window, glfw);
         create_info.enabled_extension_count = extensions.1.len() as u32;
         create_info.pp_enabled_extension_names = extensions.1.as_ptr();
 
@@ -251,7 +268,6 @@ impl Device {
         });
 
         self.entry = Some(entry);
-
     }
 
     fn setup_debug_messenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
@@ -271,13 +287,16 @@ impl Device {
         unsafe {
             return Some(
                 debug_utils_loader
-                    .create_debug_utils_messenger(&self.populate_debug_messenger_create_info(), None)
+                    .create_debug_utils_messenger(
+                        &self.populate_debug_messenger_create_info(),
+                        None,
+                    )
                     .expect("Failed to create an Debug Messenger"),
             );
         }
     }
 
-    fn create_surface(self: &mut Device,window:&Window) -> Option<SurfaceKHR> {
+    fn create_surface(self: &mut Device, window: &Window) -> Option<SurfaceKHR> {
         let surface: SurfaceKHR = SurfaceKHR {
             surface_loader: ash::extensions::khr::Surface::new(
                 self.entry.as_ref().unwrap(),
@@ -318,30 +337,25 @@ impl Device {
         let unique_queue_families: BTreeSet<u32> =
             vec![indices.graphics_family, indices.present_family]
                 .into_iter()
-                .collect(); 
+                .collect();
 
         let queue_priority: *const f32 = &1.0;
 
         for queue_family in unique_queue_families {
-            let mut queue_create_info: vk::DeviceQueueCreateInfo =
-                vk::DeviceQueueCreateInfo::default();
+            let queue_create_info: vk::DeviceQueueCreateInfo = vk::DeviceQueueCreateInfo {
+                flags: vk::DeviceQueueCreateFlags::empty(),
+                s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+                queue_family_index: queue_family,
+                queue_count: 1,
+                p_queue_priorities: queue_priority,
+                p_next: std::ptr::null(),
+            };
 
-            queue_create_info.s_type = vk::StructureType::DEVICE_QUEUE_CREATE_INFO;
-            queue_create_info.queue_family_index = queue_family;
-            queue_create_info.queue_count = 1;
-            queue_create_info.p_queue_priorities = queue_priority;
             queue_create_infos.push(queue_create_info);
         }
 
         let mut device_features: vk::PhysicalDeviceFeatures = vk::PhysicalDeviceFeatures::default();
         device_features.sampler_anisotropy = vk::TRUE;
-
-        let mut create_info: vk::DeviceCreateInfo = vk::DeviceCreateInfo::default();
-        create_info.s_type = vk::StructureType::DEVICE_CREATE_INFO;
-        create_info.queue_create_info_count = queue_create_infos.len() as u32;
-        create_info.p_queue_create_infos = queue_create_infos.as_ptr();
-        create_info.p_enabled_features = &device_features;
-        create_info.enabled_extension_count = DEVICE_EXTENSIONS.len() as u32;
 
         //Convert the DEVICE_EXTENSIONS([&'static str;n]) to an *const i8(or c_char)
         let mut c_extensions: Vec<Vec<u8>> = Vec::with_capacity(DEVICE_EXTENSIONS.len());
@@ -355,7 +369,19 @@ impl Device {
             .map(|s| s.as_ptr() as *const i8)
             .collect();
 
-        create_info.pp_enabled_extension_names = pointers.as_ptr();
+        #[allow(deprecated)]
+        let create_info: vk::DeviceCreateInfo = vk::DeviceCreateInfo {
+            flags: vk::DeviceCreateFlags::empty(),
+            p_next: std::ptr::null(),
+            s_type: vk::StructureType::DEVICE_CREATE_INFO,
+            queue_create_info_count: queue_create_infos.len() as u32,
+            p_queue_create_infos: queue_create_infos.as_ptr(),
+            p_enabled_features: &device_features,
+            enabled_extension_count: DEVICE_EXTENSIONS.len() as u32,
+            pp_enabled_extension_names: pointers.as_ptr(),
+            enabled_layer_count: u32::default(),
+            pp_enabled_layer_names: ::std::ptr::null(),
+        };
 
         unsafe {
             self._device = Some(
@@ -490,20 +516,17 @@ impl Device {
 
     fn populate_debug_messenger_create_info(&self) -> vk::DebugUtilsMessengerCreateInfoEXT {
         let mut debug_info = vk::DebugUtilsMessengerCreateInfoEXT::default();
-        debug_info.message_severity = 
-            vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
-                | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                | vk::DebugUtilsMessageSeverityFlagsEXT::INFO;
-        
-        debug_info.message_type = 
-            vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
-                | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
-                | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE;
-        
+        debug_info.message_severity = vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
+            | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
+            | vk::DebugUtilsMessageSeverityFlagsEXT::INFO;
+
+        debug_info.message_type = vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
+            | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION
+            | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE;
+
         debug_info.pfn_user_callback = Some(vulkan_debug_callback);
 
         return debug_info;
-
     }
 
     fn check_device_extension_support(&self, physical_device: vk::PhysicalDevice) -> bool {
@@ -533,28 +556,34 @@ impl Device {
         }
     }
 
-    fn get_required_extensions(&self,window:&Window,glfw:&Glfw) -> (Vec<CString>,Vec<*const i8>) {
+    fn get_required_extensions(
+        &self,
+        window: &Window,
+        glfw: &Glfw,
+    ) -> (Vec<CString>, Vec<*const i8>) {
         let mut extensions = glfw.get_required_instance_extensions().unwrap_or(vec![]);
 
         if self.enable_validation_layers {
-            extensions.push(ash::extensions::ext::DebugUtils::name().to_str().unwrap().to_owned());
+            extensions.push(
+                ash::extensions::ext::DebugUtils::name()
+                    .to_str()
+                    .unwrap()
+                    .to_owned(),
+            );
         }
 
         let c_extensions = extensions
-        .iter()
-        .cloned()
-        .map(|str| CString::new(str).unwrap())
-        .collect::<Vec<CString>>();
+            .iter()
+            .cloned()
+            .map(|str| CString::new(str).unwrap())
+            .collect::<Vec<CString>>();
 
-        let mut ptrs_extensions = c_extensions
-        .iter()
-        .map(|cstr| cstr.as_ptr())
-        .collect::<Vec<*const c_char>>();
+        let ptrs_extensions = c_extensions
+            .iter()
+            .map(|cstr| cstr.as_ptr())
+            .collect::<Vec<*const c_char>>();
 
-
-        println!("{:?}",ptrs_extensions);
-
-        return (c_extensions,ptrs_extensions);
+        return (c_extensions, ptrs_extensions);
     }
 
     fn find_queue_families(self: &Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
@@ -701,5 +730,95 @@ impl Device {
             )
             .unwrap();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests{
+
+    use crate::window::Window;
+    use crate::device::Device;
+    
+    #[test]
+    fn create_instance_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+
+        let mut device:Device = Device::default(true);
+        
+        Device::create_instance(&mut device, &window, &glfw);
+
+        assert_eq!(device.instance.is_some(),true);
+    }
+
+    #[test]
+    fn setup_debug_messenger_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+
+        let mut device:Device = Device::default(true);
+
+        Device::create_instance(&mut device, &window, &glfw);
+        device.debug_messenger =  Device::setup_debug_messenger(&mut device);
+
+        assert_eq!(device.debug_messenger.is_some(),true);
+
+    }
+
+    #[test]
+    fn create_surface_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+
+        let mut device:Device = Device::default(true);
+
+        Device::create_instance(&mut device, &window, &glfw);
+        device.surface = Device::create_surface(&mut device, &window);
+
+        assert_eq!(device.surface.is_some(),true);
+    }
+
+    #[test]
+    fn pick_physical_device_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+
+        let mut device:Device = Device::default(true);
+
+        Device::create_instance(&mut device, &window, &glfw);
+        device.surface = Device::create_surface(&mut device, &window);
+        Device::pick_physical_device(&mut device);
+
+        assert_eq!(device.physical_device.is_some(),true);
+    }
+
+    #[test]
+    fn create_logical_device_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+
+        let mut device:Device = Device::default(true);
+
+        Device::create_instance(&mut device, &window, &glfw);
+        device.surface = Device::create_surface(&mut device, &window);
+        Device::pick_physical_device(&mut device);
+        Device::create_logical_device(&mut device);
+
+        assert_eq!(device._device.is_some(),true);
     }
 }

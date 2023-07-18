@@ -31,8 +31,8 @@ fn main() {
         // Poll for and process events
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&window.events) {
+            
             println!("{:?}", event);
-            print!("AAAAAAAAEEEEEEEEEEEEEEOOOOOOOOOOOOUUUUUUUU");
             match event {
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                     window._window.set_should_close(true)
