@@ -718,7 +718,7 @@ impl Device {
     fn get_driver_version(version_raw: u32, vendor_id: u32) -> String {
         //FOR WINDOWS
         if vendor_id == 0x8086 {
-            return sprintf!("%d.%d", version_raw >> 14, version_raw & 0x3fff);
+            return sprintf!("%d.%d", version_raw >> 14, version_raw & 0x3fff).unwrap();
         }
         //DEFAULT
         else {

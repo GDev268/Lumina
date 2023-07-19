@@ -484,3 +484,43 @@ impl Swapchain {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::device::Device;
+    use crate::window::Window;
+    use crate::swapchain::Swapchain;
+
+    #[test]
+    fn create_image_views_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let device = Device::new(&window,&glfw);
+        let mut swapchain = Swapchain::default();
+
+        Swapchain::create_image_views(&mut swapchain, &device);
+
+        assert_eq!(swapchain.swapchain_image_views.as_ref().unwrap().len() > 0,true);
+    }
+
+    #[test]
+    fn create_render_pass_test(){
+        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+
+        glfw.window_hint(glfw::WindowHint::Visible(true));
+        glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
+        
+        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
+        let device = Device::new(&window,&glfw);
+        let mut swapchain = Swapchain::default();
+
+        Swapchain::create_renderpass(&mut swapchain, &device);
+
+        assert_eq!(swapchain.renderpass.is_some(),true)
+    }
+}
