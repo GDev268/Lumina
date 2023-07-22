@@ -12,38 +12,51 @@ pub struct Buffer {
     pub buffer_size: Option<vk::DeviceSize>,
     pub usage_flags: Option<vk::BufferUsageFlags>,
     pub memory_property_flags: Option<vk::MemoryPropertyFlags>,
-    pub instance_size:Option<vk::DeviceSize>,
-    pub alignment_size:Option<vk::DeviceSize>,
-    pub instance_count:u32
+    pub instance_size: Option<vk::DeviceSize>,
+    pub alignment_size: Option<vk::DeviceSize>,
+    pub instance_count: u32,
 }
 
 impl Buffer {
     pub fn new(
         device: &Device,
         instance_size: vk::DeviceSize,
-        instance_count:u32,
+        instance_count: u32,
         usage_flags: vk::BufferUsageFlags,
         memory_property_flags: vk::MemoryPropertyFlags,
-        min_offset_alignment:Option<vk::DeviceSize>,
-    ){
+        min_offset_alignment: Option<vk::DeviceSize>,
+    ) -> Self {
+        let new_min_offset_alignment: vk::DeviceSize;
 
-       let new_min_offset_alignment:vk::DeviceSize;
-
-       if min_offset_alignment.is_none(){
+        if min_offset_alignment.is_none() {
             new_min_offset_alignment = 1;
-       }
-       else{
+        } else {
             new_min_offset_alignment = min_offset_alignment.unwrap();
-       }
+        }
 
-       let alignment_size = Buffer::get_alignment(instance_size, new_min_offset_alignment);
+        let alignment_size = Buffer::get_alignment(instance_size, new_min_offset_alignment);
 
-       let buffer_size = alignment_size * instance_count as u64;
+        let buffer_size = alignment_size * instance_count as u64;
 
-       let buffer = device.create_buffer(buffer_size, usage_flags, memory_property_flags);
+        let buffer = device.create_buffer(buffer_size, usage_flags, memory_property_flags);
+
+        return Self{
+            mapped: None,
+            memory: None,
+            buffer: Some(buffer),
+            buffer_size: Some(buffer_size),
+            usage_flags: Some(usage_flags),
+            memory_property_flags: Some(memory_property_flags),
+            instance_count: instance_count,
+            instance_size: Some(instance_size),
+            alignment_size: Some(alignment_size)
+        };
     }
 
-    fn get_alignment(instance_size: vk::DeviceSize,min_offset_alignment:vk::DeviceSize) -> vk::DeviceSize{
+    fn get_alignment(
+        instance_size: vk::DeviceSize,
+        min_offset_alignment: vk::DeviceSize,
+    ) -> vk::DeviceSize {
         if min_offset_alignment > 0 {
             return (instance_size + min_offset_alignment - 1) & !(min_offset_alignment - 1);
         }

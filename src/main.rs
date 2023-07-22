@@ -28,8 +28,6 @@ fn main() {
     let device = Device::new(&window,&glfw);
     let swapchain = Swapchain::new(&device,window.getExtent());
     
-
-
     while !window._window.should_close() {
 
         // Poll for and process events
