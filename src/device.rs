@@ -198,12 +198,50 @@ impl Device {
     }
 
     pub fn create_buffer(
+        &self,
         size: vk::DeviceSize,
         usage: vk::BufferUsageFlags,
         properties: vk::MemoryPropertyFlags,
-        buffer: &vk::Buffer,
-        buffer_memory: &vk::DeviceMemory,
-    ) {
+    ) -> vk::Buffer {
+        let create_info: vk::BufferCreateInfo = vk::BufferCreateInfo{
+            s_type: vk::StructureType::BUFFER_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::BufferCreateFlags::empty(),
+            size: size,
+            usage: usage,
+            sharing_mode: vk::SharingMode::EXCLUSIVE,
+            queue_family_index_count: 0,
+            p_queue_family_indices: std::ptr::null()
+        };
+
+        let buffer:vk::Buffer;
+
+        unsafe{
+            buffer = self.device().create_buffer(&create_info, None).expect("Failed to create vulkan buffer!");
+        }
+
+        let memory_requirements: vk::MemoryRequirements;
+
+        memory_requirements = unsafe {
+            self.device().get_buffer_memory_requirements(buffer)
+        };
+
+        let allocation_info: vk::MemoryAllocateInfo = vk::MemoryAllocateInfo{
+            s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
+            allocation_size: memory_requirements.size,
+            memory_type_index: self.find_memory_type(memory_requirements.memory_type_bits, properties),
+            p_next: std::ptr::null()
+        };
+
+        let buffer_memory:vk::DeviceMemory;
+
+        unsafe{
+            buffer_memory = self.device().allocate_memory(&allocation_info, None).expect("Failed to allocate vertex buffer memory!");
+        
+            self.device().bind_buffer_memory(buffer, buffer_memory, 0).expect("Failed to bind memory in the buffer!");
+        }
+        
+        return buffer;
     }
 
     pub fn begin_single_time_commands() /*-> vk::CommandBuffer*/ {}

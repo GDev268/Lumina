@@ -1,4 +1,4 @@
-use ash::vk;
+use ash::vk::{self, Handle};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::{cell::RefCell, sync::mpsc::Receiver};
 use glfw::{Action, Context, Key,Glfw, WindowEvent};
@@ -51,11 +51,15 @@ impl Window {
         instance: &ash::Instance,
         entry: &ash::Entry,
     ) -> vk::SurfaceKHR {
-        unsafe {
-            let mut surface: std::mem::MaybeUninit<vk::SurfaceKHR> = std::mem::MaybeUninit::uninit();
-            self._window.create_window_surface(instance.handle(), std::ptr::null(), surface.as_mut_ptr());
-            return surface.assume_init_read();
+        let mut surface:vk::SurfaceKHR = vk::SurfaceKHR::default();
+
+        let result = self._window.create_window_surface(instance.handle(), std::ptr::null(), &mut surface as *mut vk::SurfaceKHR);  
+
+        if result != vk::Result::SUCCESS {
+            panic!("Failed to create an vulkan SurfaceKHR with GLFW!");
         }
+
+        return surface;
     }
 
     fn framebufferResizeCallback(window: &Glfw, width: i16, height: i16) {}
