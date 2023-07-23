@@ -38,18 +38,18 @@ impl Buffer {
 
         let buffer_size = alignment_size * instance_count as u64;
 
-        let buffer = device.create_buffer(buffer_size, usage_flags, memory_property_flags);
+        let (buffer,memory) = device.create_buffer(buffer_size, usage_flags, memory_property_flags);
 
-        return Self{
+        return Self {
             mapped: None,
-            memory: None,
+            memory: Some(memory),
             buffer: Some(buffer),
             buffer_size: Some(buffer_size),
             usage_flags: Some(usage_flags),
             memory_property_flags: Some(memory_property_flags),
             instance_count: instance_count,
             instance_size: Some(instance_size),
-            alignment_size: Some(alignment_size)
+            alignment_size: Some(alignment_size),
         };
     }
 
@@ -64,12 +64,12 @@ impl Buffer {
         return instance_size;
     }
 
-    /*pub fn map(
-        &self,
+    pub fn map(
+        &mut self,
         device: &Device,
         size: Option<vk::DeviceSize>,
         offset: Option<vk::DeviceSize>,
-    ) -> ash::prelude::VkResult<*mut c_void> {
+    ) {
         let new_size: vk::DeviceSize;
         let new_offset: vk::DeviceSize;
 
@@ -86,21 +86,26 @@ impl Buffer {
         }
 
         unsafe {
-            return device.device().map_memory(
-                self.memory.unwrap(),
-                new_offset,
-                new_size,
-                vk::MemoryMapFlags::empty(),
+            self.mapped = Some(
+                device
+                    .device()
+                    .map_memory(
+                        self.memory.unwrap(),
+                        new_offset,
+                        new_size,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .expect("Failed to map memory on the buffer!"),
             );
         }
     }
 
-    /*pub fn flush(
+    pub fn flush(
         &self,
         size: Option<vk::DeviceSize>,
         offset: Option<vk::DeviceSize>,
         device: &Device,
-    ) -> ash::prelude::VkResult<()> {
+    ) {
         let new_size: vk::DeviceSize;
         let new_offset: vk::DeviceSize;
 
@@ -125,11 +130,14 @@ impl Buffer {
         }];
 
         unsafe {
-            return device.device().flush_mapped_memory_ranges(&mapped_range);
+            return device
+                .device()
+                .flush_mapped_memory_ranges(&mapped_range)
+                .expect("Failed to flush memory from the buffer!");
         }
-    }*/
+    }
 
-    /*pub fn get_buffer(&self) -> vk::Buffer {
+    pub fn get_buffer(&self) -> vk::Buffer {
         return self.buffer.unwrap();
     }
 
@@ -144,21 +152,5 @@ impl Buffer {
         if offset.is_none() {
             new_offset = 0;
         }
-    }*/
-
-    fn find_memory_type(
-        type_filter: u32,
-        required_properties: vk::MemoryPropertyFlags,
-        memory_properties: &vk::PhysicalDeviceMemoryProperties,
-    ) -> u32 {
-        for (i, memory_type) in memory_properties.memory_types.iter().enumerate() {
-            if (type_filter & (1 << i)) > 0
-                && memory_type.property_flags.contains(required_properties)
-            {
-                return i as u32;
-            }
-        }
-
-        panic!("Couldn't find suitable memory type!");
-    }*/
+    }
 }

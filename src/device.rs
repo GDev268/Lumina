@@ -161,7 +161,23 @@ impl Device {
     }
 
     pub fn find_memory_type(&self, filter: u32, properties: vk::MemoryPropertyFlags) -> u32 {
-        return 0;
+        let memory_properties: vk::PhysicalDeviceMemoryProperties = unsafe {
+            self.instance
+                .as_ref()
+                .unwrap()
+                .get_physical_device_memory_properties(self.physical_device.unwrap())
+        };
+
+        for i in 0..memory_properties.memory_type_count {
+            if (filter & (1 << i) > 0)
+                && (memory_properties.memory_types[i as usize].property_flags & properties)
+                    == properties
+            {
+                return i;
+            }
+        }
+
+        panic!("Failed to find an suitable memory type!");
     }
 
     pub fn find_physical_queue_families(&self) -> QueueFamily {
@@ -202,8 +218,8 @@ impl Device {
         size: vk::DeviceSize,
         usage: vk::BufferUsageFlags,
         properties: vk::MemoryPropertyFlags,
-    ) -> vk::Buffer {
-        let create_info: vk::BufferCreateInfo = vk::BufferCreateInfo{
+    ) -> (vk::Buffer, vk::DeviceMemory) {
+        let create_info: vk::BufferCreateInfo = vk::BufferCreateInfo {
             s_type: vk::StructureType::BUFFER_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::BufferCreateFlags::empty(),
@@ -211,37 +227,44 @@ impl Device {
             usage: usage,
             sharing_mode: vk::SharingMode::EXCLUSIVE,
             queue_family_index_count: 0,
-            p_queue_family_indices: std::ptr::null()
+            p_queue_family_indices: std::ptr::null(),
         };
 
-        let buffer:vk::Buffer;
+        let buffer: vk::Buffer;
 
-        unsafe{
-            buffer = self.device().create_buffer(&create_info, None).expect("Failed to create vulkan buffer!");
+        unsafe {
+            buffer = self
+                .device()
+                .create_buffer(&create_info, None)
+                .expect("Failed to create vulkan buffer!");
         }
 
         let memory_requirements: vk::MemoryRequirements;
 
-        memory_requirements = unsafe {
-            self.device().get_buffer_memory_requirements(buffer)
-        };
+        memory_requirements = unsafe { self.device().get_buffer_memory_requirements(buffer) };
 
-        let allocation_info: vk::MemoryAllocateInfo = vk::MemoryAllocateInfo{
+        let allocation_info: vk::MemoryAllocateInfo = vk::MemoryAllocateInfo {
             s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
             allocation_size: memory_requirements.size,
-            memory_type_index: self.find_memory_type(memory_requirements.memory_type_bits, properties),
-            p_next: std::ptr::null()
+            memory_type_index: self
+                .find_memory_type(memory_requirements.memory_type_bits, properties),
+            p_next: std::ptr::null(),
         };
 
-        let buffer_memory:vk::DeviceMemory;
+        let buffer_memory: vk::DeviceMemory;
 
-        unsafe{
-            buffer_memory = self.device().allocate_memory(&allocation_info, None).expect("Failed to allocate vertex buffer memory!");
-        
-            self.device().bind_buffer_memory(buffer, buffer_memory, 0).expect("Failed to bind memory in the buffer!");
+        unsafe {
+            buffer_memory = self
+                .device()
+                .allocate_memory(&allocation_info, None)
+                .expect("Failed to allocate vertex buffer memory!");
+
+            self.device()
+                .bind_buffer_memory(buffer, buffer_memory, 0)
+                .expect("Failed to bind memory in the buffer!");
         }
-        
-        return buffer;
+
+        return (buffer, buffer_memory);
     }
 
     pub fn begin_single_time_commands() /*-> vk::CommandBuffer*/ {}
@@ -445,7 +468,26 @@ impl Device {
         }
     }
 
-    fn create_command_pool(self: &mut Device) {}
+    fn create_command_pool(self: &mut Device) {
+        let queue_family_indices: QueueFamily = self.find_physical_queue_families();
+
+        let pool_info: vk::CommandPoolCreateInfo = vk::CommandPoolCreateInfo {
+            s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandPoolCreateFlags::TRANSIENT
+                | vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER,
+            queue_family_index: queue_family_indices.graphics_family,
+        };
+
+        unsafe {
+            self.command_pool = Some(
+                self._device.as_ref()
+                    .unwrap()
+                    .create_command_pool(&pool_info, None)
+                    .expect("Failed to create command pool!"),
+            );
+        }
+    }
 
     fn get_vulkan_version(self: &mut Device) {
         self.game_version = self
