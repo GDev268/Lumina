@@ -74,11 +74,11 @@ impl Swapchain {
             swapchain_image_format: None,
             swapchain_depth_format: None,
             swapchain_extent: None,
-            swapchain_framebuffers: None,
+            swapchain_framebuffers: Some(Vec::new()),
             renderpass: None,
-            depth_images: None,
-            depth_image_memories: None,
-            depth_image_views: None,
+            depth_images: Some(Vec::new()),
+            depth_image_memories: Some(Vec::new()),
+            depth_image_views: Some(Vec::new()),
             swapchain_images: Some(Vec::new()),
             swapchain_image_views: Some(Vec::new()),
             window_extent: None,
@@ -132,13 +132,60 @@ impl Swapchain {
         );
     }
 
-    pub fn acquire_next_image(image_index: u32) /*-> vk::Result*/ {}
+    pub fn acquire_next_image(&self, device: &Device) -> (u32,bool) {
+        unsafe {
+            device
+                .device()
+                .wait_for_fences(
+                    &[self.in_flight_fences.as_ref().unwrap()[self.current_frame]],
+                    true,
+                    u64::MAX,
+                )
+                .expect("Failed to wait for fences!");
 
-    pub fn submit_command_buffers(buffers: vk::CommandBuffer, image_index: u32) /*-> vk::Result*/ {}
+            let result = self.swapchain
+                .as_ref()
+                .unwrap()
+                .swapchain_loader
+                .acquire_next_image(
+                    self.swapchain.as_ref().unwrap().swapchain,
+                    u64::MAX,
+                    self.image_available_semaphores.as_ref().unwrap()[self.current_frame],
+                    vk::Fence::null(),
+                ).expect("Failed to acquire next image!");
+
+            return result;
+        }
+    }
 
     pub fn compare_swap_formats(&self, swapchain: &Swapchain) -> bool {
         return swapchain.swapchain_depth_format.unwrap() == self.swapchain_depth_format.unwrap()
             && swapchain.swapchain_image_format.unwrap() == self.swapchain_image_format.unwrap();
+    }
+
+    pub fn submit_command_buffers(&mut self,device: &Device,buffer:vk::CommandBuffer,image_index: u32){
+        if self.images_in_flight.as_ref().unwrap()[image_index as usize] != vk::Fence::null(){
+            unsafe{
+                device.device().wait_for_fences(&[self.images_in_flight.as_ref().unwrap()[image_index as usize]], true, u64::MAX).expect("Failed to wait for fences!");
+            }
+        }
+
+        self.images_in_flight.as_mut().unwrap()[image_index as usize] = self.in_flight_fences.as_mut().unwrap()[self.current_frame];
+    
+        let wait_semaphores: [vk::Semaphore; 1] = [self.image_available_semaphores.as_ref().unwrap()[self.current_frame]];
+    
+        let wait_stages: [vk::PipelineStageFlags; 1] = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+
+
+        /*let submit_info: vk::SubmitInfo = vk::SubmitInfo{
+            s_type: vk::StructureType::SUBMIT_INFO,
+            p_next: std::ptr::null(),
+            wait_semaphore_count: 1,
+            p_wait_semaphores: wait_semaphores.as_ptr(),
+            p_wait_dst_stage_mask: wait_stages.as_ptr(),
+            command_buffer_count: 1,
+            p_command_buffers: &buffer
+        }*/
     }
 
     fn create_swapchain(
@@ -356,25 +403,38 @@ impl Swapchain {
     }
 
     fn create_framebuffers(self: &mut Swapchain, device: &Device) {
-        for i in 0..self.swapchain_images.as_ref().unwrap().len() {
-            let mut view_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
-            view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
-            view_info.image = self.swapchain_images.as_ref().unwrap()[i];
-            view_info.view_type = vk::ImageViewType::TYPE_2D;
-            view_info.format = self.swapchain_image_format.unwrap();
-            view_info.subresource_range.aspect_mask = vk::ImageAspectFlags::COLOR;
-            view_info.subresource_range.base_mip_level = 0;
-            view_info.subresource_range.level_count = 1;
-            view_info.subresource_range.base_array_layer = 0;
-            view_info.subresource_range.layer_count = 1;
+        let image_count = self.image_count();
+
+        self.swapchain_framebuffers
+            .as_mut()
+            .unwrap()
+            .resize(image_count, vk::Framebuffer::default());
+
+        for i in 0..self.image_count() {
+            let attachments: [vk::ImageView; 2] = [
+                self.swapchain_image_views.as_ref().unwrap()[i],
+                self.depth_image_views.as_ref().unwrap()[i],
+            ];
+
+            let swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
+
+            let framebuffer_info = vk::FramebufferCreateInfo {
+                s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
+                render_pass: self.renderpass.unwrap(),
+                p_next: std::ptr::null(),
+                flags: vk::FramebufferCreateFlags::empty(),
+                attachment_count: attachments.len() as u32,
+                p_attachments: attachments.as_ptr(),
+                width: self.swapchain_extent.unwrap().width,
+                height: self.swapchain_extent.unwrap().height,
+                layers: 1,
+            };
 
             unsafe {
-                self.swapchain_image_views.as_mut().unwrap().push(
-                    device
-                        .device()
-                        .create_image_view(&view_info, None)
-                        .expect("Failed to create an image view"),
-                );
+                self.swapchain_framebuffers.as_mut().unwrap()[i] = device
+                    .device()
+                    .create_framebuffer(&framebuffer_info, None)
+                    .expect("Failed to create framebuffer!");
             }
         }
     }
@@ -426,6 +486,76 @@ impl Swapchain {
     fn create_depth_resources(self: &mut Swapchain, device: &Device) {
         let depth_format: vk::Format = self.find_depth_format(device);
         self.swapchain_depth_format = Some(depth_format);
+
+        let image_count = self.image_count();
+
+        self.depth_images
+            .as_mut()
+            .unwrap()
+            .resize(image_count, vk::Image::default());
+        self.depth_image_memories
+            .as_mut()
+            .unwrap()
+            .resize(image_count, vk::DeviceMemory::default());
+        self.depth_image_views
+            .as_mut()
+            .unwrap()
+            .resize(image_count, vk::ImageView::default());
+
+        for i in 0..self.image_count() {
+            let image_info: vk::ImageCreateInfo = vk::ImageCreateInfo {
+                s_type: vk::StructureType::IMAGE_CREATE_INFO,
+                p_next: std::ptr::null(),
+                flags: vk::ImageCreateFlags::empty(),
+                image_type: vk::ImageType::TYPE_2D,
+                format: depth_format,
+                extent: vk::Extent3D {
+                    width: self.swapchain_extent.unwrap().width,
+                    height: self.swapchain_extent.unwrap().height,
+                    depth: 1,
+                },
+                mip_levels: 1,
+                array_layers: 1,
+                samples: vk::SampleCountFlags::TYPE_1,
+                tiling: vk::ImageTiling::OPTIMAL,
+                usage: vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                sharing_mode: vk::SharingMode::EXCLUSIVE,
+                queue_family_index_count: 0,
+                p_queue_family_indices: std::ptr::null(),
+                initial_layout: vk::ImageLayout::default(),
+            };
+
+            (
+                self.depth_images.as_mut().unwrap()[i],
+                self.depth_image_memories.as_mut().unwrap()[i],
+            ) = device.create_image_with_info(&image_info, vk::MemoryPropertyFlags::DEVICE_LOCAL);
+
+            let view_info = vk::ImageViewCreateInfo {
+                s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+                image: self.depth_images.as_ref().unwrap()[i],
+                p_next: std::ptr::null(),
+                view_type: vk::ImageViewType::TYPE_2D,
+                format: depth_format,
+                flags: vk::ImageViewCreateFlags::empty(),
+                components: vk::ComponentMapping::default(),
+                subresource_range: vk::ImageSubresourceRange {
+                    aspect_mask: vk::ImageAspectFlags::DEPTH,
+                    base_mip_level: 0,
+                    level_count: 1,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                },
+            };
+
+            unsafe {
+                self.depth_image_views.as_mut().unwrap()[i] = device
+                    ._device
+                    .as_ref()
+                    .unwrap()
+                    .create_image_view(&view_info, None)
+                    .expect("Failed to create depth image view!");
+            }
+        }
     }
 
     fn choose_swap_surface_format(
@@ -489,38 +619,41 @@ impl Swapchain {
 mod tests {
 
     use crate::device::Device;
-    use crate::window::Window;
     use crate::swapchain::Swapchain;
+    use crate::window::Window;
 
     #[test]
-    fn create_image_views_test(){
+    fn create_image_views_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
-        let device = Device::new(&window,&glfw);
+
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
+        let device = Device::new(&window, &glfw);
         let mut swapchain = Swapchain::default();
 
         Swapchain::create_image_views(&mut swapchain, &device);
 
-        assert_eq!(swapchain.swapchain_image_views.as_ref().unwrap().len() > 0,true);
+        assert_eq!(
+            swapchain.swapchain_image_views.as_ref().unwrap().len() > 0,
+            true
+        );
     }
 
     #[test]
-    fn create_render_pass_test(){
+    fn create_render_pass_test() {
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
         glfw.window_hint(glfw::WindowHint::Visible(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
-        
-        let window = Window::new(&mut glfw,"Revier:DEV BUILD #1",640,480);
-        let device = Device::new(&window,&glfw);
+
+        let window = Window::new(&mut glfw, "Revier:DEV BUILD #1", 640, 480);
+        let device = Device::new(&window, &glfw);
         let mut swapchain = Swapchain::default();
 
         Swapchain::create_renderpass(&mut swapchain, &device);
 
-        assert_eq!(swapchain.renderpass.is_some(),true)
+        assert_eq!(swapchain.renderpass.is_some(), true)
     }
 }

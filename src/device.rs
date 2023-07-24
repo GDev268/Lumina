@@ -273,6 +273,54 @@ impl Device {
 
     pub fn copy_buffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
 
+    pub fn create_image_with_info(
+        &self,
+        image_info: &vk::ImageCreateInfo,
+        properties: vk::MemoryPropertyFlags,
+    ) -> (vk::Image,vk::DeviceMemory)
+    {
+        let image: vk::Image = unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .create_image(image_info, None)
+                .expect("Failed to create Image!")
+        };
+
+        let memory_requirements = unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .get_image_memory_requirements(image)
+        };
+
+        let allocate_info: vk::MemoryAllocateInfo = vk::MemoryAllocateInfo {
+            s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            allocation_size: memory_requirements.size,
+            memory_type_index: self
+                .find_memory_type(memory_requirements.memory_type_bits, properties),
+        };
+
+        let image_memory: vk::DeviceMemory = unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .allocate_memory(&allocate_info, None)
+                .expect("Failed to allocate image memory!")
+        };
+
+        unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .bind_image_memory(image, image_memory, 0)
+                .expect("Failed to bind image memory!");
+        }
+
+        return (image,image_memory);
+    }
+
     fn create_instance(self: &mut Device, window: &Window, glfw: &Glfw) {
         let entry = Entry::linked();
         if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
@@ -481,7 +529,8 @@ impl Device {
 
         unsafe {
             self.command_pool = Some(
-                self._device.as_ref()
+                self._device
+                    .as_ref()
                     .unwrap()
                     .create_command_pool(&pool_info, None)
                     .expect("Failed to create command pool!"),

@@ -73,13 +73,60 @@ fn main() {
     }
 
     for i in 0..command_buffers.len() {
-        let begin_info = vk::CommandBufferBeginInfo{
+        let begin_info = vk::CommandBufferBeginInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
             flags: vk::CommandBufferUsageFlags::empty(),
-            p_inheritance_info: std::ptr::null()
+            p_inheritance_info: std::ptr::null(),
         };
 
+        unsafe {
+            device
+                .device()
+                .begin_command_buffer(command_buffers[i], &begin_info)
+                .expect("Failed to begin the command buffer");
+        }
+
+        let mut clear_values:[vk::ClearValue;2] = [vk::ClearValue::default(),vk::ClearValue::default()];
+
+        clear_values[0].color = vk::ClearColorValue{float32:[0.1, 0.1, 0.1, 1.0]};
+        clear_values[1].depth_stencil = vk::ClearDepthStencilValue{
+            depth: 1.0,
+            stencil: 0
+        };
+
+        let render_pass_info: vk::RenderPassBeginInfo = vk::RenderPassBeginInfo{
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            render_pass: swapchain.get_renderpass(),
+            framebuffer: swapchain.get_framebuffer(i),
+            render_area: vk::Rect2D { offset: vk::Offset2D { x:0, y: 0 }, extent: swapchain.get_swapchain_extent() },
+            clear_value_count: clear_values.len() as u32,
+            p_clear_values: clear_values.as_ptr()
+        };
+
+        unsafe{
+            device.device().cmd_begin_render_pass(command_buffers[i], &render_pass_info, vk::SubpassContents::INLINE);
+        }
+
+        pipeline.bind(&device, command_buffers[i]);
+
+        unsafe{
+            device.device().cmd_draw(command_buffers[i], 3, 1, 0, 1);
         
+            device.device().cmd_end_render_pass(command_buffers[i]);
+ 
+            device.device().end_command_buffer(command_buffers[i]).expect("Failed to record command buffer!");
+        }
+
+        while !window._window.should_close(){
+            glfw.poll_events();
+
+            let (image_index,is_suboptiomal) = swapchain.acquire_next_image(&device);
+
+            if is_suboptiomal {
+                
+            }
+        }   
     }
 }
