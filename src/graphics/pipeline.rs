@@ -1,15 +1,15 @@
 use std::f32::consts::PI;
 use std::fs;
 
-use crate::device::Device;
+use crate::engine::device::Device;
 use ash::vk::{self, ShaderModule};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
 pub struct PipelineConfiguration {
-    /*pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
-    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,*/
+    pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
+    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
     pub viewport_info: vk::PipelineViewportStateCreateInfo,
     pub input_assembly_info: vk::PipelineInputAssemblyStateCreateInfo,
     pub rasterization_info: vk::PipelineRasterizationStateCreateInfo,
@@ -101,6 +101,8 @@ impl PipelineConfiguration {
         dynamic_state_info.flags = vk::PipelineDynamicStateCreateFlags::empty();
 
         Self {
+            binding_descriptions: Vec::new(),
+            attribute_descriptions: Vec::new(),
             viewport_info: viewport_info,
             input_assembly_info: input_assembly_info,
             rasterization_info: rasterization_info,

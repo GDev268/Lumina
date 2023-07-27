@@ -1,4 +1,4 @@
-use crate::window::Window;
+use crate::engine::window::Window;
 use ash::{
     vk::{self, KhrGetPhysicalDeviceProperties2Fn},
     Entry,
@@ -859,8 +859,8 @@ impl Device {
 #[cfg(test)]
 mod tests {
 
-    use crate::device::Device;
-    use crate::window::Window;
+    use crate::engine::device::Device;
+    use crate::engine::window::Window;
 
     #[test]
     fn create_instance_test() {

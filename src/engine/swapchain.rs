@@ -1,4 +1,4 @@
-use crate::device::{Device, QueueFamily, SwapChainSupportDetails};
+use crate::engine::device::{Device, QueueFamily, SwapChainSupportDetails};
 use ash::{
     vk::{self, TaggedStructure},
     Entry,
@@ -670,9 +670,9 @@ impl Swapchain {
 #[cfg(test)]
 mod tests {
 
-    use crate::device::Device;
-    use crate::swapchain::Swapchain;
-    use crate::window::Window;
+    use crate::engine::device::Device;
+    use crate::engine::swapchain::Swapchain;
+    use crate::engine::window::Window;
 
     #[test]
     fn create_image_views_test() {

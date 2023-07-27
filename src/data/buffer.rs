@@ -1,4 +1,4 @@
-use crate::device::Device;
+use crate::engine::device::Device;
 use ash::vk;
 use std::{
     any::{Any, TypeId},

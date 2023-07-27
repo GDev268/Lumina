@@ -1,7 +1,0 @@
-struct Game{
-
-}
-
-impl Game{
-
-}
