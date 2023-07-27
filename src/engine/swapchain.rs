@@ -5,7 +5,7 @@ use ash::{
 };
 use std::ptr::{self};
 
-const MAX_FRAMES_IN_FLIGHT: usize = 2;
+const MAX_FRAMES_IN_FLIGHT: usize = 3;
 
 struct SwapchainKHR {
     swapchain_loader: ash::extensions::khr::Swapchain,
@@ -507,13 +507,13 @@ impl Swapchain {
 
     fn create_sync_objects(self: &mut Swapchain, device: &Device) {
         self.image_available_semaphores
-            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Semaphore::null());
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::null());
         self.render_finished_semaphores
-            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Semaphore::null());
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::null());
         self.in_flight_fences
-            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Fence::null());
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::null());
         self.images_in_flight
-            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Fence::null());
+            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::null());
 
         let semaphore_info: vk::SemaphoreCreateInfo = vk::SemaphoreCreateInfo::default();
 
