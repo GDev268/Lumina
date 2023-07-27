@@ -28,7 +28,7 @@ fn main() {
 
     let window = Window::new(&mut glfw, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window, &glfw);
-    let swapchain = Swapchain::new(&device, window.getExtent());
+    let mut swapchain = Swapchain::new(&device, window.getExtent());
 
     let mut command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
@@ -87,46 +87,57 @@ fn main() {
                 .expect("Failed to begin the command buffer");
         }
 
-        let mut clear_values:[vk::ClearValue;2] = [vk::ClearValue::default(),vk::ClearValue::default()];
+        let mut clear_values: [vk::ClearValue; 2] =
+            [vk::ClearValue::default(), vk::ClearValue::default()];
 
-        clear_values[0].color = vk::ClearColorValue{float32:[0.1, 0.1, 0.1, 1.0]};
-        clear_values[1].depth_stencil = vk::ClearDepthStencilValue{
+        clear_values[0].color = vk::ClearColorValue {
+            float32: [0.1, 0.1, 0.1, 1.0],
+        };
+        clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
-            stencil: 0
+            stencil: 0,
         };
 
-        let render_pass_info: vk::RenderPassBeginInfo = vk::RenderPassBeginInfo{
+        let render_pass_info: vk::RenderPassBeginInfo = vk::RenderPassBeginInfo {
             s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
             p_next: std::ptr::null(),
             render_pass: swapchain.get_renderpass(),
             framebuffer: swapchain.get_framebuffer(i),
-            render_area: vk::Rect2D { offset: vk::Offset2D { x:0, y: 0 }, extent: swapchain.get_swapchain_extent() },
+            render_area: vk::Rect2D {
+                offset: vk::Offset2D { x: 0, y: 0 },
+                extent: swapchain.get_swapchain_extent(),
+            },
             clear_value_count: clear_values.len() as u32,
-            p_clear_values: clear_values.as_ptr()
+            p_clear_values: clear_values.as_ptr(),
         };
 
-        unsafe{
-            device.device().cmd_begin_render_pass(command_buffers[i], &render_pass_info, vk::SubpassContents::INLINE);
+        unsafe {
+            device.device().cmd_begin_render_pass(
+                command_buffers[i],
+                &render_pass_info,
+                vk::SubpassContents::INLINE,
+            );
         }
 
         pipeline.bind(&device, command_buffers[i]);
 
-        unsafe{
+        unsafe {
             device.device().cmd_draw(command_buffers[i], 3, 1, 0, 1);
-        
+
             device.device().cmd_end_render_pass(command_buffers[i]);
- 
-            device.device().end_command_buffer(command_buffers[i]).expect("Failed to record command buffer!");
+
+            device
+                .device()
+                .end_command_buffer(command_buffers[i])
+                .expect("Failed to record command buffer!");
         }
+    }
 
-        while !window._window.should_close(){
-            glfw.poll_events();
+    while !window._window.should_close() {
+        glfw.poll_events();
 
-            let (image_index,is_suboptiomal) = swapchain.acquire_next_image(&device);
+        let (image_index,_) = swapchain.acquire_next_image(&device);
 
-            if is_suboptiomal {
-                
-            }
-        }   
+        swapchain.submit_command_buffers(&device, command_buffers[image_index as usize], image_index);
     }
 }

@@ -51,15 +51,17 @@ impl Window {
         instance: &ash::Instance,
         entry: &ash::Entry,
     ) -> vk::SurfaceKHR {
-        let mut surface:vk::SurfaceKHR = vk::SurfaceKHR::default();
+            let mut surface: std::mem::MaybeUninit<vk::SurfaceKHR> = std::mem::MaybeUninit::uninit();
 
-        let result = self._window.create_window_surface(instance.handle(), std::ptr::null(), &mut surface as *mut vk::SurfaceKHR);  
+            if self._window.create_window_surface(instance.handle(), std::ptr::null(), surface.as_mut_ptr())
+                != vk::Result::SUCCESS
+            {
+                panic!("Failed to create GLFW window surface.");
+            }
 
-        if result != vk::Result::SUCCESS {
-            panic!("Failed to create an vulkan SurfaceKHR with GLFW!");
-        }
-
-        return surface;
+            unsafe{
+                return surface.assume_init();
+            }
     }
 
     fn framebufferResizeCallback(window: &Glfw, width: i16, height: i16) {}

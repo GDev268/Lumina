@@ -64,9 +64,9 @@ pub struct SurfaceKHR {
 }
 
 pub struct SwapChainSupportDetails {
-    pub surface_capabilities: Option<vk::SurfaceCapabilitiesKHR>,
-    pub surface_formats: Option<Vec<vk::SurfaceFormatKHR>>,
-    pub present_modes: Option<Vec<vk::PresentModeKHR>>,
+    pub surface_capabilities: vk::SurfaceCapabilitiesKHR,
+    pub surface_formats: Vec<vk::SurfaceFormatKHR>,
+    pub present_modes: Vec<vk::PresentModeKHR>,
 }
 
 pub struct QueueFamily {
@@ -277,8 +277,7 @@ impl Device {
         &self,
         image_info: &vk::ImageCreateInfo,
         properties: vk::MemoryPropertyFlags,
-    ) -> (vk::Image,vk::DeviceMemory)
-    {
+    ) -> (vk::Image, vk::DeviceMemory) {
         let image: vk::Image = unsafe {
             self._device
                 .as_ref()
@@ -318,7 +317,7 @@ impl Device {
                 .expect("Failed to bind image memory!");
         }
 
-        return (image,image_memory);
+        return (image, image_memory);
     }
 
     fn create_instance(self: &mut Device, window: &Window, glfw: &Glfw) {
@@ -604,8 +603,8 @@ impl Device {
             let swapchain_support: SwapChainSupportDetails =
                 self.query_swapchain_support(physical_device);
 
-            swapchain_adequate = !swapchain_support.surface_formats.unwrap().is_empty()
-                && !swapchain_support.present_modes.unwrap().is_empty();
+            swapchain_adequate = !swapchain_support.surface_formats.is_empty()
+                && !swapchain_support.present_modes.is_empty();
         }
 
         unsafe {
@@ -771,51 +770,46 @@ impl Device {
         &self,
         physical_device: &vk::PhysicalDevice,
     ) -> SwapChainSupportDetails {
-        let mut details: SwapChainSupportDetails = SwapChainSupportDetails {
-            surface_capabilities: None,
-            surface_formats: None,
-            present_modes: None,
-        };
-
         unsafe {
-            details.surface_capabilities = Some(
-                self.surface
-                    .as_ref()
-                    .unwrap()
-                    .surface_loader
-                    .get_physical_device_surface_capabilities(
-                        *physical_device,
-                        self.surface.as_ref().unwrap()._surface,
-                    )
-                    .unwrap(),
-            );
+            let surface_capabilities = self
+                .surface
+                .as_ref()
+                .unwrap()
+                .surface_loader
+                .get_physical_device_surface_capabilities(
+                    *physical_device,
+                    self.surface.as_ref().unwrap()._surface,
+                )
+                .unwrap();
 
-            details.surface_formats = Some(
-                self.surface
-                    .as_ref()
-                    .unwrap()
-                    .surface_loader
-                    .get_physical_device_surface_formats(
-                        *physical_device,
-                        self.surface.as_ref().unwrap()._surface,
-                    )
-                    .unwrap(),
-            );
+            let surface_formats = self
+                .surface
+                .as_ref()
+                .unwrap()
+                .surface_loader
+                .get_physical_device_surface_formats(
+                    *physical_device,
+                    self.surface.as_ref().unwrap()._surface,
+                )
+                .unwrap();
 
-            details.present_modes = Some(
-                self.surface
-                    .as_ref()
-                    .unwrap()
-                    .surface_loader
-                    .get_physical_device_surface_present_modes(
-                        *physical_device,
-                        self.surface.as_ref().unwrap()._surface,
-                    )
-                    .unwrap(),
-            )
+            let present_modes = self
+                .surface
+                .as_ref()
+                .unwrap()
+                .surface_loader
+                .get_physical_device_surface_present_modes(
+                    *physical_device,
+                    self.surface.as_ref().unwrap()._surface,
+                )
+                .unwrap();
+
+            return SwapChainSupportDetails {
+                surface_capabilities,
+                surface_formats,
+                present_modes,
+            };
         }
-
-        return details;
     }
 
     #[cfg(all(unix, not(target_os = "windows")))]

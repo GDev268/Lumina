@@ -16,25 +16,26 @@ pub struct Swapchain {
     swapchain_image_format: Option<vk::Format>,
     swapchain_depth_format: Option<vk::Format>,
     swapchain_extent: Option<vk::Extent2D>,
-    swapchain_framebuffers: Option<Vec<vk::Framebuffer>>,
+    swapchain_framebuffers: Vec<vk::Framebuffer>,
     renderpass: Option<vk::RenderPass>,
-    depth_images: Option<Vec<vk::Image>>,
-    depth_image_memories: Option<Vec<vk::DeviceMemory>>,
-    depth_image_views: Option<Vec<vk::ImageView>>,
-    swapchain_images: Option<Vec<vk::Image>>,
-    pub swapchain_image_views: Option<Vec<vk::ImageView>>,
+    depth_images: Vec<vk::Image>,
+    depth_image_memories: Vec<vk::DeviceMemory>,
+    depth_image_views: Vec<vk::ImageView>,
+    swapchain_images: Vec<vk::Image>,
+    pub swapchain_image_views: Vec<vk::ImageView>,
     window_extent: Option<vk::Extent2D>,
     swapchain: Option<SwapchainKHR>,
-    image_available_semaphores: Option<Vec<vk::Semaphore>>,
-    render_finished_semaphores: Option<Vec<vk::Semaphore>>,
-    in_flight_fences: Option<Vec<vk::Fence>>,
-    images_in_flight: Option<Vec<vk::Fence>>,
+    image_available_semaphores: Vec<vk::Semaphore>,
+    render_finished_semaphores: Vec<vk::Semaphore>,
+    in_flight_fences: Vec<vk::Fence>,
+    images_in_flight: Vec<vk::Fence>,
     current_frame: usize,
 }
 
 impl Swapchain {
     pub fn new(device: &Device, window_extent: vk::Extent2D) -> Swapchain {
         let mut swapchain = Swapchain::default();
+        swapchain.window_extent = Some(window_extent);
         Swapchain::init(&mut swapchain, None, device);
 
         return swapchain;
@@ -53,15 +54,7 @@ impl Swapchain {
     }
 
     fn init(self: &mut Swapchain, old_swapchain: Option<&mut Swapchain>, device: &Device) {
-        if old_swapchain.is_some() {
-            Swapchain::create_swapchain(
-                self,
-                device,
-                Some(&mut old_swapchain.unwrap().swapchain.as_ref().unwrap()),
-            );
-        } else {
-            Swapchain::create_swapchain(self, device, None);
-        }
+        Swapchain::create_swapchain(self, device, None);
         Swapchain::create_image_views(self, device);
         Swapchain::create_renderpass(self, device);
         Swapchain::create_depth_resources(self, device);
@@ -74,25 +67,25 @@ impl Swapchain {
             swapchain_image_format: None,
             swapchain_depth_format: None,
             swapchain_extent: None,
-            swapchain_framebuffers: Some(Vec::new()),
+            swapchain_framebuffers: Vec::new(),
             renderpass: None,
-            depth_images: Some(Vec::new()),
-            depth_image_memories: Some(Vec::new()),
-            depth_image_views: Some(Vec::new()),
-            swapchain_images: Some(Vec::new()),
-            swapchain_image_views: Some(Vec::new()),
+            depth_images: Vec::new(),
+            depth_image_memories: Vec::new(),
+            depth_image_views: Vec::new(),
+            swapchain_images: Vec::new(),
+            swapchain_image_views: Vec::new(),
             window_extent: None,
             swapchain: None,
-            image_available_semaphores: Some(Vec::new()),
-            render_finished_semaphores: Some(Vec::new()),
-            in_flight_fences: Some(Vec::new()),
-            images_in_flight: Some(Vec::new()),
+            image_available_semaphores: Vec::new(),
+            render_finished_semaphores: Vec::new(),
+            in_flight_fences: Vec::new(),
+            images_in_flight: Vec::new(),
             current_frame: 0,
         };
     }
 
     pub fn get_framebuffer(&self, index: usize) -> vk::Framebuffer {
-        return self.swapchain_framebuffers.as_ref().unwrap()[index];
+        return self.swapchain_framebuffers[index];
     }
 
     pub fn get_renderpass(&self) -> vk::RenderPass {
@@ -100,11 +93,11 @@ impl Swapchain {
     }
 
     pub fn get_image_view(&self, index: usize) -> vk::ImageView {
-        return self.swapchain_image_views.as_ref().unwrap()[index];
+        return self.swapchain_image_views[index];
     }
 
     pub fn image_count(&self) -> usize {
-        return self.swapchain_images.as_ref().unwrap().len();
+        return self.swapchain_images.len();
     }
 
     pub fn get_swapchain_image_format(&self) -> vk::Format {
@@ -132,60 +125,144 @@ impl Swapchain {
         );
     }
 
-    pub fn acquire_next_image(&self, device: &Device) -> (u32,bool) {
+    pub fn acquire_next_image(&self, device: &Device) -> (u32, bool) {
         unsafe {
             device
                 .device()
-                .wait_for_fences(
-                    &[self.in_flight_fences.as_ref().unwrap()[self.current_frame]],
-                    true,
-                    u64::MAX,
-                )
+                .wait_for_fences(&[self.in_flight_fences[self.current_frame]], true, u64::MAX)
                 .expect("Failed to wait for fences!");
 
-            let result = self.swapchain
+            let result = self
+                .swapchain
                 .as_ref()
                 .unwrap()
                 .swapchain_loader
                 .acquire_next_image(
                     self.swapchain.as_ref().unwrap().swapchain,
-                    u64::MAX,
-                    self.image_available_semaphores.as_ref().unwrap()[self.current_frame],
+                    std::u64::MAX,
+                    self.image_available_semaphores[self.current_frame],
                     vk::Fence::null(),
-                ).expect("Failed to acquire next image!");
+                )
+                .expect("Failed to acquire next image!");
 
+            println!("{} | {}", result.0, result.1);
             return result;
         }
     }
+
+    pub fn wooork_dammit(&self, device: &Device) -> (u32, bool) {
+        unsafe {
+            device
+                .device()
+                .wait_for_fences(&[self.in_flight_fences[self.current_frame]], true, u64::MAX)
+                .expect("Failed to wait for fences!");
+
+            let result = self
+                .swapchain
+                .as_ref()
+                .unwrap()
+                .swapchain_loader
+                .acquire_next_image(
+                    self.swapchain.as_ref().unwrap().swapchain,
+                    std::u64::MAX,
+                    self.image_available_semaphores[self.current_frame],
+                    vk::Fence::null(),
+                )
+                .expect("Failed to acquire next image!");
+
+            println!("{} | {}", result.0, result.1);
+            return result;
+        }
+    }
+
 
     pub fn compare_swap_formats(&self, swapchain: &Swapchain) -> bool {
         return swapchain.swapchain_depth_format.unwrap() == self.swapchain_depth_format.unwrap()
             && swapchain.swapchain_image_format.unwrap() == self.swapchain_image_format.unwrap();
     }
 
-    pub fn submit_command_buffers(&mut self,device: &Device,buffer:vk::CommandBuffer,image_index: u32){
-        if self.images_in_flight.as_ref().unwrap()[image_index as usize] != vk::Fence::null(){
-            unsafe{
-                device.device().wait_for_fences(&[self.images_in_flight.as_ref().unwrap()[image_index as usize]], true, u64::MAX).expect("Failed to wait for fences!");
+    pub fn submit_command_buffers(
+        &mut self,
+        device: &Device,
+        buffer: vk::CommandBuffer,
+        image_index: u32,
+    ) -> bool {
+        if self.images_in_flight[image_index as usize] != vk::Fence::null() {
+            unsafe {
+                device
+                    .device()
+                    .wait_for_fences(
+                        &[self.images_in_flight[image_index as usize]],
+                        true,
+                        u64::MAX,
+                    )
+                    .expect("Failed to wait for fences!");
             }
         }
 
-        self.images_in_flight.as_mut().unwrap()[image_index as usize] = self.in_flight_fences.as_mut().unwrap()[self.current_frame];
-    
-        let wait_semaphores: [vk::Semaphore; 1] = [self.image_available_semaphores.as_ref().unwrap()[self.current_frame]];
-    
-        let wait_stages: [vk::PipelineStageFlags; 1] = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+        self.images_in_flight[image_index as usize] = self.in_flight_fences[self.current_frame];
 
+        let wait_semaphores: [vk::Semaphore; 1] =
+            [self.image_available_semaphores[self.current_frame]];
 
-        /*let submit_info: vk::SubmitInfo = vk::SubmitInfo{
+        let wait_stages: [vk::PipelineStageFlags; 1] =
+            [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+
+        let signal_semaphores: [vk::Semaphore; 1] =
+            [self.render_finished_semaphores[self.current_frame as usize]];
+
+        let submit_info: vk::SubmitInfo = vk::SubmitInfo {
             s_type: vk::StructureType::SUBMIT_INFO,
             p_next: std::ptr::null(),
             wait_semaphore_count: 1,
             p_wait_semaphores: wait_semaphores.as_ptr(),
             p_wait_dst_stage_mask: wait_stages.as_ptr(),
             command_buffer_count: 1,
-            p_command_buffers: &buffer
-        }*/
+            p_command_buffers: &buffer,
+            signal_semaphore_count: signal_semaphores.len() as u32,
+            p_signal_semaphores: signal_semaphores.as_ptr(),
+        };
+
+        unsafe {
+            device
+                .device()
+                .reset_fences(&[self.in_flight_fences[self.current_frame]])
+                .expect("Failed to reset fences!");
+            device
+                .device()
+                .queue_submit(
+                    device.graphics_queue(),
+                    &[submit_info],
+                    self.in_flight_fences[self.current_frame],
+                )
+                .expect("Failed to submit draw command buffer!");
+        }
+
+        let swapchains: [vk::SwapchainKHR; 1] = [self.swapchain.as_ref().unwrap().swapchain];
+
+        let present_info: vk::PresentInfoKHR = vk::PresentInfoKHR {
+            s_type: vk::StructureType::PRESENT_INFO_KHR,
+            p_next: std::ptr::null(),
+            wait_semaphore_count: signal_semaphores.len() as u32,
+            p_wait_semaphores: signal_semaphores.as_ptr(),
+            swapchain_count: swapchains.len() as u32,
+            p_swapchains: swapchains.as_ptr(),
+            p_image_indices: &image_index,
+            p_results: std::ptr::null_mut(),
+        };
+
+        let result = unsafe {
+            self.swapchain
+                .as_ref()
+                .unwrap()
+                .swapchain_loader
+                .queue_present(device.present_queue(), &present_info)
+                .expect("Failed to queue present!")
+        };
+
+        self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        return result;
     }
 
     fn create_swapchain(
@@ -195,134 +272,127 @@ impl Swapchain {
     ) {
         let swapchain_support: SwapChainSupportDetails = device.get_swapchain_support();
 
-        let surface_format: vk::SurfaceFormatKHR = self
-            .choose_swap_surface_format(&swapchain_support.surface_formats.unwrap())
-            .unwrap();
+        let surface_format: vk::SurfaceFormatKHR =
+            self.choose_swap_surface_format(&swapchain_support.surface_formats);
         let present_mode: vk::PresentModeKHR = self
-            .choose_swap_present_mode(&swapchain_support.present_modes.unwrap())
+            .choose_swap_present_mode(&swapchain_support.present_modes)
             .unwrap();
-        let extent: vk::Extent2D =
-            self.choose_swap_extent(&swapchain_support.surface_capabilities.unwrap());
+        let extent: vk::Extent2D = self.choose_swap_extent(&swapchain_support.surface_capabilities);
 
-        let mut image_count: u32 = swapchain_support
-            .surface_capabilities
-            .unwrap()
-            .min_image_count
-            + 1;
-        if swapchain_support
-            .surface_capabilities
-            .unwrap()
-            .max_image_count
-            > 0
-            && image_count
-                > swapchain_support
-                    .surface_capabilities
-                    .unwrap()
-                    .max_image_count
-        {
-            image_count = swapchain_support
-                .surface_capabilities
-                .unwrap()
-                .max_image_count;
-        }
+        let image_count = swapchain_support.surface_capabilities.min_image_count + 1;
+        let image_count = 
+        if swapchain_support.surface_capabilities.max_image_count > 0 {
+            image_count.min(swapchain_support.surface_capabilities.max_image_count)
+        } else {
+            image_count
+        };
 
-        let mut create_info: vk::SwapchainCreateInfoKHR = vk::SwapchainCreateInfoKHR::default();
-
-        let swapchain_loader = ash::extensions::khr::Swapchain::new(
-            &device.instance.as_ref().unwrap(),
-            &device.device(),
-        );
-
-        create_info.s_type = vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.surface = device.surface();
-        create_info.min_image_count = image_count;
-        create_info.image_format = surface_format.format;
-        create_info.image_color_space = surface_format.color_space;
-        create_info.image_extent = extent;
-        create_info.image_array_layers = 1;
-        create_info.image_usage = vk::ImageUsageFlags::COLOR_ATTACHMENT;
-
+    
         let indices: QueueFamily = device.find_physical_queue_families();
-        let queue_family_indices: [u32; 2] = [indices.graphics_family, indices.present_family];
 
-        if indices.graphics_family != indices.present_family {
-            create_info.image_sharing_mode = vk::SharingMode::CONCURRENT;
-            create_info.queue_family_index_count = 0;
-            create_info.p_queue_family_indices = queue_family_indices.as_ptr();
-        } else {
-            create_info.image_sharing_mode = vk::SharingMode::EXCLUSIVE;
-            create_info.queue_family_index_count = 0;
-            create_info.p_queue_family_indices = ptr::null();
-        }
+        let (image_sharing,queue_family_index_count,queue_family_indices) = {
+            if indices.graphics_family != indices.present_family {
+                (
+                    vk::SharingMode::CONCURRENT,
+                    2,
+                    vec![
+                        indices.graphics_family,
+                        indices.present_family
+                    ]
+                )
+            }
+            else {
+                (vk::SharingMode::EXCLUSIVE,0,vec![])
+            }
+        };
 
-        create_info.pre_transform = swapchain_support
-            .surface_capabilities
-            .unwrap()
-            .current_transform;
-        create_info.composite_alpha = vk::CompositeAlphaFlagsKHR::OPAQUE;
-        create_info.present_mode = present_mode;
-        create_info.clipped = vk::TRUE;
-
-        if old_swapchain.is_none() {
-            create_info.old_swapchain = vk::SwapchainKHR::default();
-        } else {
-            create_info.old_swapchain = old_swapchain.unwrap().swapchain;
-        }
+        let create_info = vk::SwapchainCreateInfoKHR{
+            s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
+            p_next: std::ptr::null(),
+            flags: vk::SwapchainCreateFlagsKHR::empty(),
+            surface: device.surface(),
+            min_image_count: image_count,
+            image_color_space: surface_format.color_space,
+            image_format: surface_format.format,
+            image_extent: extent,
+            image_usage: vk::ImageUsageFlags::COLOR_ATTACHMENT,
+            image_sharing_mode: image_sharing,
+            p_queue_family_indices: queue_family_indices.as_ptr(),
+            queue_family_index_count: queue_family_index_count,
+            pre_transform: swapchain_support.surface_capabilities.current_transform,
+            composite_alpha: vk::CompositeAlphaFlagsKHR::OPAQUE,
+            present_mode: present_mode,
+            clipped: vk::TRUE,
+            old_swapchain: vk::SwapchainKHR::null(),
+            image_array_layers: 1
+        };
 
         unsafe {
+            let swapchain_loader = ash::extensions::khr::Swapchain::new(
+                &device.instance.as_ref().unwrap(),
+                &device.device(),
+            );
+
             let _swapchain = swapchain_loader
                 .create_swapchain(&create_info, None)
                 .expect("Failed to create swapchain!");
+
+
+            self.swapchain_images = 
+                swapchain_loader
+                .get_swapchain_images(_swapchain)
+                .unwrap();
+
+            self.swapchain_image_format = Some(surface_format.format);
+            self.swapchain_extent = Some(extent);
 
             self.swapchain = Some(SwapchainKHR {
                 swapchain: _swapchain,
                 swapchain_loader: swapchain_loader,
             });
-
-            self.swapchain_images = Some(
-                self.swapchain
-                    .as_ref()
-                    .unwrap()
-                    .swapchain_loader
-                    .get_swapchain_images(self.swapchain.as_ref().unwrap().swapchain)
-                    .unwrap(),
-            );
-
-            self.swapchain_image_format = Some(surface_format.format);
-            self.swapchain_extent = Some(extent);
         }
     }
 
     fn create_image_views(self: &mut Swapchain, device: &Device) {
-        self.swapchain_image_views.as_mut().unwrap().resize(
-            self.swapchain_images.as_ref().unwrap().len(),
-            vk::ImageView::default(),
-        );
-        for i in 0..self.swapchain_images.as_ref().unwrap().len() {
-            let mut view_info: vk::ImageViewCreateInfo = vk::ImageViewCreateInfo::default();
-            view_info.s_type = vk::StructureType::IMAGE_VIEW_CREATE_INFO;
-            view_info.image = self.swapchain_images.as_ref().unwrap()[i];
-            view_info.view_type = vk::ImageViewType::TYPE_2D;
-            view_info.format = self.swapchain_image_format.unwrap();
-            view_info.subresource_range.aspect_mask = vk::ImageAspectFlags::COLOR;
-            view_info.subresource_range.base_mip_level = 0;
-            view_info.subresource_range.level_count = 1;
-            view_info.subresource_range.base_array_layer = 0;
-            view_info.subresource_range.layer_count = 1;
+        for &image in self.swapchain_images.iter(){
+
+            let view_info = vk::ImageViewCreateInfo{
+                s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+                p_next: ptr::null(),
+                flags: vk::ImageViewCreateFlags::empty(),
+                view_type: vk::ImageViewType::TYPE_2D,
+                format: self.swapchain_image_format.unwrap(),
+                components: vk::ComponentMapping {
+                    r: vk::ComponentSwizzle::IDENTITY,
+                    g: vk::ComponentSwizzle::IDENTITY,
+                    b: vk::ComponentSwizzle::IDENTITY,
+                    a: vk::ComponentSwizzle::IDENTITY,
+                },
+                subresource_range: vk::ImageSubresourceRange {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    base_mip_level: 0,
+                    level_count: 1,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                },
+                image: image
+            };
 
             unsafe {
-                self.swapchain_image_views.as_mut().unwrap()[i] = device
+                let swapchain_image_view = device
                     .device()
                     .create_image_view(&view_info, None)
                     .expect("Failed to create image view!");
+
+                self.swapchain_image_views.push(swapchain_image_view);
             }
         }
     }
 
     fn create_renderpass(self: &mut Swapchain, device: &Device) {
         let color_attachment = vk::AttachmentDescription {
+            format: self.swapchain_image_format.unwrap(),
             flags: vk::AttachmentDescriptionFlags::empty(),
-            format: self.get_swapchain_image_format(),
             samples: vk::SampleCountFlags::TYPE_1,
             load_op: vk::AttachmentLoadOp::CLEAR,
             store_op: vk::AttachmentStoreOp::STORE,
@@ -331,7 +401,7 @@ impl Swapchain {
             initial_layout: vk::ImageLayout::UNDEFINED,
             final_layout: vk::ImageLayout::PRESENT_SRC_KHR,
         };
-
+    
         let color_attachment_ref = vk::AttachmentReference {
             attachment: 0,
             layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
@@ -406,15 +476,11 @@ impl Swapchain {
         let image_count = self.image_count();
 
         self.swapchain_framebuffers
-            .as_mut()
-            .unwrap()
             .resize(image_count, vk::Framebuffer::default());
 
         for i in 0..self.image_count() {
-            let attachments: [vk::ImageView; 2] = [
-                self.swapchain_image_views.as_ref().unwrap()[i],
-                self.depth_image_views.as_ref().unwrap()[i],
-            ];
+            let attachments: [vk::ImageView; 2] =
+                [self.swapchain_image_views[i], self.depth_image_views[i]];
 
             let swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
 
@@ -431,7 +497,7 @@ impl Swapchain {
             };
 
             unsafe {
-                self.swapchain_framebuffers.as_mut().unwrap()[i] = device
+                self.swapchain_framebuffers[i] = device
                     .device()
                     .create_framebuffer(&framebuffer_info, None)
                     .expect("Failed to create framebuffer!");
@@ -441,21 +507,13 @@ impl Swapchain {
 
     fn create_sync_objects(self: &mut Swapchain, device: &Device) {
         self.image_available_semaphores
-            .as_mut()
-            .unwrap()
-            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::default());
+            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Semaphore::null());
         self.render_finished_semaphores
-            .as_mut()
-            .unwrap()
-            .resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::default());
+            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Semaphore::null());
         self.in_flight_fences
-            .as_mut()
-            .unwrap()
-            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::default());
+            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Fence::null());
         self.images_in_flight
-            .as_mut()
-            .unwrap()
-            .resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::default());
+            .resize(MAX_FRAMES_IN_FLIGHT + 1, vk::Fence::null());
 
         let semaphore_info: vk::SemaphoreCreateInfo = vk::SemaphoreCreateInfo::default();
 
@@ -467,15 +525,15 @@ impl Swapchain {
 
         for i in 0..MAX_FRAMES_IN_FLIGHT {
             unsafe {
-                self.image_available_semaphores.as_mut().unwrap()[i] = device
+                self.image_available_semaphores[i] = device
                     .device()
                     .create_semaphore(&semaphore_info, None)
                     .expect("Failed to create the first sync object semaphore!");
-                self.render_finished_semaphores.as_mut().unwrap()[i] = device
+                self.render_finished_semaphores[i] = device
                     .device()
                     .create_semaphore(&semaphore_info, None)
                     .expect("Failed to create the second sync object semaphore!");
-                self.in_flight_fences.as_mut().unwrap()[i] = device
+                self.in_flight_fences[i] = device
                     .device()
                     .create_fence(&fence_info, None)
                     .expect("Failed to create the sync object fence!");
@@ -489,17 +547,10 @@ impl Swapchain {
 
         let image_count = self.image_count();
 
-        self.depth_images
-            .as_mut()
-            .unwrap()
-            .resize(image_count, vk::Image::default());
+        self.depth_images.resize(image_count, vk::Image::default());
         self.depth_image_memories
-            .as_mut()
-            .unwrap()
             .resize(image_count, vk::DeviceMemory::default());
         self.depth_image_views
-            .as_mut()
-            .unwrap()
             .resize(image_count, vk::ImageView::default());
 
         for i in 0..self.image_count() {
@@ -525,14 +576,12 @@ impl Swapchain {
                 initial_layout: vk::ImageLayout::default(),
             };
 
-            (
-                self.depth_images.as_mut().unwrap()[i],
-                self.depth_image_memories.as_mut().unwrap()[i],
-            ) = device.create_image_with_info(&image_info, vk::MemoryPropertyFlags::DEVICE_LOCAL);
+            (self.depth_images[i], self.depth_image_memories[i]) =
+                device.create_image_with_info(&image_info, vk::MemoryPropertyFlags::DEVICE_LOCAL);
 
             let view_info = vk::ImageViewCreateInfo {
                 s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
-                image: self.depth_images.as_ref().unwrap()[i],
+                image: self.depth_images[i],
                 p_next: std::ptr::null(),
                 view_type: vk::ImageViewType::TYPE_2D,
                 format: depth_format,
@@ -548,7 +597,7 @@ impl Swapchain {
             };
 
             unsafe {
-                self.depth_image_views.as_mut().unwrap()[i] = device
+                self.depth_image_views[i] = device
                     ._device
                     .as_ref()
                     .unwrap()
@@ -561,15 +610,16 @@ impl Swapchain {
     fn choose_swap_surface_format(
         &self,
         available_formats: &Vec<vk::SurfaceFormatKHR>,
-    ) -> Option<vk::SurfaceFormatKHR> {
+    ) -> vk::SurfaceFormatKHR {
         for available_format in available_formats {
             if available_format.format == vk::Format::B8G8R8A8_SRGB
                 && available_format.color_space == vk::ColorSpaceKHR::SRGB_NONLINEAR
             {
-                return Some(*available_format);
+                return available_format.clone();
             }
         }
-        return None;
+
+        return available_formats.first().unwrap().clone();
     }
 
     fn choose_swap_present_mode(
@@ -578,39 +628,41 @@ impl Swapchain {
     ) -> Option<vk::PresentModeKHR> {
         for present_mode in available_present_modes {
             if *present_mode == vk::PresentModeKHR::MAILBOX {
-                println!("Present mode: Mailbox");
-                return Some(*present_mode);
-            } else if *present_mode == vk::PresentModeKHR::FIFO {
-                println!("Present mode: V-Sync");
                 return Some(*present_mode);
             }
         }
 
-        return None;
+        return Some(vk::PresentModeKHR::FIFO);
     }
 
     fn choose_swap_extent(&self, surface_capabilites: &vk::SurfaceCapabilitiesKHR) -> vk::Extent2D {
         if surface_capabilites.current_extent.width != u32::MAX {
             return surface_capabilites.current_extent;
         } else {
-            let mut actual_extent: vk::Extent2D = self.window_extent.unwrap();
-            actual_extent.width = std::cmp::max(
-                surface_capabilites.min_image_extent.width,
-                std::cmp::min(
-                    surface_capabilites.max_image_extent.width,
-                    actual_extent.width,
-                ),
-            );
+            if surface_capabilites.current_extent.width != u32::max_value() {
+                surface_capabilites.current_extent
+            } else {
+                use num::clamp;
 
-            actual_extent.height = std::cmp::max(
-                surface_capabilites.min_image_extent.height,
-                std::cmp::min(
-                    surface_capabilites.max_image_extent.height,
-                    actual_extent.height,
-                ),
-            );
+                let window_size = self.window_extent.unwrap();
+                println!(
+                    "\t\tInner Window Size: ({}, {})",
+                    window_size.width, window_size.height
+                );
 
-            return actual_extent;
+                vk::Extent2D {
+                    width: clamp(
+                        window_size.width as u32,
+                        surface_capabilites.min_image_extent.width,
+                        surface_capabilites.max_image_extent.width,
+                    ),
+                    height: clamp(
+                        window_size.height as u32,
+                        surface_capabilites.min_image_extent.height,
+                        surface_capabilites.max_image_extent.height,
+                    ),
+                }
+            }
         }
     }
 }
@@ -635,10 +687,7 @@ mod tests {
 
         Swapchain::create_image_views(&mut swapchain, &device);
 
-        assert_eq!(
-            swapchain.swapchain_image_views.as_ref().unwrap().len() > 0,
-            true
-        );
+        assert_eq!(swapchain.swapchain_image_views.len() > 0, true);
     }
 
     #[test]
