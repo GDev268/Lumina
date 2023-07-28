@@ -6,9 +6,9 @@ use crate::engine::{
 use ash::vk;
 use glfw::Glfw;
 
-struct Renderer {
+pub struct Renderer {
     swapchain: Swapchain,
-    command_buffers: Vec<vk::CommandBuffer>,
+    pub command_buffers: Vec<vk::CommandBuffer>,
     current_image_index: u32,
     current_frame_index: i32,
     is_frame_started: bool,
@@ -67,7 +67,7 @@ impl Renderer {
         return vk::CommandBuffer::null();
     }
 
-    pub fn end_frame(&mut self, device: &Device,window: &mut Window,glfw: &mut Glfw) {
+    pub fn end_frame(&mut self, device: &Device, window: &mut Window, glfw: &mut Glfw) {
         assert!(
             self.is_frame_started,
             "Cannot end frame when frame not in progress"
@@ -82,7 +82,9 @@ impl Renderer {
                 .expect("Failed to record command buffer!");
         }
 
-        let result: bool = self.swapchain.submit_command_buffers(device, command_buffer, self.current_image_index);
+        let result: bool =
+            self.swapchain
+                .submit_command_buffers(device, command_buffer, self.current_image_index);
 
         if result || window.was_window_resized() {
             window.reset_window_resized_flag();
@@ -92,9 +94,79 @@ impl Renderer {
         }
     }
 
-    pub fn begin_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer) {}
+    pub fn begin_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer,device: &Device) {
+        assert!(
+            self.is_frame_started,
+            "Cannot begin swapchain renderpass when frame not in progress"
+        );
 
-    pub fn end_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer) {}
+        assert!(
+            command_buffer == self.get_current_command_buffer(),
+            "Can't begin render pass on command buffer from a differnt frame"
+        );
+
+        let mut clear_values: [vk::ClearValue; 2] =
+            [vk::ClearValue::default(), vk::ClearValue::default()];
+
+        clear_values[0].color = vk::ClearColorValue {
+            float32: [0.0, 0.0, 0.0, 1.0],
+        };
+        clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
+        };
+
+        let renderpass_info = vk::RenderPassBeginInfo{
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            render_pass: self.swapchain.get_renderpass(),
+            framebuffer: self.swapchain.get_framebuffer(self.current_image_index as usize),
+            render_area: vk::Rect2D { offset: vk::Offset2D { x:0, y: 0 }, extent: self.swapchain.get_swapchain_extent() },
+            clear_value_count: clear_values.len() as u32,
+            p_clear_values: clear_values.as_ptr()
+        };
+
+        unsafe{
+            device.device().cmd_begin_render_pass(command_buffer, &renderpass_info, vk::SubpassContents::INLINE)
+        }
+
+        let viewport: vk::Viewport = vk::Viewport{
+            x: 0.0,
+            y: 0.0,
+            width: self.swapchain.get_swapchain_extent().width as f32,
+            height: self.swapchain.get_swapchain_extent().height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0
+        };
+
+        let scissor: vk::Rect2D = vk::Rect2D{
+            offset: vk::Offset2D { x: 0, y: 0 },
+            extent: self.swapchain.get_swapchain_extent()
+        };
+
+        unsafe{
+            device.device().cmd_set_viewport(command_buffer, 0, &[viewport]);
+            device.device().cmd_set_scissor(command_buffer, 0, &[scissor]);
+        }
+
+
+    }
+
+    pub fn end_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer,device: &Device) {
+        assert!(
+            self.is_frame_started,
+            "Cannot end swapchain renderpass when frame not in progress"
+        );
+
+        assert!(
+            command_buffer == self.get_current_command_buffer(),
+            "Can't end render pass on command buffer from a differnt frame"
+        );
+
+        unsafe{
+            device.device().cmd_end_render_pass(command_buffer);
+        }
+    }
 
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {
@@ -115,7 +187,11 @@ impl Renderer {
         return command_buffers;
     }
 
-    fn free_command_buffers() {}
+    fn free_command_buffers(&self,device: &Device) {
+        unsafe{
+            device.device().free_command_buffers(device.get_command_pool(), &self.command_buffers);
+        }
+    }
 
     fn recreate_swapchain(
         window: &Window,

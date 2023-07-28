@@ -3,6 +3,7 @@ mod graphics;
 mod engine;
 
 use graphics::pipeline::{Pipeline, PipelineConfiguration};
+use graphics::renderer::Renderer;
 use engine::{device::Device, swapchain::Swapchain,window::Window};
 use ash::vk;
 use data::buffer::Buffer;
@@ -22,7 +23,6 @@ fn main() {
 
     let window = Window::new(&mut glfw, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window, &glfw);
-    let swapchain = Swapchain::new(&device, window.get_extent());
  
     while !window._window.should_close() {
         glfw.poll_events();
