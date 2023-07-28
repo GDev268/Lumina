@@ -5,7 +5,7 @@ use ash::{
 };
 use std::ptr::{self};
 
-const MAX_FRAMES_IN_FLIGHT: usize = 3;
+pub const MAX_FRAMES_IN_FLIGHT: usize = 3;
 
 struct SwapchainKHR {
     swapchain_loader: ash::extensions::khr::Swapchain,
@@ -44,17 +44,17 @@ impl Swapchain {
     pub fn renew(
         device: &Device,
         window_extent: vk::Extent2D,
-        previous: &mut Swapchain,
+        previous: &Swapchain,
     ) -> Swapchain {
         let mut swapchain = Swapchain::default();
 
-        Swapchain::init(&mut swapchain, Some(previous), device);
+        Swapchain::init(&mut swapchain, Some(previous.swapchain.as_ref().unwrap().swapchain), device);
 
         return swapchain;
     }
 
-    fn init(self: &mut Swapchain, old_swapchain: Option<&mut Swapchain>, device: &Device) {
-        Swapchain::create_swapchain(self, device, None);
+    fn init(self: &mut Swapchain, old_swapchain: Option<vk::SwapchainKHR>, device: &Device) {
+        Swapchain::create_swapchain(self, device, old_swapchain);
         Swapchain::create_image_views(self, device);
         Swapchain::create_renderpass(self, device);
         Swapchain::create_depth_resources(self, device);
@@ -268,7 +268,7 @@ impl Swapchain {
     fn create_swapchain(
         self: &mut Swapchain,
         device: &Device,
-        old_swapchain: Option<&SwapchainKHR>,
+        old_swapchain: Option<vk::SwapchainKHR>,
     ) {
         let swapchain_support: SwapChainSupportDetails = device.get_swapchain_support();
 
@@ -306,6 +306,13 @@ impl Swapchain {
             }
         };
 
+        let old_swapchain = if old_swapchain.is_none() {
+            vk::SwapchainKHR::null()
+        }
+        else{
+            old_swapchain.unwrap()
+        };
+
         let create_info = vk::SwapchainCreateInfoKHR{
             s_type: vk::StructureType::SWAPCHAIN_CREATE_INFO_KHR,
             p_next: std::ptr::null(),
@@ -323,7 +330,7 @@ impl Swapchain {
             composite_alpha: vk::CompositeAlphaFlagsKHR::OPAQUE,
             present_mode: present_mode,
             clipped: vk::TRUE,
-            old_swapchain: vk::SwapchainKHR::null(),
+            old_swapchain: old_swapchain,
             image_array_layers: 1
         };
 

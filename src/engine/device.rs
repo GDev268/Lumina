@@ -410,7 +410,7 @@ impl Device {
                 self.entry.as_ref().unwrap(),
                 self.instance.as_ref().unwrap(),
             ),
-            _surface: window.createWindowSurface(
+            _surface: window.create_window_surface(
                 self.instance.as_ref().unwrap(),
                 self.entry.as_ref().unwrap(),
             ),

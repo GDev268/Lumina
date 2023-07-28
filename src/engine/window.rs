@@ -6,8 +6,8 @@ use glfw::{Action, Context, Key,Glfw, WindowEvent};
 pub struct Window {
     pub _window: glfw::Window,
     pub events:Receiver<(f64, WindowEvent)>,
-    pub width: u32,
-    pub height: u32,
+    pub width: i32,
+    pub height: i32,
     pub framebuffer_resized: bool,
     pub window_name: String,
 }
@@ -24,29 +24,37 @@ impl Window {
         return Self {
             _window: window,
             events:events,
-            width: width,
-            height: height,
+            width: width as i32,
+            height: height as i32,
             framebuffer_resized: false,
             window_name: String::from(title),
         };
     }
 
-    pub fn getExtent(&self) -> vk::Extent2D {
+    pub fn should_close(&self) -> bool{
+        return self._window.should_close();
+    }
+
+    pub fn get_extent(&self) -> vk::Extent2D {
         return vk::Extent2D {
             width: self.width as u32,
             height: self.height as u32,
         };
     }
 
-    pub fn resetWindowResizedFlag(&self) -> bool {
+    pub fn was_window_resized(&self) -> bool {
         return self.framebuffer_resized;
     }
 
-    pub fn getWindow(&self) -> &glfw::Window {
+    pub fn reset_window_resized_flag(&mut self) {
+        self.framebuffer_resized = false;
+    }
+
+    pub fn get_window(&self) -> &glfw::Window {
         return &self._window;
     }
 
-    pub fn createWindowSurface(
+    pub fn create_window_surface(
         &self,
         instance: &ash::Instance,
         entry: &ash::Entry,
@@ -64,5 +72,9 @@ impl Window {
             }
     }
 
-    fn framebufferResizeCallback(window: &Glfw, width: i16, height: i16) {}
+    pub fn framebuffer_resize_callback(window:&mut Window,width: i32, height: i32) {
+        window.framebuffer_resized = true;
+        window.width = width;
+        window.height = height;
+    }
 }
