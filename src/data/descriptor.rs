@@ -1,7 +1,9 @@
-use ash::{vk, Device};
+use crate::engine::device::Device;
+use ash::vk;
 use std::{collections::HashMap, hash};
 
 struct Descriptor {
+    descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
 }
 
@@ -42,12 +44,105 @@ impl Descriptor {
     pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
         let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
             bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
+
+        let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo {
+            s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::DescriptorSetLayoutCreateFlags::empty(),
+            binding_count: set_layout_bindings.len() as u32,
+            p_bindings: set_layout_bindings.as_ptr(),
+        };
+
+        let descriptor_set_layout: vk::DescriptorSetLayout = unsafe {
+            device
+                .device()
+                .create_descriptor_set_layout(&descriptor_set_layout_info, None)
+                .expect("Failed to create descriptor set layout")
+        };
+
+        return Self {
+            descriptor_set_layout: descriptor_set_layout,
+            bindings: bindings,
+        };
     }
 }
 
-struct DescriptorPool {}
+struct PoolConfig {
+    pool_sizes: Vec<vk::DescriptorPoolSize>,
+    max_sets: u32,
+    pool_flags: vk::DescriptorPoolCreateFlags,
+}
 
-impl DescriptorPool {}
+impl PoolConfig {
+    pub fn new() -> Self {
+        return Self {
+            pool_sizes: Vec::new(),
+            max_sets: 1000,
+            pool_flags: vk::DescriptorPoolCreateFlags::empty(),
+        };
+    }
+
+    pub fn add_pool_size(&mut self, descriptor_type: vk::DescriptorPoolSize, count: u32) {
+        self.pool_sizes
+            .extend(vec![descriptor_type; count as usize]);
+    }
+
+    pub fn set_pool_flags(&mut self, flags: vk::DescriptorPoolCreateFlags) {
+        self.pool_flags = flags;
+    }
+
+    pub fn set_max_sets(&mut self, sets: u32) {
+        self.max_sets = sets;
+    }
+
+    pub fn build(&self,device:&Device) -> DescriptorPool {
+        return DescriptorPool::new(device,self.max_sets,self.pool_flags,&self.pool_sizes);
+    }
+}
+
+struct DescriptorPool {
+    descriptor_pool:vk::DescriptorPool
+}
+
+impl DescriptorPool {
+    pub fn new(
+        device: &Device,
+        max_sets: u32,
+        pool_flags: vk::DescriptorPoolCreateFlags,
+        pool_sizes: &Vec<vk::DescriptorPoolSize>,
+    ) -> Self {
+        let descriptor_pool_info: vk::DescriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo{
+            s_type: vk::StructureType::DESCRIPTOR_POOL_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: pool_flags,
+            max_sets: max_sets,
+            pool_size_count: pool_sizes.len() as u32,
+            p_pool_sizes: pool_sizes.as_ptr()
+        };
+
+        let descriptor_pool: vk::DescriptorPool = unsafe {
+            device.device().create_descriptor_pool(&descriptor_pool_info, None).expect("Failed to create descriptor pool")
+        };
+
+        return Self { descriptor_pool: descriptor_pool };
+    }
+
+    pub fn allocate_descriptor(&self,descriptor_set_layout:vk::DescriptorSetLayout,descriptor:&vk::DescriptorSet){
+        let alloc_info = vk::DescriptorSetAllocateInfo{
+            s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            descriptor_pool: self.descriptor_pool,
+            p_set_layouts: &descriptor_set_layout,
+            descriptor_set_count: 1
+        };
+    }
+
+    pub fn reset_pool(&self,device: &Device){
+        unsafe{
+            device.device().reset_descriptor_pool(self.descriptor_pool, vk::DescriptorPoolResetFlags::empty()).expect("Failed to reset descriptor pool");
+        }
+    }
+}
 
 struct DescriptorWriter {}
 

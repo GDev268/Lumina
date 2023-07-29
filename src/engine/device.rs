@@ -77,7 +77,7 @@ pub struct QueueFamily {
 }
 
 impl QueueFamily {
-    fn isComplete(&self) -> bool {
+    fn is_complete(&self) -> bool {
         return self.graphics_value && self.present_value;
     }
 }
@@ -614,7 +614,7 @@ impl Device {
                 .unwrap()
                 .get_physical_device_features(*physical_device);
 
-            return indices.isComplete()
+            return indices.is_complete()
                 && extensions_supported
                 && swapchain_adequate
                 && !supported_features.sampler_anisotropy.is_zero();
@@ -755,7 +755,7 @@ impl Device {
                     indices.present_value = true;
                 }
 
-                if indices.isComplete() {
+                if indices.is_complete() {
                     break;
                 }
 
