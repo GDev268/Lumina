@@ -140,7 +140,7 @@ impl DescriptorPool {
         &self,
         device: &Device,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) {
+    ) -> vk::DescriptorSet{
         let alloc_info = vk::DescriptorSetAllocateInfo {
             s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
             p_next: std::ptr::null(),
@@ -150,7 +150,8 @@ impl DescriptorPool {
         };
 
         unsafe{
-            device.device().allocate_descriptor_sets(&alloc_info);
+            let result = device.device().allocate_descriptor_sets(&alloc_info).unwrap();
+            return result[0];
         }
     }
 
@@ -239,9 +240,17 @@ impl DescriptorWriter {
         self.writers.push(write);
     }
 
-    pub fn build(&self,set: vk::DescriptorSet) {
-        let success = self.pool.allocate_descriptor(self.set_layout.get_descriptor_set_layout(), &set);
+     pub fn build(&self,device:&Device) -> vk::DescriptorSet {
+        return self.pool.allocate_descriptor(device,self.set_layout.get_descriptor_set_layout());
     }
 
-    pub fn overwrite(set: vk::DescriptorSet) {}
+    pub fn overwrite(&mut self,device:&Device,set: vk::DescriptorSet) {
+        for writer in self.writers.iter_mut(){
+            writer.dst_set = set;
+        }
+
+        unsafe{
+            device.device().update_descriptor_sets(&self.writers, &[vk::CopyDescriptorSet::default()]);
+        }
+    }
 }
