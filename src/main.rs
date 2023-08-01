@@ -17,6 +17,7 @@ fn main() {
     let window = Window::new(&mut glfw, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window, &glfw);
  
+
     while !window._window.should_close() {
         glfw.poll_events();
         
