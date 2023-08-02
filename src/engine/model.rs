@@ -1,3 +1,5 @@
+use std::ffi::c_void;
+
 use ash::vk;
 
 use crate::data::buffer::Buffer;
@@ -24,26 +26,64 @@ struct Model {
     vertex_buffer: Buffer,
     vertex_count: u32,
     has_index_buffer: bool,
-    index_buffer: Buffer,
+    index_buffer: Option<Buffer>,
     index_count: u32,
     binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
 }
 
 impl Model {
-    pub fn new(device: &Device, builder: Builder) /*-> Self*/
-    {
+    pub fn new(device: &Device, builder: Builder) -> Self {
         let (attributes, bindings) = Model::setup();
 
-        let vertex_buffer = Model::create_vertex_buffers(builder.vertices);
-        let index_buffer = Model::create_index_buffers(builder.indices);
+        let (vertex_buffer, vertex_count) = Model::create_vertex_buffers(builder.vertices, device);
+        let (index_count, has_index_buffer, index_buffer) =
+            Model::create_index_buffers(builder.indices, device);
+
+        return Self {
+            vertex_buffer: vertex_buffer,
+            vertex_count: vertex_count,
+            has_index_buffer: has_index_buffer,
+            index_buffer: index_buffer,
+            index_count: index_count,
+            binding_descriptions: bindings,
+            attribute_descriptions: attributes,
+        };
     }
 
-    pub fn create_model_from_file(device: &Device, file_path: &str) {}
+    pub fn bind(&self, command_buffer: vk::CommandBuffer, device: &Device) {
+        let buffers: [vk::Buffer; 1] = [self.vertex_buffer.get_buffer()];
+        let offsets: [vk::DeviceSize; 1] = [0];
 
-    pub fn bind(command_buffer: vk::CommandBuffer) {}
+        unsafe {
+            device
+                .device()
+                .cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offsets);
 
-    pub fn draw(command_buffer: vk::CommandBuffer) {}
+            if self.has_index_buffer {
+                device.device().cmd_bind_index_buffer(
+                    command_buffer,
+                    self.index_buffer.as_ref().unwrap().get_buffer(),
+                    0,
+                    vk::IndexType::UINT32,
+                );
+            }
+        }
+    }
+
+    pub fn draw(&self, device: &Device, command_buffer: vk::CommandBuffer) {
+        unsafe {
+            if self.has_index_buffer {
+                device
+                    .device()
+                    .cmd_draw_indexed(command_buffer, self.index_count, 1, 0, 0, 0);
+            } else {
+                device
+                    .device()
+                    .cmd_draw(command_buffer, self.vertex_count, 1, 0, 0);
+            }
+        }
+    }
 
     pub fn get_attribute_descriptions(&self) -> &Vec<vk::VertexInputAttributeDescription> {
         return &self.attribute_descriptions;
@@ -53,26 +93,84 @@ impl Model {
         return &self.binding_descriptions;
     }
 
-    fn create_vertex_buffers(vertices: Vec<Vertex>, device: &Device) {
+    fn create_vertex_buffers(vertices: Vec<Vertex>, device: &Device) -> (Buffer, u32) {
         let vertex_count = vertices.len() as u32;
         assert!(vertex_count >= 3, "Vertex must be at least 3");
         let buffer_size: vk::DeviceSize =
             (std::mem::size_of::<Vertex>() * vertex_count as usize) as u64;
         let vertex_size = std::mem::size_of::<Vertex>() as u64;
 
-        let staging_buffer: Buffer = Buffer::new(
+        let mut staging_buffer: Buffer = Buffer::new(
             device,
             vertex_size,
             vertex_count,
-            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            None,
+        );
+
+        staging_buffer.map(device, Some(vertex_size), None);
+        staging_buffer.write_to_buffer(&vertices as *const Vec<Vertex> as *mut c_void);
+
+        let vertex_buffer = Buffer::new(
+            device,
+            vertex_size,
+            vertex_count,
+            vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
             None,
         );
 
-        staging_buffer.map(device, size, offset)
+        device.copy_buffer(
+            staging_buffer.get_buffer(),
+            vertex_buffer.get_buffer(),
+            buffer_size,
+        );
+
+        return (vertex_buffer, vertex_count);
     }
 
-    fn create_index_buffers(indices: Vec<u32>) {}
+    fn create_index_buffers(indices: Vec<u32>, device: &Device) -> (u32, bool, Option<Buffer>) {
+        let index_count = indices.len() as u32;
+        let has_index_buffer = index_count > 0;
+
+        if !has_index_buffer {
+            return (0, false, None);
+        }
+
+        let buffer_size: vk::DeviceSize =
+            (std::mem::size_of::<u32>() * index_count as usize) as u64;
+        let index_size = std::mem::size_of::<u32>() as u64;
+
+        let mut staging_buffer = Buffer::new(
+            device,
+            index_size,
+            index_count,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            None,
+        );
+
+        staging_buffer.map(device, Some(index_size), None);
+        staging_buffer.write_to_buffer(&indices as *const Vec<u32> as *mut c_void);
+
+        let index_buffer = Buffer::new(
+            device,
+            index_size,
+            index_count,
+            vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            None,
+        );
+
+        device.copy_buffer(
+            staging_buffer.get_buffer(),
+            index_buffer.get_buffer(),
+            buffer_size,
+        );
+
+        return (index_count, has_index_buffer, Some(index_buffer));
+    }
 
     fn setup() -> (
         Vec<vk::VertexInputAttributeDescription>,

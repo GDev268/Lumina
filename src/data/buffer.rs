@@ -137,6 +137,10 @@ impl Buffer {
         }
     }
 
+    pub fn write_to_buffer(&self,data:*mut c_void){
+
+    }
+
     pub fn get_buffer(&self) -> vk::Buffer {
         return self.buffer.unwrap();
     }

@@ -267,11 +267,97 @@ impl Device {
         return (buffer, buffer_memory);
     }
 
-    pub fn begin_single_time_commands() /*-> vk::CommandBuffer*/ {}
+    pub fn begin_single_time_commands(&self) -> vk::CommandBuffer {
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_pool: self.get_command_pool(),
+            command_buffer_count: 1,
+        };
 
-    pub fn end_single_time_commands() {}
+        let command_buffer = unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .allocate_command_buffers(&alloc_info)
+                .expect("Failed to allocate buffers")[0]
+        };
 
-    pub fn copy_buffer(src_buffer: vk::Buffer, dst_buffer: vk::Buffer, size: vk::DeviceSize) {}
+        let begin_info = vk::CommandBufferBeginInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+            p_inheritance_info: std::ptr::null(),
+        };
+
+        unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin command buffer");
+        };
+
+        return command_buffer;
+    }
+
+    pub fn end_single_time_commands(&self, command_buffer: vk::CommandBuffer) {
+        unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .end_command_buffer(command_buffer)
+                .expect("Failed to end command buffer!");
+
+            let submit_info = vk::SubmitInfo {
+                s_type: vk::StructureType::SUBMIT_INFO,
+                p_next: std::ptr::null(),
+                wait_semaphore_count: u32::default(),
+                p_wait_semaphores: std::ptr::null(),
+                p_wait_dst_stage_mask: std::ptr::null(),
+                command_buffer_count: 1,
+                p_command_buffers: &command_buffer,
+                signal_semaphore_count: u32::default(),
+                p_signal_semaphores: std::ptr::null(),
+            };
+
+            self._device
+                .as_ref()
+                .unwrap()
+                .queue_submit(self.graphics_queue(), &[submit_info], vk::Fence::null())
+                .expect("Failed to submit queue");
+
+            self._device
+                .as_ref()
+                .unwrap()
+                .queue_wait_idle(self.graphics_queue())
+                .expect("Failed to set queue wait idle");
+
+            self._device.as_ref().unwrap().free_command_buffers(self.get_command_pool(), &[command_buffer]);
+        }
+    }
+
+    pub fn copy_buffer(
+        &self,
+        src_buffer: vk::Buffer,
+        dst_buffer: vk::Buffer,
+        size: vk::DeviceSize,
+    ) {
+        let command_buffer: vk::CommandBuffer = self.begin_single_time_commands();
+
+        let copy_region: vk::BufferCopy = vk::BufferCopy{
+            src_offset: 0,
+            dst_offset: 0,
+            size: size
+        };
+
+        unsafe{
+            self._device.as_ref().unwrap().cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &[copy_region]);
+        }
+
+        self.end_single_time_commands(command_buffer);
+    }
 
     pub fn create_image_with_info(
         &self,
