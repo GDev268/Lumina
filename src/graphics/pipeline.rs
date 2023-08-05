@@ -141,8 +141,8 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new(
         device: &Device,
-        vert_file_path: &str,
-        frag_file_path: &str,
+        vert_shader: &vk::ShaderModule,
+        frag_shader: &vk::ShaderModule,
         pipeline_config: PipelineConfiguration,
     ) -> Self {
         assert!(
@@ -155,12 +155,6 @@ impl Pipeline {
         );
 
         let mut pipeline = Pipeline::default();
-
-        let vert_code = Pipeline::read_file(vert_file_path);
-        let frag_code = Pipeline::read_file(frag_file_path);
-
-        pipeline.vert_shader_module = Pipeline::create_shader_module(vert_code, device);
-        pipeline.frag_shader_module = Pipeline::create_shader_module(frag_code, device);
 
         let mut shader_stages: [vk::PipelineShaderStageCreateInfo; 2] = [
             vk::PipelineShaderStageCreateInfo::default(),
@@ -241,31 +235,6 @@ impl Pipeline {
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
                 self.graphics_pipeline.unwrap(),
-            );
-        }
-    }
-
-    pub fn read_file(filepath: &str) -> Vec<u8> {
-        let file = File::open(filepath).expect("Failed to read the file!");
-
-        return file.bytes().filter_map(|byte| byte.ok()).collect();
-    }
-
-    pub fn create_shader_module(code: Vec<u8>, device: &Device) -> Option<vk::ShaderModule> {
-        let create_info: vk::ShaderModuleCreateInfo = vk::ShaderModuleCreateInfo {
-            s_type: vk::StructureType::SHADER_MODULE_CREATE_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::ShaderModuleCreateFlags::empty(),
-            code_size: code.len(),
-            p_code: code.as_ptr() as *const u32,
-        };
-
-        unsafe {
-            return Some(
-                device
-                    .device()
-                    .create_shader_module(&create_info, None)
-                    .expect("Failed to create shader module!"),
             );
         }
     }
