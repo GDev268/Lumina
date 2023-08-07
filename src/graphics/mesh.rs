@@ -13,16 +13,7 @@ struct Vertex {
     uv: glam::Vec2,
 }
 
-struct Builder {
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
-}
-
-impl Builder {
-    pub fn load_model(file_path: &str) {}
-}
-
-struct Model {
+struct Mesh {
     vertex_buffer: Buffer,
     vertex_count: u32,
     has_index_buffer: bool,
@@ -32,13 +23,13 @@ struct Model {
     attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
 }
 
-impl Model {
-    pub fn new(device: &Device, builder: Builder) -> Self {
-        let (attributes, bindings) = Model::setup();
+impl Mesh {
+    pub fn new(device: &Device,vertices: Vec<Vertex>,indices: Vec<u32>) -> Self {
+        let (attributes, bindings) = Mesh::setup();
 
-        let (vertex_buffer, vertex_count) = Model::create_vertex_buffers(builder.vertices, device);
+        let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices, device);
         let (index_count, has_index_buffer, index_buffer) =
-            Model::create_index_buffers(builder.indices, device);
+            Mesh::create_index_buffers(indices, device);
 
         return Self {
             vertex_buffer: vertex_buffer,

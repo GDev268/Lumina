@@ -1,6 +1,6 @@
 use crate::engine::{
     device::Device,
-    swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
+    swapchain::{Swapchain, MAX_FRAMES_IN_FLIGHT},
     window::Window,
 };
 use ash::vk;

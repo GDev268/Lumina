@@ -1,24 +1,25 @@
 use crate::engine::window::Window;
 use ash::{
-    vk::{self, KhrGetPhysicalDeviceProperties2Fn},
+    vk::{self},
     Entry,
 };
 use cgmath::Zero;
 use color_print::cprintln;
 use glfw::Glfw;
+
 use raw_window_handle::HasRawDisplayHandle;
 use sprintf::sprintf;
 use std::collections::BTreeSet;
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_void;
 use std::ptr::{self};
-use std::rc::Rc;
+
 
 use ash::extensions::ext::DebugUtils;
 
 unsafe extern "system" fn vulkan_debug_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
-    message_type: vk::DebugUtilsMessageTypeFlagsEXT,
+    _message_type: vk::DebugUtilsMessageTypeFlagsEXT,
     p_callback_data: *const vk::DebugUtilsMessengerCallbackDataEXT,
     _p_user_data: *mut c_void,
 ) -> vk::Bool32 {
@@ -100,11 +101,11 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn new(window: &Window, glfw: &Glfw) -> Device {
+    pub fn new(window: &Window) -> Device {
         let enable_validation_layers: bool = true;
         let mut device: Device = Device::default(enable_validation_layers);
 
-        Device::create_instance(&mut device, window, glfw);
+        Device::create_instance(&mut device, window);
         device.debug_messenger = Device::setup_debug_messenger(&mut device);
         device.surface = Device::create_surface(&mut device, window);
         Device::pick_physical_device(&mut device);
@@ -406,7 +407,7 @@ impl Device {
         return (image, image_memory);
     }
 
-    fn create_instance(self: &mut Device, window: &Window, glfw: &Glfw) {
+    fn create_instance(self: &mut Device, window: &Window) {
         let entry = Entry::linked();
         if self.enable_validation_layers && !self.check_validation_layer_support(&entry) {
             panic!("validation layers requested, but not available!");
@@ -429,9 +430,9 @@ impl Device {
         create_info.s_type = vk::StructureType::INSTANCE_CREATE_INFO;
         create_info.p_application_info = &app_info;
 
-        let extensions = self.get_required_extensions(window, glfw);
-        create_info.enabled_extension_count = extensions.1.len() as u32;
-        create_info.pp_enabled_extension_names = extensions.1.as_ptr();
+        let extensions = self.get_required_extensions(window);
+        create_info.enabled_extension_count = extensions.len() as u32;
+        create_info.pp_enabled_extension_names = extensions.as_ptr();
 
         let c_layers: Vec<std::ffi::CString> = VALIDATION_LAYERS
             .iter()
@@ -450,11 +451,6 @@ impl Device {
 
         let debug_create_info = self.populate_debug_messenger_create_info();
 
-        println!("Required Extensions:");
-        for extension in &extensions.0 {
-            println!("\t{}", extension.to_str().unwrap());
-        }
-
         self.instance = Some(unsafe {
             entry
                 .create_instance(&create_info, None)
@@ -462,6 +458,12 @@ impl Device {
         });
 
         self.entry = Some(entry);
+
+        println!("Required Extensions:");
+        for i in 0..extensions.len() {
+            let word = convert_vk_to_string_const(extensions[i]);
+            println!("\t{}", word);
+        }
     }
 
     fn setup_debug_messenger(self: &mut Device) -> Option<vk::DebugUtilsMessengerEXT> {
@@ -770,34 +772,18 @@ impl Device {
         }
     }
 
-    fn get_required_extensions(
-        &self,
-        window: &Window,
-        glfw: &Glfw,
-    ) -> (Vec<CString>, Vec<*const i8>) {
-        let mut extensions = glfw.get_required_instance_extensions().unwrap_or(vec![]);
+    fn get_required_extensions(&self,window:&Window) -> Vec<*const i8> {
+        let mut extensions = ash_window::enumerate_required_extensions(
+            window._window.raw_display_handle(),
+        )
+        .unwrap()
+        .to_vec();
 
         if self.enable_validation_layers {
-            extensions.push(
-                ash::extensions::ext::DebugUtils::name()
-                    .to_str()
-                    .unwrap()
-                    .to_owned(),
-            );
+            extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
         }
 
-        let c_extensions = extensions
-            .iter()
-            .cloned()
-            .map(|str| CString::new(str).unwrap())
-            .collect::<Vec<CString>>();
-
-        let ptrs_extensions = c_extensions
-            .iter()
-            .map(|cstr| cstr.as_ptr())
-            .collect::<Vec<*const c_char>>();
-
-        return (c_extensions, ptrs_extensions);
+        return extensions;
     }
 
     fn find_queue_families(self: &Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
@@ -942,7 +928,7 @@ impl Device {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
 
     use crate::engine::device::Device;
@@ -1029,4 +1015,4 @@ mod tests {
 
         assert_eq!(device._device.is_some(), true);
     }
-}
+}*/

@@ -1,11 +1,11 @@
-use std::f32::consts::PI;
-use std::fs;
+
+
 
 use crate::engine::device::Device;
-use ash::vk::{self, ShaderModule};
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
+use ash::vk::{self};
+
+
+
 
 pub struct PipelineConfiguration {
     pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
@@ -141,8 +141,8 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new(
         device: &Device,
-        vert_shader: &vk::ShaderModule,
-        frag_shader: &vk::ShaderModule,
+        _vert_shader: &vk::ShaderModule,
+        _frag_shader: &vk::ShaderModule,
         pipeline_config: PipelineConfiguration,
     ) -> Self {
         assert!(

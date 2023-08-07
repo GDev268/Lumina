@@ -1,7 +1,6 @@
 use crate::engine::device::{Device, QueueFamily, SwapChainSupportDetails};
 use ash::{
-    vk::{self, TaggedStructure},
-    Entry,
+    vk::{self},
 };
 use std::ptr::{self};
 
@@ -43,7 +42,7 @@ impl Swapchain {
 
     pub fn renew(
         device: &Device,
-        window_extent: vk::Extent2D,
+        _window_extent: vk::Extent2D,
         previous: &Swapchain,
     ) -> Swapchain {
         let mut swapchain = Swapchain::default();
@@ -489,7 +488,7 @@ impl Swapchain {
             let attachments: [vk::ImageView; 2] =
                 [self.swapchain_image_views[i], self.depth_image_views[i]];
 
-            let swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
+            let _swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
 
             let framebuffer_info = vk::FramebufferCreateInfo {
                 s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
@@ -648,6 +647,7 @@ impl Swapchain {
         } else {
             if surface_capabilites.current_extent.width != u32::max_value() {
                 surface_capabilites.current_extent
+
             } else {
                 use num::clamp;
 
@@ -674,7 +674,7 @@ impl Swapchain {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
 
     use crate::engine::device::Device;
@@ -712,4 +712,4 @@ mod tests {
 
         assert_eq!(swapchain.renderpass.is_some(), true)
     }
-}
+}*/

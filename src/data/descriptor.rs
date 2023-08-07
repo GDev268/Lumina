@@ -1,6 +1,6 @@
 use crate::engine::device::Device;
 use ash::vk;
-use std::{collections::HashMap, hash};
+use std::{collections::HashMap};
 
 struct DescriptorSetLayout {
     descriptor_set_layout: vk::DescriptorSetLayout,

@@ -1,7 +1,6 @@
 use crate::engine::device::Device;
 use ash::vk;
 use std::{
-    any::{Any, TypeId},
     ffi::c_void,
 };
 
@@ -137,7 +136,7 @@ impl Buffer {
         }
     }
 
-    pub fn write_to_buffer(&self,data:*mut c_void){
+    pub fn write_to_buffer(&self,_data:*mut c_void){
 
     }
 
@@ -146,8 +145,8 @@ impl Buffer {
     }
 
     pub fn descriptor_info(size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) {
-        let mut new_size: vk::DeviceSize;
-        let mut new_offset: vk::DeviceSize;
+        let new_size: vk::DeviceSize;
+        let new_offset: vk::DeviceSize;
 
         if size.is_none() {
             new_size = vk::WHOLE_SIZE;
