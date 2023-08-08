@@ -7,10 +7,10 @@ use crate::engine::device::Device;
 use crate::offset_of;
 
 pub struct Vertex {
-    position: glam::Vec3,
-    color: glam::Vec3,
-    normal: glam::Vec3,
-    uv: glam::Vec2,
+    pub position: glam::Vec3,
+    pub color: glam::Vec3,
+    pub normal: glam::Vec3,
+    pub uv: glam::Vec2,
 }
 
 pub struct Mesh {

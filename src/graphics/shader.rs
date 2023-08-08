@@ -4,7 +4,7 @@ use ash::vk;
 
 use crate::engine::device::Device;
 
-struct Shader {
+pub struct Shader {
     vert_module: vk::ShaderModule,
     frag_module: vk::ShaderModule,
 }
