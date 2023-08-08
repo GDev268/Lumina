@@ -4,7 +4,6 @@ use crate::engine::{
     window::Window,
 };
 use ash::vk;
-use glfw::Glfw;
 
 pub struct Renderer {
     swapchain: Swapchain,
@@ -18,10 +17,9 @@ impl Renderer {
     pub fn new(
         window: &Window,
         device: &Device,
-        glfw: &mut Glfw,
         swapchain: Option<&Swapchain>,
     ) -> Self {
-        let swapchain = Renderer::recreate_swapchain(window, device, glfw, swapchain);
+        let swapchain = Renderer::recreate_swapchain(window, device, swapchain);
         let command_buffers = Renderer::create_command_buffers(device);
 
         return Self {
@@ -67,7 +65,7 @@ impl Renderer {
         return vk::CommandBuffer::null();
     }
 
-    pub fn end_frame(&mut self, device: &Device, window: &mut Window, glfw: &mut Glfw) {
+    pub fn end_frame(&mut self, device: &Device, window: &mut Window) {
         assert!(
             self.is_frame_started,
             "Cannot end frame when frame not in progress"
@@ -90,7 +88,7 @@ impl Renderer {
             window.reset_window_resized_flag();
 
             let swapchain = &self.swapchain;
-            self.swapchain = Renderer::recreate_swapchain(window, device, glfw, Some(swapchain))
+            self.swapchain = Renderer::recreate_swapchain(window, device, Some(swapchain))
         }
     }
 
@@ -196,14 +194,12 @@ impl Renderer {
     fn recreate_swapchain(
         window: &Window,
         device: &Device,
-        glfw: &mut Glfw,
         swapchain: Option<&Swapchain>,
     ) -> Swapchain {
         let mut extent: vk::Extent2D = window.get_extent();
 
         while extent.width == 0 || extent.height == 0 {
             extent = window.get_extent();
-            glfw.wait_events();
         }
 
         unsafe {

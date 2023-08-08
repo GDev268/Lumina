@@ -51,7 +51,7 @@ pub(super) fn fill_window(window: &Window) {
             .surface(window);
 
         // Fill a buffer with a solid color.
-        const DARK_GRAY: u32 = 0xff0004;
+        const DARK_GRAY: u32 = 0x5aa67c;
         let size = window.inner_size();
 
         surface

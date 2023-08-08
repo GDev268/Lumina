@@ -19,6 +19,7 @@ fn main() {
 
     let window = Window::new(&event_loop, "Hello Vulkan!", 800, 640);
     let _device = Device::new(&window);
+    
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
@@ -35,6 +36,7 @@ fn main() {
             }
             Event::RedrawRequested(_) => {
                 fill::fill_window(&window._window);
+                
             }
             _ => (),
             

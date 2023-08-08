@@ -5,7 +5,6 @@ use ash::{
 };
 use cgmath::Zero;
 use color_print::cprintln;
-use glfw::Glfw;
 
 use raw_window_handle::HasRawDisplayHandle;
 use sprintf::sprintf;
