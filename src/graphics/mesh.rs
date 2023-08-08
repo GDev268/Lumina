@@ -6,14 +6,14 @@ use crate::data::buffer::Buffer;
 use crate::engine::device::Device;
 use crate::offset_of;
 
-struct Vertex {
+pub struct Vertex {
     position: glam::Vec3,
     color: glam::Vec3,
     normal: glam::Vec3,
     uv: glam::Vec2,
 }
 
-struct Mesh {
+pub struct Mesh {
     vertex_buffer: Buffer,
     vertex_count: u32,
     has_index_buffer: bool,
@@ -24,7 +24,7 @@ struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(device: &Device,vertices: Vec<Vertex>,indices: Vec<u32>) -> Self {
+    pub fn new(device: &Device, vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         let (attributes, bindings) = Mesh::setup();
 
         let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices, device);
@@ -203,4 +203,5 @@ impl Mesh {
 
         return (attribute_descriptions, binding_descriptions);
     }
+
 }

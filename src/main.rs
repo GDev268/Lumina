@@ -4,6 +4,7 @@ mod engine;
 mod components;
 
 use engine::{device::Device,window::Window};
+use graphics::{renderer::PhysicalRenderer, mesh::Mesh};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
@@ -19,7 +20,9 @@ fn main() {
 
     let window = Window::new(&event_loop, "Hello Vulkan!", 800, 640);
     let _device = Device::new(&window);
-    
+    let renderer = PhysicalRenderer::new(&window,&_device,None);
+
+    let game_objects:Vec<Mesh> = Vec::new();    
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();

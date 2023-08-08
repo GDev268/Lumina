@@ -5,7 +5,7 @@ use crate::engine::{
 };
 use ash::vk;
 
-pub struct Renderer {
+pub struct PhysicalRenderer {
     swapchain: Swapchain,
     pub command_buffers: Vec<vk::CommandBuffer>,
     current_image_index: u32,
@@ -13,14 +13,14 @@ pub struct Renderer {
     is_frame_started: bool,
 }
 
-impl Renderer {
+impl PhysicalRenderer {
     pub fn new(
         window: &Window,
         device: &Device,
         swapchain: Option<&Swapchain>,
     ) -> Self {
-        let swapchain = Renderer::recreate_swapchain(window, device, swapchain);
-        let command_buffers = Renderer::create_command_buffers(device);
+        let swapchain = PhysicalRenderer::recreate_swapchain(window, device, swapchain);
+        let command_buffers = PhysicalRenderer::create_command_buffers(device);
 
         return Self {
             swapchain: swapchain,
@@ -88,7 +88,7 @@ impl Renderer {
             window.reset_window_resized_flag();
 
             let swapchain = &self.swapchain;
-            self.swapchain = Renderer::recreate_swapchain(window, device, Some(swapchain))
+            self.swapchain = PhysicalRenderer::recreate_swapchain(window, device, Some(swapchain))
         }
     }
 
@@ -217,4 +217,5 @@ impl Renderer {
 
         return new_swapchain;
     }
+
 }
