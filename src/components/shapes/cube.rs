@@ -38,9 +38,9 @@ use crate::{
 
 use crate::components::game_object::GameObject;
 
-struct PushConstantData {
-    model_matrix: glam::Mat4,
-    normal_matrix: glam::Mat4,
+pub struct PushConstantData {
+    pub model_matrix: glam::Mat4,
+    pub normal_matrix: glam::Mat4,
 }
 
 struct Cube {

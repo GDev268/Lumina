@@ -12,13 +12,19 @@ impl DescriptorSetLayout {
         binding: u32,
         descriptor_type: vk::DescriptorType,
         stage_flags: vk::ShaderStageFlags,
-        count: u32,
+        count: Option<u32>,
         hashmap: Option<HashMap<u32, vk::DescriptorSetLayoutBinding>>,
     ) -> HashMap<u32, vk::DescriptorSetLayoutBinding> {
         let mut hashmap: HashMap<u32, vk::DescriptorSetLayoutBinding> = if hashmap.is_none() {
             HashMap::new()
         } else {
             hashmap.unwrap()
+        };
+
+        let count = if count.is_none() {
+            1
+        }else{
+            count.unwrap()
         };
 
         let layout_binding = vk::DescriptorSetLayoutBinding {
