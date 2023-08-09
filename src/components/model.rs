@@ -12,11 +12,6 @@ struct Model{
     game_object:GameObject
 }
 
-trait RootModel{
-
-
-}
-
 impl Model{
     pub fn new() -> Self {
         let game_obj = GameObject::create_game_object();
@@ -41,11 +36,14 @@ impl Model{
         return Mesh::new(device,mesh_vertices,indices);
     }
 
-    pub fn render(shader:Shader){
-
+    pub fn render(&self,device:&Device,shader:Shader){
+        let push = PushConstantData{
+            model_matrix: self.game_object.transform.get_mat4(),
+            normal_matrix: self.game_object.transform.get_normal_matrix()
+        };
     }
 
     pub fn load_model(filepath:String){
-
+        
     }
 }
