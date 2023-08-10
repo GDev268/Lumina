@@ -3,7 +3,7 @@ use crate::{
     graphics::{
         mesh::{Mesh, Vertex},
         shader::Shader,
-    },
+    }, components::game_object::GameObjectTrait,
 };
 
 use crate::components::game_object::GameObject;
@@ -13,9 +13,9 @@ pub struct PushConstantData {
     pub normal_matrix: glam::Mat4,
 }
 
-struct Cube {
+pub struct Cube {
     meshes: Vec<Mesh>,
-    game_object: GameObject,
+    pub game_object: GameObject,
 }
 
 impl Cube {
@@ -32,12 +32,12 @@ impl Cube {
             5, 3, 1, 3, 8, 4, 7, 6, 8, 2, 8, 6, 1, 4, 2, 5, 2, 6, 5, 7, 3, 3, 7, 8, 7, 5, 6, 2, 4,
             8, 1, 3, 4, 5, 1, 2,
         ];
-        let meshes: Vec<Mesh> = vec![Cube::create_mesh_from_array(device,&data,&indices,28)];
+        let meshes: Vec<Mesh> = Vec::new();   /*vec![Cube::create_mesh_from_array(device, &data, &indices, 28)];
         drop(data);
-        drop(indices);
+        drop(indices);*/
         Self {
             meshes,
-            game_object
+            game_object,
         }
     }
 
@@ -48,8 +48,9 @@ impl Cube {
         num_vertices: usize,
     ) -> Mesh {
         let mut mesh_vertices: Vec<Vertex> = Vec::new();
-        let stride = std::mem::size_of::<Vertex>() / std::mem::size_of::<f32>();
+        let stride = (std::mem::size_of::<glam::Vec3>() * 2) / std::mem::size_of::<f32>();
         for i in 0..num_vertices {
+            println!("{}", i * stride + 0);
             let position: glam::Vec3 = glam::vec3(
                 vertices[i * stride + 0],
                 vertices[i * stride + 1],
@@ -57,9 +58,9 @@ impl Cube {
             );
             let uv = glam::vec2(vertices[i * stride + 3], vertices[i * stride + 4]);
             let normal = glam::vec3(
+                vertices[i * stride + 3],
+                vertices[i * stride + 4],
                 vertices[i * stride + 5],
-                vertices[i * stride + 6],
-                vertices[i * stride + 7],
             );
             let color = glam::vec3(1.0, 1.0, 1.0);
 
@@ -79,5 +80,20 @@ impl Cube {
             model_matrix: self.game_object.transform.get_mat4(),
             normal_matrix: self.game_object.transform.get_normal_matrix(),
         };
+    }
+}
+
+impl GameObjectTrait for Cube{
+    fn render(&mut self,device:&Device,game_object:&GameObject){
+        let push = PushConstantData{
+            model_matrix: self.game_object.transform.get_mat4(),
+            normal_matrix: self.game_object.transform.get_normal_matrix()
+        };
+
+
+    }
+
+    fn game_object(&self) -> &GameObject{
+        return &self.game_object;
     }
 }

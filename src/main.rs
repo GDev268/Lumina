@@ -3,6 +3,7 @@ mod graphics;
 mod engine;
 mod components;
 
+use components::{shapes::cube::Cube, game_object, model::Model};
 use engine::{device::Device,window::Window};
 use graphics::{renderer::PhysicalRenderer, mesh::Mesh, shader::Shader};
 use winit::{
@@ -11,7 +12,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::components::game_object::GameObject;
+use crate::components::game_object::{GameObject, GameObjectTrait};
 
 #[path = "testing/fill.rs"]
 mod fill;
@@ -24,6 +25,12 @@ fn main() {
     let _device = Device::new(&window);
     let renderer = PhysicalRenderer::new(&window,&_device,None);
 
+    let game_objects:Vec<GameObject>;
+    let cube = Cube::new(&_device);
+    let model = Model::new();
+    
+    println!("Cube game object ID: {}",cube.game_object().id);
+    println!("Custom model game object ID: {}",model.game_object().id);
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();

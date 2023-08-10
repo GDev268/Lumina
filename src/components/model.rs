@@ -1,15 +1,15 @@
 use crate::{graphics::{mesh::{Mesh, Vertex}, shader::Shader}, engine::device::Device};
 
-use super::game_object::GameObject;
+use super::game_object::{GameObject, GameObjectTrait};
 
 struct PushConstantData {
     model_matrix: glam::Mat4,
     normal_matrix: glam::Mat4,
 }
 
-struct Model{
+pub struct Model{
     meshes:Vec<Mesh>,
-    game_object:GameObject
+    pub game_object:GameObject
 }
 
 impl Model{
@@ -36,14 +36,22 @@ impl Model{
         return Mesh::new(device,mesh_vertices,indices);
     }
 
-    pub fn render(&self,device:&Device,shader:Shader){
+    pub fn load_model(filepath:String){
+        
+    }
+}
+
+impl GameObjectTrait for Model{
+    fn render(&mut self,device:&Device,game_object:&GameObject){
         let push = PushConstantData{
             model_matrix: self.game_object.transform.get_mat4(),
             normal_matrix: self.game_object.transform.get_normal_matrix()
         };
+
+
     }
 
-    pub fn load_model(filepath:String){
-        
+    fn game_object(&self) -> &GameObject{
+        return &self.game_object;
     }
 }

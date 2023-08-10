@@ -8,7 +8,7 @@ use crate::{
 };
 use ash::vk;
 
-use super::pipeline::Pipeline;
+use super::{pipeline::{Pipeline, PipelineConfiguration}, shader::Shader};
 
 pub struct PhysicalRenderer {
     swapchain: Swapchain,
@@ -183,6 +183,7 @@ impl PhysicalRenderer {
     }
 
     pub fn create_pipeline_layout(
+        &self,
         device: &Device,
         set_layout: vk::DescriptorSetLayout,
     ) -> vk::PipelineLayout {
@@ -212,7 +213,13 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline(render_pass: vk::RenderPass) {}
+    pub fn create_pipeline(&self,render_pass: vk::RenderPass,shader:&Shader,device: &Device) -> Pipeline{
+        let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
+        pipeline_config.renderpass = Some(render_pass);
+        pipeline_config.pipeline_layout = Some(self.pipeline_layout);
+        
+        return Pipeline::new(device, &shader.vert_module, &shader.frag_module, pipeline_config);
+    }
 
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {

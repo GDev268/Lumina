@@ -1,3 +1,7 @@
+use std::rc::Rc;
+
+use crate::engine::device::Device;
+
 static mut CURRENT_ID: u32 = 0;
 
 pub struct TransformComponent {
@@ -84,6 +88,11 @@ impl TransformComponent {
     }
 }
 
+pub trait GameObjectTrait{
+    fn render(&mut self,device:&Device,game_object:&GameObject);
+    fn game_object(&self) -> &GameObject;
+}
+
 pub struct GameObject {
     pub id: u32,
     pub tag: String,
@@ -98,6 +107,7 @@ impl GameObject {
         let tag = String::from("Entity");
         let transform = TransformComponent::default();
         let name = String::default();
+
 
         return Self {
             id,
