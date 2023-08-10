@@ -1,8 +1,8 @@
 use crate::engine::device::Device;
 use ash::vk;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
-struct DescriptorSetLayout {
+pub struct DescriptorSetLayout {
     descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
 }
@@ -21,11 +21,7 @@ impl DescriptorSetLayout {
             hashmap.unwrap()
         };
 
-        let count = if count.is_none() {
-            1
-        }else{
-            count.unwrap()
-        };
+        let count = if count.is_none() { 1 } else { count.unwrap() };
 
         let layout_binding = vk::DescriptorSetLayoutBinding {
             binding: binding,
@@ -72,12 +68,12 @@ impl DescriptorSetLayout {
         };
     }
 
-    pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout{
+    pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         return self.descriptor_set_layout;
     }
 }
 
-struct PoolConfig {
+pub struct PoolConfig {
     pool_sizes: Vec<vk::DescriptorPoolSize>,
     max_sets: u32,
     pool_flags: vk::DescriptorPoolCreateFlags,
@@ -92,9 +88,11 @@ impl PoolConfig {
         };
     }
 
-    pub fn add_pool_size(&mut self, descriptor_type: vk::DescriptorPoolSize, count: u32) {
-        self.pool_sizes
-            .extend(vec![descriptor_type; count as usize]);
+    pub fn add_pool_size(&mut self, descriptor_type: vk::DescriptorType, count: u32) {
+        self.pool_sizes.push(vk::DescriptorPoolSize {
+            ty: descriptor_type,
+            descriptor_count: count,
+        });
     }
 
     pub fn set_pool_flags(&mut self, flags: vk::DescriptorPoolCreateFlags) {
@@ -110,8 +108,8 @@ impl PoolConfig {
     }
 }
 
-struct DescriptorPool {
-    descriptor_pool: vk::DescriptorPool,
+pub struct DescriptorPool {
+    pub descriptor_pool: vk::DescriptorPool,
 }
 
 impl DescriptorPool {
@@ -146,7 +144,7 @@ impl DescriptorPool {
         &self,
         device: &Device,
         descriptor_set_layout: vk::DescriptorSetLayout,
-    ) -> vk::DescriptorSet{
+    ) -> vk::DescriptorSet {
         let alloc_info = vk::DescriptorSetAllocateInfo {
             s_type: vk::StructureType::DESCRIPTOR_SET_ALLOCATE_INFO,
             p_next: std::ptr::null(),
@@ -155,8 +153,11 @@ impl DescriptorPool {
             descriptor_set_count: 1,
         };
 
-        unsafe{
-            let result = device.device().allocate_descriptor_sets(&alloc_info).unwrap();
+        unsafe {
+            let result = device
+                .device()
+                .allocate_descriptor_sets(&alloc_info)
+                .unwrap();
             return result[0];
         }
     }
@@ -171,92 +172,109 @@ impl DescriptorPool {
     }
 }
 
-struct DescriptorWriter {
-    set_layout: DescriptorSetLayout,
-    pool: DescriptorPool,
+pub struct DescriptorWriter {
     writers: Vec<vk::WriteDescriptorSet>,
 }
 
 impl DescriptorWriter {
-    pub fn new(set_layout: DescriptorSetLayout, pool: DescriptorPool) -> Self {
+    pub fn new() -> Self {
         return Self {
-            set_layout: set_layout,
-            pool: pool,
             writers: Vec::new(),
         };
     }
 
-    pub fn write_buffer(&mut self, binding: u32, buffer_info: vk::DescriptorBufferInfo) {
+    pub fn write_buffer(
+        &mut self,
+        binding: u32,
+        buffer_info: vk::DescriptorBufferInfo,
+        set_layout: &DescriptorSetLayout,
+    ) {
         assert!(
-            self.set_layout.bindings.len() == 1,
+            set_layout.bindings.len() == 1,
             "Layout doesn't contain the specified binding"
         );
 
-        let binding_description = self
-            .set_layout
+        let binding_description = set_layout
             .bindings
             .get(&binding)
             .expect("Failed current binding doesn't exist!");
 
-        assert!(binding_description.descriptor_count == 1, "Binding is single descriptor info, expects multiple");
+        assert!(
+            binding_description.descriptor_count == 1,
+            "Binding is single descriptor info, expects multiple"
+        );
 
-        let write = vk::WriteDescriptorSet{
+        let write = vk::WriteDescriptorSet {
             s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
             p_next: std::ptr::null(),
             dst_set: vk::DescriptorSet::null(),
-            dst_binding:binding,
+            dst_binding: binding,
             dst_array_element: 0,
             descriptor_count: 1,
-            descriptor_type:binding_description.descriptor_type,
+            descriptor_type: binding_description.descriptor_type,
             p_image_info: std::ptr::null(),
             p_buffer_info: &buffer_info,
-            p_texel_buffer_view: std::ptr::null()
+            p_texel_buffer_view: std::ptr::null(),
         };
 
         self.writers.push(write);
     }
 
-    pub fn write_image(&mut self,binding: u32, image_info: vk::DescriptorImageInfo) {
+    pub fn write_image(
+        &mut self,
+        binding: u32,
+        image_info: vk::DescriptorImageInfo,
+        set_layout: DescriptorSetLayout,
+    ) {
         assert!(
-            self.set_layout.bindings.len() == 1,
+            set_layout.bindings.len() == 1,
             "Layout doesn't contain the specified binding"
         );
 
-        let binding_description = self
-            .set_layout
+        let binding_description = set_layout
             .bindings
             .get(&binding)
             .expect("Failed current binding doesn't exist!");
 
-        assert!(binding_description.descriptor_count == 1, "Binding is single descriptor info, expects multiple");
+        assert!(
+            binding_description.descriptor_count == 1,
+            "Binding is single descriptor info, expects multiple"
+        );
 
-        let write = vk::WriteDescriptorSet{
+        let write = vk::WriteDescriptorSet {
             s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
             p_next: std::ptr::null(),
             dst_set: vk::DescriptorSet::null(),
-            dst_binding:binding,
+            dst_binding: binding,
             dst_array_element: 0,
             descriptor_count: 1,
-            descriptor_type:binding_description.descriptor_type,
+            descriptor_type: binding_description.descriptor_type,
             p_image_info: &image_info,
             p_buffer_info: std::ptr::null(),
-            p_texel_buffer_view: std::ptr::null()
+            p_texel_buffer_view: std::ptr::null(),
         };
 
         self.writers.push(write);
     }
 
-     pub fn build(&self,device:&Device) -> vk::DescriptorSet {
-        return self.pool.allocate_descriptor(device,self.set_layout.get_descriptor_set_layout());
+    pub fn build(
+        &self,
+        device: &Device,
+        descriptor_set_layout: vk::DescriptorSetLayout,
+        pool: &DescriptorPool,
+    ) -> vk::DescriptorSet {
+        return pool.allocate_descriptor(device, descriptor_set_layout);
     }
 
-    pub fn overwrite(&mut self,device:&Device,set: vk::DescriptorSet) {
-        for writer in self.writers.iter_mut(){
+    pub fn overwrite(&mut self, device: &Device, set: vk::DescriptorSet) {
+        for writer in self.writers.iter_mut() {
             writer.dst_set = set;
         }
 
-        unsafe{
-            device.device().update_descriptor_sets(&self.writers, &[vk::CopyDescriptorSet::default()]);
+        unsafe {
+            device
+                .device()
+                .update_descriptor_sets(&self.writers, &[vk::CopyDescriptorSet::default()]);
         }
     }
 }

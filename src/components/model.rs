@@ -42,13 +42,13 @@ impl Model{
 }
 
 impl GameObjectTrait for Model{
-    fn render(&mut self,device:&Device,game_object:&GameObject){
+    fn render(&self,device:&Device,game_object:&GameObject){
         let push = PushConstantData{
-            model_matrix: self.game_object.transform.get_mat4(),
-            normal_matrix: self.game_object.transform.get_normal_matrix()
+            model_matrix: game_object.transform.get_mat4(),
+            normal_matrix: game_object.transform.get_normal_matrix()
         };
 
-
+        println!("{}",game_object.transform.get_mat4());
     }
 
     fn game_object(&self) -> &GameObject{

@@ -1,10 +1,18 @@
-struct Camera {
+pub struct Camera {
     projection_matrix: glam::Mat4,
     view_matrix: glam::Mat4,
     inverse_view_matrix: glam::Mat4,
 }
 
 impl Camera {
+    pub fn new() -> Self {
+        return Self {
+            projection_matrix: glam::Mat4::default(),
+            view_matrix: glam::Mat4::default(),
+            inverse_view_matrix: glam::Mat4::default(),
+        };
+    }
+
     pub fn set_orthographic_projection(
         &mut self,
         left: f32,
@@ -23,7 +31,7 @@ impl Camera {
         self.projection_matrix.w_axis.z = -near / (far - near);
     }
 
-    pub fn set_perspective_projection(&mut self,fovy: f32, aspect: f32, near: f32, far: f32) {
+    pub fn set_perspective_projection(&mut self, fovy: f32, aspect: f32, near: f32, far: f32) {
         assert!((aspect - f32::EPSILON) > 0.0);
 
         let tan_half_fovy = (fovy / 2.0).tan();
@@ -35,13 +43,18 @@ impl Camera {
         self.projection_matrix.w_axis.z = -(far * near) / (far - near);
     }
 
-    pub fn set_view_direction(&mut self,position: glam::Vec3, direction: glam::Vec3, up: Option<glam::Vec3>) {
-        let up:glam::Vec3 = if up.is_none() {
+    pub fn set_view_direction(
+        &mut self,
+        position: glam::Vec3,
+        direction: glam::Vec3,
+        up: Option<glam::Vec3>,
+    ) {
+        let up: glam::Vec3 = if up.is_none() {
             glam::Vec3::ONE
-        }else{
+        } else {
             up.unwrap()
         };
-        
+
         let w: glam::Vec3 = direction.normalize();
         let u = w.cross(up);
         let v = w.cross(u);
@@ -61,7 +74,12 @@ impl Camera {
         );
     }
 
-    pub fn set_view_target(&mut self,position: glam::Vec3, target: glam::Vec3, up: Option<glam::Vec3>) {
+    pub fn set_view_target(
+        &mut self,
+        position: glam::Vec3,
+        target: glam::Vec3,
+        up: Option<glam::Vec3>,
+    ) {
         self.set_view_direction(position, target - position, up);
     }
 
@@ -72,7 +90,7 @@ impl Camera {
         let s2 = rotation.x.sin();
         let c1 = rotation.y.cos();
         let s1 = rotation.y.sin();
-    
+
         let u = glam::Vec3::new(c1 * c3 + s1 * s2 * s3, c2 * s3, c1 * s2 * s3 - c3 * s1);
         let v = glam::Vec3::new(c3 * s1 * s2 - c1 * s3, c2 * c3, c1 * c3 * s2 + s1 * s3);
         let w = glam::Vec3::new(c2 * s1, -s2, c1 * c2);

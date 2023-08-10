@@ -144,9 +144,10 @@ impl Buffer {
         return self.buffer.unwrap();
     }
 
-    pub fn descriptor_info(size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) {
-        let new_size: vk::DeviceSize;
-        let new_offset: vk::DeviceSize;
+
+    pub fn descriptor_info(&self,size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) -> vk::DescriptorBufferInfo {
+        let mut new_size: vk::DeviceSize = 0;
+        let mut new_offset: vk::DeviceSize = 0;
 
         if size.is_none() {
             new_size = vk::WHOLE_SIZE;
@@ -155,5 +156,8 @@ impl Buffer {
         if offset.is_none() {
             new_offset = 0;
         }
+
+        return vk::DescriptorBufferInfo { buffer: self.buffer.unwrap(), offset: new_offset, range: new_size };
     }
+
 }

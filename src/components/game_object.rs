@@ -89,7 +89,7 @@ impl TransformComponent {
 }
 
 pub trait GameObjectTrait{
-    fn render(&mut self,device:&Device,game_object:&GameObject);
+    fn render(&self,device:&Device,game_object:&GameObject);
     fn game_object(&self) -> &GameObject;
 }
 

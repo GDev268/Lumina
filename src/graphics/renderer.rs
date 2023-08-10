@@ -40,7 +40,7 @@ impl PhysicalRenderer {
         return self.swapchain.get_renderpass();
     }
 
-    pub fn get_aspect_ratio(&self) -> f64 {
+    pub fn get_aspect_ratio(&self) -> f32 {
         return self.get_aspect_ratio();
     }
 
