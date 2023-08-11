@@ -2,7 +2,7 @@ use crate::{
     components::shapes::cube::PushConstantData,
     engine::{
         device::Device,
-        swapchain::{Swapchain, MAX_FRAMES_IN_FLIGHT},
+        swapchain::{Swapchain, MAX_FRAMES_IN_FLIGHT, self},
         window::Window,
     },
 };
@@ -13,9 +13,9 @@ use super::{pipeline::{Pipeline, PipelineConfiguration}, shader::Shader};
 pub struct PhysicalRenderer {
     swapchain: Swapchain,
     pub command_buffers: Vec<vk::CommandBuffer>,
-    current_image_index: u32,
+    pub current_image_index: u32,
     current_frame_index: i32,
-    is_frame_started: bool,
+    pub is_frame_started: bool,
     pipeline: Option<Pipeline>,
     pipeline_layout: vk::PipelineLayout,
 }
@@ -41,7 +41,7 @@ impl PhysicalRenderer {
     }
 
     pub fn get_aspect_ratio(&self) -> f32 {
-        return self.get_aspect_ratio();
+        return self.swapchain.extent_aspect_ratio();
     }
 
     pub fn is_frame_in_progress(&self) -> bool {
@@ -66,8 +66,29 @@ impl PhysicalRenderer {
         return self.current_frame_index;
     }
 
-    pub fn begin_frame(&self) -> vk::CommandBuffer {
-        return vk::CommandBuffer::null();
+    pub fn begin_frame(&mut self,device: &Device,window: &Window) -> vk::CommandBuffer {
+        assert!(!self.is_frame_started,"Can't begin frame while it is already in progress");
+
+        if self.swapchain.acquire_next_image(device).is_err() {
+            self.swapchain = PhysicalRenderer::recreate_swapchain(window,device,Some(&self.swapchain));
+            return vk::CommandBuffer::null();
+        };
+
+        self.is_frame_started = true;
+
+        let command_buffer = self.get_current_command_buffer();
+        let begin_info = vk::CommandBufferBeginInfo{
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::empty(),
+            p_inheritance_info: std::ptr::null()
+        };
+
+        unsafe{
+            device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin recording command buffer");
+        }
+
+        return command_buffer;
     }
 
     pub fn end_frame(&mut self, device: &Device, window: &mut Window) {
@@ -85,6 +106,8 @@ impl PhysicalRenderer {
                 .expect("Failed to record command buffer!");
         }
 
+        println!("A: {} | B: {}",self.current_image_index,self.swapchain.current_frame);
+
         let result: bool =
             self.swapchain
                 .submit_command_buffers(device, command_buffer, self.current_image_index);
@@ -95,6 +118,9 @@ impl PhysicalRenderer {
             let swapchain = &self.swapchain;
             self.swapchain = PhysicalRenderer::recreate_swapchain(window, device, Some(swapchain))
         }
+
+        self.is_frame_started = false;
+        self.current_frame_index = (self.current_frame_index + 1) % swapchain::MAX_FRAMES_IN_FLIGHT as i32;
     }
 
     pub fn begin_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer, device: &Device) {

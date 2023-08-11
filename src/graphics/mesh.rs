@@ -101,7 +101,7 @@ impl Mesh {
         );
 
         staging_buffer.map(device, Some(vertex_size), None);
-        staging_buffer.write_to_buffer(&vertices as *const Vec<Vertex> as *mut c_void);
+        staging_buffer.write_to_buffer(&vertices,vk::WHOLE_SIZE,0);
 
         let vertex_buffer = Buffer::new(
             device,
@@ -143,7 +143,7 @@ impl Mesh {
         );
 
         staging_buffer.map(device, Some(index_size), None);
-        staging_buffer.write_to_buffer(&indices as *const Vec<u32> as *mut c_void);
+        staging_buffer.write_to_buffer(&indices,vk::WHOLE_SIZE,0);
 
         let index_buffer = Buffer::new(
             device,

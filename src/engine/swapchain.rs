@@ -28,7 +28,7 @@ pub struct Swapchain {
     render_finished_semaphores: Vec<vk::Semaphore>,
     in_flight_fences: Vec<vk::Fence>,
     images_in_flight: Vec<vk::Fence>,
-    current_frame: usize,
+    pub current_frame: usize,
 }
 
 impl Swapchain {
@@ -107,9 +107,9 @@ impl Swapchain {
         return self.swapchain_extent.unwrap();
     }
 
-    pub fn extent_aspect_ratio(&self) -> f64 {
-        return self.swapchain_extent.unwrap().width as f64
-            / self.swapchain_extent.unwrap().height as f64;
+    pub fn extent_aspect_ratio(&self) -> f32 {
+        return self.swapchain_extent.unwrap().width as f32
+            / self.swapchain_extent.unwrap().height as f32;
     }
 
     pub fn find_depth_format(&self, device: &Device) -> vk::Format {
@@ -124,7 +124,7 @@ impl Swapchain {
         );
     }
 
-    pub fn acquire_next_image(&self, device: &Device) -> (u32, bool) {
+    pub fn acquire_next_image(&self, device: &Device) -> Result<(u32, bool), vk::Result> {
         unsafe {
             device
                 .device()
@@ -141,10 +141,8 @@ impl Swapchain {
                     std::u64::MAX,
                     self.image_available_semaphores[self.current_frame],
                     vk::Fence::null(),
-                )
-                .expect("Failed to acquire next image!");
+                );
 
-            println!("{} | {}", result.0, result.1);
             return result;
         }
     }

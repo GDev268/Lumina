@@ -1,8 +1,6 @@
 use crate::engine::device::Device;
 use ash::vk;
-use std::{
-    ffi::c_void,
-};
+use std::{ffi::c_void, ptr::NonNull};
 
 pub struct Buffer {
     pub mapped: Option<*mut c_void>,
@@ -37,7 +35,8 @@ impl Buffer {
 
         let buffer_size = alignment_size * instance_count as u64;
 
-        let (buffer,memory) = device.create_buffer(buffer_size, usage_flags, memory_property_flags);
+        let (buffer, memory) =
+            device.create_buffer(buffer_size, usage_flags, memory_property_flags);
 
         return Self {
             mapped: None,
@@ -136,16 +135,44 @@ impl Buffer {
         }
     }
 
-    pub fn write_to_buffer(&self,_data:*mut c_void){
+    pub fn write_to_buffer<T>(&mut self, _data: &T, size: vk::DeviceSize, offset: vk::DeviceSize) {
+        if size == vk::WHOLE_SIZE {
+            let mapped_memory: *mut u8 = self.mapped.unwrap() as *mut u8; // Cast to u8 pointer for byte-level arithmetic
 
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    NonNull::from(_data).cast::<std::ffi::c_void>().as_ptr() as *const u8,
+                    mapped_memory,
+                    self.buffer_size.unwrap() as usize,
+                );
+            }
+
+            self.mapped = Some(mapped_memory as *mut c_void);
+        } else {
+            let mapped_memory: *mut u8 = self.mapped.unwrap() as *mut u8; // Cast to u8 pointer for byte-level arithmetic
+            let mapped_memory: *mut u8 = unsafe { mapped_memory.offset(offset as isize) };
+
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    NonNull::from(_data).cast::<std::ffi::c_void>().as_ptr() as *const u8,
+                    mapped_memory,
+                    self.buffer_size.unwrap() as usize,
+                );
+            }
+
+            self.mapped = Some(mapped_memory as *mut c_void);
+        }
     }
 
     pub fn get_buffer(&self) -> vk::Buffer {
         return self.buffer.unwrap();
     }
 
-
-    pub fn descriptor_info(&self,size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) -> vk::DescriptorBufferInfo {
+    pub fn descriptor_info(
+        &self,
+        size: Option<vk::DeviceSize>,
+        offset: Option<vk::DeviceSize>,
+    ) -> vk::DescriptorBufferInfo {
         let mut new_size: vk::DeviceSize = 0;
         let mut new_offset: vk::DeviceSize = 0;
 
@@ -157,7 +184,10 @@ impl Buffer {
             new_offset = 0;
         }
 
-        return vk::DescriptorBufferInfo { buffer: self.buffer.unwrap(), offset: new_offset, range: new_size };
+        return vk::DescriptorBufferInfo {
+            buffer: self.buffer.unwrap(),
+            offset: new_offset,
+            range: new_size,
+        };
     }
-
 }
