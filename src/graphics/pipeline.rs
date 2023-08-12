@@ -155,6 +155,8 @@ impl Pipeline {
         );
 
         let mut pipeline = Pipeline::default();
+        pipeline.vert_shader_module = Some(*_vert_shader);
+        pipeline.frag_shader_module = Some(*_frag_shader);
 
         let mut shader_stages: [vk::PipelineShaderStageCreateInfo; 2] = [
             vk::PipelineShaderStageCreateInfo::default(),

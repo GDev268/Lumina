@@ -1,14 +1,23 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
-    components::shapes::cube::PushConstantData,
+    components::{
+        game_object::{self, GameObjectTrait},
+        shapes::cube::PushConstantData,
+    },
     engine::{
         device::Device,
-        swapchain::{Swapchain, MAX_FRAMES_IN_FLIGHT, self},
+        swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
         window::Window,
+        FrameInfo,
     },
 };
 use ash::vk;
 
-use super::{pipeline::{Pipeline, PipelineConfiguration}, shader::Shader};
+use super::{
+    pipeline::{Pipeline, PipelineConfiguration},
+    shader::Shader,
+};
 
 pub struct PhysicalRenderer {
     swapchain: Swapchain,
@@ -66,26 +75,35 @@ impl PhysicalRenderer {
         return self.current_frame_index;
     }
 
-    pub fn begin_frame(&mut self,device: &Device,window: &Window) -> vk::CommandBuffer {
-        assert!(!self.is_frame_started,"Can't begin frame while it is already in progress");
+    pub fn begin_frame(&mut self, device: &Device, window: &Window) -> vk::CommandBuffer {
+        assert!(
+            !self.is_frame_started,
+            "Can't begin frame while it is already in progress"
+        );
 
-        if self.swapchain.acquire_next_image(device).is_err() {
-            self.swapchain = PhysicalRenderer::recreate_swapchain(window,device,Some(&self.swapchain));
+        let result = self.swapchain.acquire_next_image(device);
+        if result.is_err() {
+            self.swapchain =
+                PhysicalRenderer::recreate_swapchain(window, device, Some(&self.swapchain));
             return vk::CommandBuffer::null();
         };
 
+        self.current_image_index = result.unwrap().0;
         self.is_frame_started = true;
 
         let command_buffer = self.get_current_command_buffer();
-        let begin_info = vk::CommandBufferBeginInfo{
+        let begin_info = vk::CommandBufferBeginInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
             flags: vk::CommandBufferUsageFlags::empty(),
-            p_inheritance_info: std::ptr::null()
+            p_inheritance_info: std::ptr::null(),
         };
 
-        unsafe{
-            device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin recording command buffer");
+        unsafe {
+            device
+                .device()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin recording command buffer");
         }
 
         return command_buffer;
@@ -106,8 +124,6 @@ impl PhysicalRenderer {
                 .expect("Failed to record command buffer!");
         }
 
-        println!("A: {} | B: {}",self.current_image_index,self.swapchain.current_frame);
-
         let result: bool =
             self.swapchain
                 .submit_command_buffers(device, command_buffer, self.current_image_index);
@@ -120,7 +136,8 @@ impl PhysicalRenderer {
         }
 
         self.is_frame_started = false;
-        self.current_frame_index = (self.current_frame_index + 1) % swapchain::MAX_FRAMES_IN_FLIGHT as i32;
+        self.current_frame_index =
+            (self.current_frame_index + 1) % swapchain::MAX_FRAMES_IN_FLIGHT as i32;
     }
 
     pub fn begin_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer, device: &Device) {
@@ -138,7 +155,7 @@ impl PhysicalRenderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.0, 0.0, 0.0, 1.0],
+            float32: [0.0, 1.0, 1.0, 1.0],
         };
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
@@ -239,12 +256,65 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline(&self,render_pass: vk::RenderPass,shader:&Shader,device: &Device) -> Pipeline{
+    pub fn create_pipeline(
+        &self,
+        render_pass: vk::RenderPass,
+        shader: &Shader,
+        device: &Device,
+    ) -> Pipeline {
         let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = Some(self.pipeline_layout);
+
+        return Pipeline::new(
+            device,
+            &shader.vert_module,
+            &shader.frag_module,
+            pipeline_config,
+        );
+    }
+
+    pub fn render_game_objects(
+        &self,
+        device: &Device,
+        frame_info: &FrameInfo,
+        game_objects: &Vec<Rc<RefCell<dyn GameObjectTrait>>>,
+    ) {
+        self.pipeline
+            .as_ref()
+            .unwrap()
+            .bind(device, frame_info.command_buffer);
+        unsafe {
+            device.device().cmd_bind_descriptor_sets(
+                frame_info.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline_layout,
+                0,
+                &[frame_info.global_descriptor_set],
+                &[],
+            );
+        }
+
+        for game_object in game_objects {
+            let push: PushConstantData = PushConstantData {
+                model_matrix: game_object.borrow().game_object().transform.get_mat4(),
+                normal_matrix: game_object
+                    .borrow()
+                    .game_object()
+                    .transform
+                    .get_normal_matrix(),
+            };
+
+            let push_bytes: &[u8] = unsafe {
+                let struct_ptr = &push as *const _ as *const u8;
+                std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+            };
         
-        return Pipeline::new(device, &shader.vert_module, &shader.frag_module, pipeline_config);
+
+            unsafe{
+                device.device().cmd_push_constants(frame_info.command_buffer, self.pipeline_layout, vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT, 0, push_bytes);
+            }
+        }
     }
 
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {

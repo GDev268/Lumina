@@ -3,18 +3,19 @@ mod data;
 mod engine;
 mod graphics;
 
-use std::ffi::c_void;
+use std::{cell::RefCell, ffi::c_void, rc::Rc};
 
 use ash::vk::{self};
-use components::{game_object, model::Model, shapes::cube::Cube, camera::Camera};
+use components::{camera::Camera, game_object, model::Model, shapes::cube::Cube};
 use data::{
     buffer::Buffer,
-    descriptor::{DescriptorPool, DescriptorSetLayout, PoolConfig, DescriptorWriter},
+    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
 };
 use engine::{
     device::Device,
     swapchain::{self},
-    window::Window, FrameInfo,
+    window::Window,
+    FrameInfo,
 };
 use graphics::{mesh::Mesh, renderer::PhysicalRenderer, shader::Shader};
 use winit::{
@@ -23,7 +24,10 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::components::game_object::{GameObject, GameObjectTrait};
+use crate::{
+    components::game_object::{GameObject, GameObjectTrait},
+    data::descriptor,
+};
 
 #[path = "testing/fill.rs"]
 mod fill;
@@ -47,6 +51,13 @@ impl old_GlobalUBO {
     }
 }
 
+macro_rules! add {
+    ($object:expr, $game_objects:expr) => {{
+        let object_clone = Rc::clone(&$object);
+        $game_objects.push(object_clone);
+    }};
+}
+
 fn main() {
     let event_loop = EventLoop::new();
 
@@ -54,7 +65,7 @@ fn main() {
     let _device = Device::new(&window);
     let mut renderer = PhysicalRenderer::new(&window, &_device, None);
 
-    let mut game_objects: Vec<Box<&dyn GameObjectTrait>> = Vec::new();
+    let mut game_objects: Vec<Rc<RefCell<dyn GameObjectTrait>>> = Vec::new();
 
     let mut pool_config = PoolConfig::new();
     pool_config.set_max_sets(swapchain::MAX_FRAMES_IN_FLIGHT as u32);
@@ -65,15 +76,15 @@ fn main() {
 
     let global_pool: DescriptorPool = pool_config.build(&_device);
 
-    let mut cube = Cube::new(&_device);
-    cube.game_object.transform.translation = glam::vec3(-0.5, 0.5, 2.5);
-    cube.game_object.transform.scale = glam::vec3(3.0, 1.5, 3.0);
-    game_objects.push(Box::new(&cube));
+    let mut cube1 = Cube::new(&_device);
+    cube1.game_object.transform.translation = glam::vec3(-0.5, 0.5, 2.5);
+    cube1.game_object.transform.scale = glam::vec3(3.0, 1.5, 3.0);
+    add!(Rc::new(RefCell::new(cube1)), game_objects);
 
-    let mut cube = Cube::new(&_device);
-    cube.game_object.transform.translation = glam::vec3(0.5, 0.5, 2.5);
-    cube.game_object.transform.scale = glam::vec3(3.0, 1.5, 3.0);
-    game_objects.push(Box::new(&cube));
+    let mut cube2 = Cube::new(&_device);
+    cube2.game_object.transform.translation = glam::vec3(0.5, 0.5, 2.5);
+    cube2.game_object.transform.scale = glam::vec3(3.0, 1.5, 3.0);
+    add!(Rc::new(RefCell::new(cube2)), game_objects);
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
@@ -101,55 +112,69 @@ fn main() {
         ),
     );
 
+    let shader = Shader::new(
+        &_device,
+        "shaders/simple_shader.vert.spv",
+        "shaders/simple_shader.frag.spv",
+    );
+
+    renderer.create_pipeline_layout(&_device, global_set_layout.get_descriptor_set_layout());
+    renderer.create_pipeline(renderer.get_swapchain_renderpass(), &shader, &_device);
+
     let mut global_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
-    
-    for i in 0..swapchain::MAX_FRAMES_IN_FLIGHT{
+
+    for i in 0..swapchain::MAX_FRAMES_IN_FLIGHT {
         let buffer_info = ubo_buffers[i].descriptor_info(None, None);
         let mut descriptor_writer = DescriptorWriter::new();
-        descriptor_writer.write_buffer(0, buffer_info,&global_set_layout);
-        let descriptor_set = descriptor_writer.build(&_device, global_set_layout.get_descriptor_set_layout(), &global_pool);
-        
+        descriptor_writer.write_buffer(0, buffer_info, &global_set_layout);
+        let descriptor_set = descriptor_writer.build(
+            &_device,
+            global_set_layout.get_descriptor_set_layout(),
+            &global_pool,
+        );
+
         global_descriptor_sets.push(descriptor_set);
-        
     }
 
     let mut camera = Camera::new();
 
     let viewer_object = GameObject::create_game_object();
-    
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
 
         let swapchain_support = _device.get_swapchain_support();
 
-        camera.set_view_yxz(viewer_object.transform.translation, viewer_object.transform.rotation);
-    
+        camera.set_view_yxz(
+            viewer_object.transform.translation,
+            viewer_object.transform.rotation,
+        );
+
         let aspect: f32 = renderer.get_aspect_ratio();
         camera.set_perspective_projection(aspect.to_radians(), aspect, 0.1, 10.0);
 
-        let command_buffer = renderer.begin_frame(&_device,&window);
+        let command_buffer = renderer.begin_frame(&_device, &window);
         let frame_index: i32 = renderer.get_frame_index();
-            
-        let frame_info: FrameInfo<'_> = FrameInfo{
+
+        let frame_info: FrameInfo<'_> = FrameInfo {
             frame_index,
             frame_time: 0.0,
             command_buffer,
-            camera:&camera,
-            global_descriptor_set:global_descriptor_sets[frame_index as usize]
+            camera: &camera,
+            global_descriptor_set: global_descriptor_sets[frame_index as usize],
         };
 
-        let ubo = old_GlobalUBO{
+        let ubo = old_GlobalUBO {
             projection_view: camera.get_projection() * camera.get_view(),
-            light_direction: glam::vec3(0.0, 0.0, -2.0)
+            light_direction: glam::vec3(0.0, 0.0, -2.0),
         };
 
         renderer.begin_swapchain_renderpass(command_buffer, &_device);
+        renderer.render_game_objects(&_device, &frame_info, &game_objects);
         renderer.end_swapchain_renderpass(command_buffer, &_device);
         renderer.end_frame(&_device, &mut window);
-        renderer.current_image_index = renderer.current_image_index + 1;
 
-        /*match event {
+        match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
@@ -157,12 +182,7 @@ fn main() {
             Event::MainEventsCleared => {
                 let _ = &window._window.request_redraw();
             }
-            Event::RedrawRequested(_) => {
-                fill::fill_window(&window._window);
-            }
             _ => (),
-        }*/
-
-
+        }
     });
 }
