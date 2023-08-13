@@ -448,7 +448,7 @@ impl Device {
             create_info.pp_enabled_layer_names = pointer_layers.as_ptr();
         }
 
-        let debug_create_info = self.populate_debug_messenger_create_info();
+        let _debug_create_info = self.populate_debug_messenger_create_info();
 
         self.instance = Some(unsafe {
             entry

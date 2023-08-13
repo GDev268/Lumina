@@ -1,7 +1,7 @@
 use ash::vk::{self};
 
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use std::sync::mpsc::Receiver;
+
 use winit::{
     event_loop::EventLoop,
     window::{self, WindowBuilder},

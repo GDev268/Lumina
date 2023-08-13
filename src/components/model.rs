@@ -1,4 +1,4 @@
-use crate::{graphics::{mesh::{Mesh, Vertex}, shader::Shader}, engine::device::Device};
+use crate::{graphics::{mesh::{Mesh, Vertex}}, engine::device::Device};
 
 use super::game_object::{GameObject, GameObjectTrait};
 
@@ -36,14 +36,14 @@ impl Model{
         return Mesh::new(device,mesh_vertices,indices);
     }
 
-    pub fn load_model(filepath:String){
+    pub fn load_model(_filepath:String){
         
     }
 }
 
 impl GameObjectTrait for Model{
-    fn render(&self,device:&Device,game_object:&GameObject){
-        let push = PushConstantData{
+    fn render(&self,_device:&Device,game_object:&GameObject){
+        let _push = PushConstantData{
             model_matrix: game_object.transform.get_mat4(),
             normal_matrix: game_object.transform.get_normal_matrix()
         };

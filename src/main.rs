@@ -3,10 +3,10 @@ mod data;
 mod engine;
 mod graphics;
 
-use std::{cell::RefCell, ffi::c_void, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use ash::vk::{self};
-use components::{camera::Camera, game_object, model::Model, shapes::cube::Cube};
+use components::{camera::Camera, shapes::cube::Cube};
 use data::{
     buffer::Buffer,
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
@@ -17,16 +17,14 @@ use engine::{
     window::Window,
     FrameInfo,
 };
-use graphics::{mesh::Mesh, renderer::PhysicalRenderer, shader::Shader};
+use graphics::{renderer::PhysicalRenderer, shader::Shader};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
-    window::WindowBuilder,
 };
 
 use crate::{
     components::game_object::{GameObject, GameObjectTrait},
-    data::descriptor,
 };
 
 #[path = "testing/fill.rs"]
@@ -88,7 +86,7 @@ fn main() {
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
-    for i in 0..swapchain::MAX_FRAMES_IN_FLIGHT {
+    for _i in 0..swapchain::MAX_FRAMES_IN_FLIGHT {
         let mut buffer = Buffer::new(
             &_device,
             std::mem::size_of::<old_GlobalUBO>() as vk::DeviceSize,
@@ -143,7 +141,7 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
 
-        let swapchain_support = _device.get_swapchain_support();
+        let _swapchain_support = _device.get_swapchain_support();
 
         camera.set_view_yxz(
             viewer_object.transform.translation,
@@ -156,7 +154,7 @@ fn main() {
         let command_buffer = renderer.begin_frame(&_device, &window);
         let frame_index: i32 = renderer.get_frame_index();
 
-        let frame_info: FrameInfo<'_> = FrameInfo {
+        let _frame_info: FrameInfo<'_> = FrameInfo {
             frame_index,
             frame_time: 0.0,
             command_buffer,
@@ -164,13 +162,13 @@ fn main() {
             global_descriptor_set: global_descriptor_sets[frame_index as usize],
         };
 
-        let ubo = old_GlobalUBO {
+        let _ubo = old_GlobalUBO {
             projection_view: camera.get_projection() * camera.get_view(),
             light_direction: glam::vec3(0.0, 0.0, -2.0),
         };
 
         renderer.begin_swapchain_renderpass(command_buffer, &_device);
-        renderer.render_game_objects(&_device, &frame_info, &game_objects);
+        //renderer.render_game_objects(&_device, &frame_info, &game_objects);
         renderer.end_swapchain_renderpass(command_buffer, &_device);
         renderer.end_frame(&_device, &mut window);
 

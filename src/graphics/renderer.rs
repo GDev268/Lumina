@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     components::{
-        game_object::{self, GameObjectTrait},
+        game_object::{GameObjectTrait},
         shapes::cube::PushConstantData,
     },
     engine::{
@@ -226,10 +226,10 @@ impl PhysicalRenderer {
     }
 
     pub fn create_pipeline_layout(
-        &self,
+        &mut self,
         device: &Device,
         set_layout: vk::DescriptorSetLayout,
-    ) -> vk::PipelineLayout {
+    )  {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
@@ -249,7 +249,7 @@ impl PhysicalRenderer {
         };
 
         unsafe {
-            return device
+            self.pipeline_layout = device
                 .device()
                 .create_pipeline_layout(&pipeline_layout_info, None)
                 .expect("Failed to create pipeline layout!");
@@ -257,21 +257,21 @@ impl PhysicalRenderer {
     }
 
     pub fn create_pipeline(
-        &self,
+        &mut self,
         render_pass: vk::RenderPass,
         shader: &Shader,
         device: &Device,
-    ) -> Pipeline {
+    ) {
         let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = Some(self.pipeline_layout);
 
-        return Pipeline::new(
+        self.pipeline = Some(Pipeline::new(
             device,
-            &shader.vert_module,
-            &shader.frag_module,
+            shader.vert_module,
+            shader.frag_module,
             pipeline_config,
-        );
+        ));
     }
 
     pub fn render_game_objects(

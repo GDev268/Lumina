@@ -3,7 +3,6 @@ use crate::{
     engine::device::Device,
     graphics::{
         mesh::{Mesh, Vertex},
-        shader::Shader,
     },
 };
 
@@ -77,8 +76,8 @@ impl Cube {
 }
 
 impl GameObjectTrait for Cube {
-    fn render(&self, device: &Device, game_object: &GameObject) {
-        let push = PushConstantData {
+    fn render(&self, _device: &Device, game_object: &GameObject) {
+        let _push = PushConstantData {
             model_matrix: game_object.transform.get_mat4(),
             normal_matrix: game_object.transform.get_normal_matrix(),
         };

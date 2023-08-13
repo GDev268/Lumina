@@ -1,4 +1,5 @@
 
+use std::ffi::CString;
 
 
 use crate::engine::device::Device;
@@ -8,8 +9,8 @@ use ash::vk::{self};
 
 
 pub struct PipelineConfiguration {
-    pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
-    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
+    /*pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
+    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,*/
     pub viewport_info: vk::PipelineViewportStateCreateInfo,
     pub input_assembly_info: vk::PipelineInputAssemblyStateCreateInfo,
     pub rasterization_info: vk::PipelineRasterizationStateCreateInfo,
@@ -101,8 +102,6 @@ impl PipelineConfiguration {
         dynamic_state_info.flags = vk::PipelineDynamicStateCreateFlags::empty();
 
         Self {
-            binding_descriptions: Vec::new(),
-            attribute_descriptions: Vec::new(),
             viewport_info: viewport_info,
             input_assembly_info: input_assembly_info,
             rasterization_info: rasterization_info,
@@ -141,8 +140,8 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new(
         device: &Device,
-        _vert_shader: &vk::ShaderModule,
-        _frag_shader: &vk::ShaderModule,
+        vert_module: vk::ShaderModule,
+        frag_module: vk::ShaderModule,
         pipeline_config: PipelineConfiguration,
     ) -> Self {
         assert!(
@@ -155,29 +154,32 @@ impl Pipeline {
         );
 
         let mut pipeline = Pipeline::default();
-        pipeline.vert_shader_module = Some(*_vert_shader);
-        pipeline.frag_shader_module = Some(*_frag_shader);
+
+        pipeline.vert_shader_module = Some(vert_module);
+        pipeline.frag_shader_module = Some(frag_module);
 
         let mut shader_stages: [vk::PipelineShaderStageCreateInfo; 2] = [
             vk::PipelineShaderStageCreateInfo::default(),
             vk::PipelineShaderStageCreateInfo::default(),
         ];
 
+        let shader_stage_name = CString::new("main").unwrap();
+
         shader_stages[0].s_type = vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO;
         shader_stages[0].stage = vk::ShaderStageFlags::VERTEX;
         shader_stages[0].module = pipeline.vert_shader_module.unwrap();
-        shader_stages[0].p_name = "main".as_ptr() as *const i8;
+        shader_stages[0].p_name = shader_stage_name.as_ptr();
         shader_stages[0].flags = vk::PipelineShaderStageCreateFlags::empty();
         shader_stages[0].p_next = std::ptr::null();
         shader_stages[0].p_specialization_info = std::ptr::null();
 
-        shader_stages[0].s_type = vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO;
-        shader_stages[0].stage = vk::ShaderStageFlags::FRAGMENT;
-        shader_stages[0].module = pipeline.frag_shader_module.unwrap();
-        shader_stages[0].p_name = "main".as_ptr() as *const i8;
-        shader_stages[0].flags = vk::PipelineShaderStageCreateFlags::empty();
-        shader_stages[0].p_next = std::ptr::null();
-        shader_stages[0].p_specialization_info = std::ptr::null();
+        shader_stages[1].s_type = vk::StructureType::PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shader_stages[1].stage = vk::ShaderStageFlags::FRAGMENT;
+        shader_stages[1].module = pipeline.frag_shader_module.unwrap();
+        shader_stages[1].p_name = shader_stage_name.as_ptr();
+        shader_stages[1].flags = vk::PipelineShaderStageCreateFlags::empty();
+        shader_stages[1].p_next = std::ptr::null();
+        shader_stages[1].p_specialization_info = std::ptr::null();
 
         let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
             vk::PipelineVertexInputStateCreateInfo {
