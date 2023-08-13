@@ -138,8 +138,8 @@ fn main() {
 
     let viewer_object = GameObject::create_game_object();
 
-    event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();
+    /*event_loop.run(move |event, _, control_flow| {
+        control_flow.set_wait();*/
 
         let _swapchain_support = _device.get_swapchain_support();
 
@@ -154,7 +154,7 @@ fn main() {
         let command_buffer = renderer.begin_frame(&_device, &window);
         let frame_index: i32 = renderer.get_frame_index();
 
-        let _frame_info: FrameInfo<'_> = FrameInfo {
+        let frame_info: FrameInfo<'_> = FrameInfo {
             frame_index,
             frame_time: 0.0,
             command_buffer,
@@ -168,11 +168,11 @@ fn main() {
         };
 
         renderer.begin_swapchain_renderpass(command_buffer, &_device);
-        //renderer.render_game_objects(&_device, &frame_info, &game_objects);
+        renderer.render_game_objects(&_device, &frame_info, &game_objects,&command_buffer);
         renderer.end_swapchain_renderpass(command_buffer, &_device);
         renderer.end_frame(&_device, &mut window);
 
-        match event {
+        /*match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
@@ -181,6 +181,6 @@ fn main() {
                 let _ = &window._window.request_redraw();
             }
             _ => (),
-        }
-    });
+        }*/
+    //});
 }

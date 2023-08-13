@@ -1,10 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    components::{
-        game_object::{GameObjectTrait},
-        shapes::cube::PushConstantData,
-    },
+    components::{game_object::GameObjectTrait, shapes::cube::PushConstantData},
     engine::{
         device::Device,
         swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
@@ -225,11 +222,7 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline_layout(
-        &mut self,
-        device: &Device,
-        set_layout: vk::DescriptorSetLayout,
-    )  {
+    pub fn create_pipeline_layout(&mut self, device: &Device, set_layout: vk::DescriptorSetLayout) {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
@@ -279,6 +272,7 @@ impl PhysicalRenderer {
         device: &Device,
         frame_info: &FrameInfo,
         game_objects: &Vec<Rc<RefCell<dyn GameObjectTrait>>>,
+        command_buffer: &vk::CommandBuffer
     ) {
         self.pipeline
             .as_ref()
@@ -309,11 +303,22 @@ impl PhysicalRenderer {
                 let struct_ptr = &push as *const _ as *const u8;
                 std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
             };
-        
 
-            unsafe{
-                device.device().cmd_push_constants(frame_info.command_buffer, self.pipeline_layout, vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT, 0, push_bytes);
+            unsafe {
+                device.device().cmd_push_constants(
+                    frame_info.command_buffer,
+                    self.pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    push_bytes,
+                );
+
             }
+            
+            let binding = game_object.borrow_mut();
+
+            binding.render(device, binding.game_object(), *command_buffer);
+            drop(binding);
         }
     }
 

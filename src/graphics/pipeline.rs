@@ -1,12 +1,7 @@
-
 use std::ffi::CString;
-
 
 use crate::engine::device::Device;
 use ash::vk::{self};
-
-
-
 
 pub struct PipelineConfiguration {
     /*pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
@@ -19,6 +14,7 @@ pub struct PipelineConfiguration {
     pub color_blend_info: vk::PipelineColorBlendStateCreateInfo,
     pub depth_stencil_info: vk::PipelineDepthStencilStateCreateInfo,
     pub dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
+    pub dynamic_state_enables:[vk::DynamicState; 2],
     pub pipeline_layout: Option<vk::PipelineLayout>,
     pub renderpass: Option<vk::RenderPass>,
     pub subpass: u32,
@@ -26,6 +22,16 @@ pub struct PipelineConfiguration {
 
 impl PipelineConfiguration {
     pub fn default() -> Self {
+        let mut pipe_config = PipelineConfiguration::default_create();
+
+        pipe_config.color_blend_info.p_attachments = &pipe_config.color_blend_attachment;
+        pipe_config.dynamic_state_info.dynamic_state_count = pipe_config.dynamic_state_enables.len() as u32;
+        pipe_config.dynamic_state_info.p_dynamic_states = pipe_config.dynamic_state_enables.as_ptr();
+
+        return pipe_config;
+    }
+
+    pub fn default_create() -> Self {
         let mut input_assembly_info = vk::PipelineInputAssemblyStateCreateInfo::default();
         input_assembly_info.s_type = vk::StructureType::PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         input_assembly_info.topology = vk::PrimitiveTopology::TRIANGLE_LIST;
@@ -94,22 +100,28 @@ impl PipelineConfiguration {
         depth_stencil_info.max_depth_bounds = 1.0;
         depth_stencil_info.stencil_test_enable = vk::FALSE;
 
-        let dynamic_state_enables = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
-        let mut dynamic_state_info = vk::PipelineDynamicStateCreateInfo::default();
-        dynamic_state_info.s_type = vk::StructureType::PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state_info.p_dynamic_states = dynamic_state_enables.as_ptr();
-        dynamic_state_info.dynamic_state_count = dynamic_state_enables.len() as u32;
-        dynamic_state_info.flags = vk::PipelineDynamicStateCreateFlags::empty();
+
+        let dynamic_state_enables: [vk::DynamicState; 2] = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+
+        let dynamic_state_info = vk::PipelineDynamicStateCreateInfo {
+            s_type: vk::StructureType::PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            p_next: std::ptr::null(),
+            p_dynamic_states: std::ptr::null(),
+            dynamic_state_count: 0,
+            flags: vk::PipelineDynamicStateCreateFlags::empty(),
+        };
+
 
         Self {
-            viewport_info: viewport_info,
-            input_assembly_info: input_assembly_info,
-            rasterization_info: rasterization_info,
-            multisample_info: multisample_info,
-            color_blend_attachment: color_blend_attachment,
-            color_blend_info: color_blend_info,
-            depth_stencil_info: depth_stencil_info,
-            dynamic_state_info: dynamic_state_info,
+            viewport_info,
+            input_assembly_info,
+            rasterization_info,
+            multisample_info,
+            color_blend_attachment,
+            color_blend_info,
+            depth_stencil_info,
+            dynamic_state_enables,
+            dynamic_state_info,
             pipeline_layout: None,
             renderpass: None,
             subpass: 0,
@@ -191,6 +203,7 @@ impl Pipeline {
                 p_vertex_binding_descriptions: std::ptr::null(),
                 p_next: std::ptr::null(),
             };
+
 
         let create_info: vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
             flags: vk::PipelineCreateFlags::empty(),

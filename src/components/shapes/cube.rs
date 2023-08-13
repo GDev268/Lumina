@@ -1,3 +1,5 @@
+use ash::vk;
+
 use crate::{
     components::game_object::GameObjectTrait,
     engine::device::Device,
@@ -76,13 +78,13 @@ impl Cube {
 }
 
 impl GameObjectTrait for Cube {
-    fn render(&self, _device: &Device, game_object: &GameObject) {
-        let _push = PushConstantData {
-            model_matrix: game_object.transform.get_mat4(),
-            normal_matrix: game_object.transform.get_normal_matrix(),
-        };
+    fn render(&self, device: &Device, game_object: &GameObject,command_buffer:vk::CommandBuffer) {
+        
+        for mesh in &self.meshes{
+            mesh.bind(command_buffer, device);
+            mesh.draw(command_buffer,device);
+        }
 
-        println!("{}", game_object.transform.get_mat4());
     }
 
     fn game_object(&self) -> &GameObject {

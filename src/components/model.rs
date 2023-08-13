@@ -1,3 +1,5 @@
+use ash::vk;
+
 use crate::{graphics::{mesh::{Mesh, Vertex}}, engine::device::Device};
 
 use super::game_object::{GameObject, GameObjectTrait};
@@ -42,13 +44,11 @@ impl Model{
 }
 
 impl GameObjectTrait for Model{
-    fn render(&self,_device:&Device,game_object:&GameObject){
+    fn render(&self,_device:&Device,game_object:&GameObject,command_buffer:vk::CommandBuffer){
         let _push = PushConstantData{
             model_matrix: game_object.transform.get_mat4(),
             normal_matrix: game_object.transform.get_normal_matrix()
         };
-
-        println!("{}",game_object.transform.get_mat4());
     }
 
     fn game_object(&self) -> &GameObject{

@@ -60,9 +60,10 @@ impl Mesh {
                 );
             }
         }
+
     }
 
-    pub fn draw(&self, device: &Device, command_buffer: vk::CommandBuffer) {
+    pub fn draw(&self,command_buffer: vk::CommandBuffer,device: &Device) {
         unsafe {
             if self.has_index_buffer {
                 device

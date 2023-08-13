@@ -1,5 +1,7 @@
 
 
+use ash::vk;
+
 use crate::engine::device::Device;
 
 static mut CURRENT_ID: u32 = 0;
@@ -89,7 +91,7 @@ impl TransformComponent {
 }
 
 pub trait GameObjectTrait{
-    fn render(&self,device:&Device,game_object:&GameObject);
+    fn render(&self,device:&Device,game_object:&GameObject,command_buffer:vk::CommandBuffer);
     fn game_object(&self) -> &GameObject;
 }
 
