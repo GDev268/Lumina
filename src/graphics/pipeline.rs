@@ -4,6 +4,7 @@ use crate::engine::device::Device;
 use ash::vk::{self};
 
 pub struct PipelineConfiguration {
+    //NOTE: Need to work on this tomorrow
     /*pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,*/
     pub viewport_info: vk::PipelineViewportStateCreateInfo,
