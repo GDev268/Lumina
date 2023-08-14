@@ -1,12 +1,11 @@
 use std::ffi::CString;
 
-use crate::engine::device::Device;
+use crate::{engine::device::Device, graphics::mesh::Vertex, offset_of};
 use ash::vk::{self};
 
 pub struct PipelineConfiguration {
-    //NOTE: Need to work on this tomorrow
-    /*pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
-    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,*/
+    pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
+    pub attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
     pub viewport_info: vk::PipelineViewportStateCreateInfo,
     pub input_assembly_info: vk::PipelineInputAssemblyStateCreateInfo,
     pub rasterization_info: vk::PipelineRasterizationStateCreateInfo,
@@ -15,7 +14,7 @@ pub struct PipelineConfiguration {
     pub color_blend_info: vk::PipelineColorBlendStateCreateInfo,
     pub depth_stencil_info: vk::PipelineDepthStencilStateCreateInfo,
     pub dynamic_state_info: vk::PipelineDynamicStateCreateInfo,
-    pub dynamic_state_enables:[vk::DynamicState; 2],
+    pub dynamic_state_enables: [vk::DynamicState; 2],
     pub pipeline_layout: Option<vk::PipelineLayout>,
     pub renderpass: Option<vk::RenderPass>,
     pub subpass: u32,
@@ -26,8 +25,10 @@ impl PipelineConfiguration {
         let mut pipe_config = PipelineConfiguration::default_create();
 
         pipe_config.color_blend_info.p_attachments = &pipe_config.color_blend_attachment;
-        pipe_config.dynamic_state_info.dynamic_state_count = pipe_config.dynamic_state_enables.len() as u32;
-        pipe_config.dynamic_state_info.p_dynamic_states = pipe_config.dynamic_state_enables.as_ptr();
+        pipe_config.dynamic_state_info.dynamic_state_count =
+            pipe_config.dynamic_state_enables.len() as u32;
+        pipe_config.dynamic_state_info.p_dynamic_states =
+            pipe_config.dynamic_state_enables.as_ptr();
 
         return pipe_config;
     }
@@ -101,8 +102,8 @@ impl PipelineConfiguration {
         depth_stencil_info.max_depth_bounds = 1.0;
         depth_stencil_info.stencil_test_enable = vk::FALSE;
 
-
-        let dynamic_state_enables: [vk::DynamicState; 2] = [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
+        let dynamic_state_enables: [vk::DynamicState; 2] =
+            [vk::DynamicState::VIEWPORT, vk::DynamicState::SCISSOR];
 
         let dynamic_state_info = vk::PipelineDynamicStateCreateInfo {
             s_type: vk::StructureType::PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -112,8 +113,9 @@ impl PipelineConfiguration {
             flags: vk::PipelineDynamicStateCreateFlags::empty(),
         };
 
-
         Self {
+            binding_descriptions: Vec::new(),
+            attribute_descriptions: Vec::new(),
             viewport_info,
             input_assembly_info,
             rasterization_info,
@@ -155,7 +157,7 @@ impl Pipeline {
         device: &Device,
         vert_module: vk::ShaderModule,
         frag_module: vk::ShaderModule,
-        pipeline_config: PipelineConfiguration,
+        pipeline_config: &mut PipelineConfiguration,
     ) -> Self {
         assert!(
             pipeline_config.pipeline_layout.is_none() == false,
@@ -194,6 +196,56 @@ impl Pipeline {
         shader_stages[1].p_next = std::ptr::null();
         shader_stages[1].p_specialization_info = std::ptr::null();
 
+        /*pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
+
+        pipeline_config.binding_descriptions[0].binding = 0;
+        pipeline_config.binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
+        pipeline_config.binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
+
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 0,
+                binding: 0,
+                format: vk::Format::R32G32B32_SFLOAT,
+                offset: offset_of!(Vertex, position),
+            });
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 1,
+                binding: 0,
+                format: vk::Format::R32G32B32_SFLOAT,
+                offset: offset_of!(Vertex, color),
+            });
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 2,
+                binding: 0,
+                format: vk::Format::R32G32B32_SFLOAT,
+                offset: offset_of!(Vertex, normal),
+            });
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 3,
+                binding: 0,
+                format: vk::Format::R32G32_SFLOAT,
+                offset: offset_of!(Vertex, uv),
+            });
+
+        let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
+        vk::PipelineVertexInputStateCreateInfo {
+            flags: vk::PipelineVertexInputStateCreateFlags::empty(),
+            s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            vertex_attribute_description_count: pipeline_config.attribute_descriptions.len() as u32,
+            vertex_binding_description_count: pipeline_config.binding_descriptions.len() as u32,
+            p_vertex_attribute_descriptions: pipeline_config.attribute_descriptions.as_ptr(),
+            p_vertex_binding_descriptions: pipeline_config.binding_descriptions.as_ptr(),
+            p_next: std::ptr::null(),
+        };*/
+
         let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
             vk::PipelineVertexInputStateCreateInfo {
                 flags: vk::PipelineVertexInputStateCreateFlags::empty(),
@@ -204,7 +256,6 @@ impl Pipeline {
                 p_vertex_binding_descriptions: std::ptr::null(),
                 p_next: std::ptr::null(),
             };
-
 
         let create_info: vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
             flags: vk::PipelineCreateFlags::empty(),

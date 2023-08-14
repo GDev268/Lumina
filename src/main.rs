@@ -138,8 +138,8 @@ fn main() {
 
     let viewer_object = GameObject::create_game_object();
 
-    /*event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();*/
+    event_loop.run(move |event, _, control_flow| {
+        control_flow.set_wait();
 
         let _swapchain_support = _device.get_swapchain_support();
 
@@ -167,12 +167,12 @@ fn main() {
             light_direction: glam::vec3(0.0, 0.0, -2.0),
         };
 
-        renderer.begin_swapchain_renderpass(command_buffer, &_device);
-        renderer.render_game_objects(&_device, &frame_info, &game_objects,&command_buffer);
-        renderer.end_swapchain_renderpass(command_buffer, &_device);
+        renderer.begin_swapchain_renderpass(frame_info.command_buffer, &_device);
+        renderer.render_game_objects(&_device, &frame_info, &game_objects);
+        renderer.end_swapchain_renderpass(frame_info.command_buffer, &_device);
         renderer.end_frame(&_device, &mut window);
 
-        /*match event {
+        match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
@@ -181,6 +181,6 @@ fn main() {
                 let _ = &window._window.request_redraw();
             }
             _ => (),
-        }*/
-    //});
+        }
+    });
 }

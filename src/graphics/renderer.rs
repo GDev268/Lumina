@@ -17,12 +17,12 @@ use super::{
 };
 
 pub struct PhysicalRenderer {
-    swapchain: Swapchain,
+    pub swapchain: Swapchain,
     pub command_buffers: Vec<vk::CommandBuffer>,
     pub current_image_index: u32,
     current_frame_index: i32,
     pub is_frame_started: bool,
-    pipeline: Option<Pipeline>,
+    pub pipeline: Option<Pipeline>,
     pipeline_layout: vk::PipelineLayout,
 }
 
@@ -263,7 +263,7 @@ impl PhysicalRenderer {
             device,
             shader.vert_module,
             shader.frag_module,
-            pipeline_config,
+            &mut pipeline_config,
         ));
     }
 
@@ -272,13 +272,16 @@ impl PhysicalRenderer {
         device: &Device,
         frame_info: &FrameInfo,
         game_objects: &Vec<Rc<RefCell<dyn GameObjectTrait>>>,
-        command_buffer: &vk::CommandBuffer
     ) {
         self.pipeline
             .as_ref()
             .unwrap()
             .bind(device, frame_info.command_buffer);
+
         unsafe {
+            device.device().cmd_draw(frame_info.command_buffer, 3, 1, 0, 1);
+        }
+        /*unsafe {
             device.device().cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -314,12 +317,12 @@ impl PhysicalRenderer {
                 );
 
             }
-            
+
             let binding = game_object.borrow_mut();
 
-            binding.render(device, binding.game_object(), *command_buffer);
+            binding.render(device, binding.game_object(), frame_info.command_buffer);
             drop(binding);
-        }
+        }*/
     }
 
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
