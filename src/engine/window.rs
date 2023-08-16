@@ -9,8 +9,8 @@ use winit::{
 
 pub struct Window {
     pub _window: window::Window,
-    pub width: i32,
-    pub height: i32,
+    pub width: u32,
+    pub height: u32,
     pub framebuffer_resized: bool,
     pub window_name: String,
 }
@@ -28,8 +28,8 @@ impl Window {
 
         return Self {
             _window: window,
-            width: width as i32,
-            height: height as i32,
+            width: width,
+            height: height,
             framebuffer_resized: false,
             window_name: String::from(title),
         };
@@ -71,7 +71,7 @@ impl Window {
         }
     }
 
-    pub fn framebuffer_resize_callback(window: &mut Window, width: i32, height: i32) {
+    pub fn framebuffer_resize_callback(window: &mut Window, width: u32, height: u32) {
         window.framebuffer_resized = true;
         window.width = width;
         window.height = height;

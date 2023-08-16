@@ -222,23 +222,21 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device, set_layout: vk::DescriptorSetLayout) {
+    pub fn create_pipeline_layout(&mut self, device: &Device) {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
             size: std::mem::size_of::<PushConstantData>() as u32,
         };
 
-        let descriptor_set_layouts: Vec<vk::DescriptorSetLayout> = vec![set_layout];
-
         let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(),
-            set_layout_count: descriptor_set_layouts.len() as u32,
-            p_set_layouts: descriptor_set_layouts.as_ptr(),
-            push_constant_range_count: 1,
-            p_push_constant_ranges: &push_constant_range,
+            set_layout_count: 0,
+            p_set_layouts: std::ptr::null(),
+            push_constant_range_count: 0,
+            p_push_constant_ranges: std::ptr::null(),
         };
 
         unsafe {
@@ -270,17 +268,13 @@ impl PhysicalRenderer {
     pub fn render_game_objects(
         &self,
         device: &Device,
-        frame_info: &FrameInfo,
-        game_objects: &Vec<Rc<RefCell<dyn GameObjectTrait>>>,
+        command_buffer: vk::CommandBuffer
     ) {
         self.pipeline
             .as_ref()
             .unwrap()
-            .bind(device, frame_info.command_buffer);
+            .bind(device,command_buffer);
 
-        unsafe {
-            device.device().cmd_draw(frame_info.command_buffer, 3, 1, 0, 1);
-        }
         /*unsafe {
             device.device().cmd_bind_descriptor_sets(
                 frame_info.command_buffer,

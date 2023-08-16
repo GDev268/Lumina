@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use crate::{engine::device::Device, graphics::mesh::Vertex, offset_of};
+use crate::{engine::device::Device, offset_of, Vertex};
 use ash::vk::{self};
 
 pub struct PipelineConfiguration {
@@ -196,7 +196,7 @@ impl Pipeline {
         shader_stages[1].p_next = std::ptr::null();
         shader_stages[1].p_specialization_info = std::ptr::null();
 
-        /*pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
+        pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
 
         pipeline_config.binding_descriptions[0].binding = 0;
         pipeline_config.binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
@@ -207,7 +207,7 @@ impl Pipeline {
             .push(vk::VertexInputAttributeDescription {
                 location: 0,
                 binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
+                format: vk::Format::R32G32_SFLOAT,
                 offset: offset_of!(Vertex, position),
             });
         pipeline_config
@@ -218,24 +218,8 @@ impl Pipeline {
                 format: vk::Format::R32G32B32_SFLOAT,
                 offset: offset_of!(Vertex, color),
             });
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 2,
-                binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, normal),
-            });
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 3,
-                binding: 0,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, uv),
-            });
 
-        let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
+            let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
         vk::PipelineVertexInputStateCreateInfo {
             flags: vk::PipelineVertexInputStateCreateFlags::empty(),
             s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -244,18 +228,7 @@ impl Pipeline {
             p_vertex_attribute_descriptions: pipeline_config.attribute_descriptions.as_ptr(),
             p_vertex_binding_descriptions: pipeline_config.binding_descriptions.as_ptr(),
             p_next: std::ptr::null(),
-        };*/
-
-        let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
-            vk::PipelineVertexInputStateCreateInfo {
-                flags: vk::PipelineVertexInputStateCreateFlags::empty(),
-                s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                vertex_attribute_description_count: 0,
-                vertex_binding_description_count: 0,
-                p_vertex_attribute_descriptions: std::ptr::null(),
-                p_vertex_binding_descriptions: std::ptr::null(),
-                p_next: std::ptr::null(),
-            };
+        };
 
         let create_info: vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
             flags: vk::PipelineCreateFlags::empty(),

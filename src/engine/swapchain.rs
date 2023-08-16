@@ -22,7 +22,7 @@ pub struct Swapchain {
     depth_image_views: Vec<vk::ImageView>,
     swapchain_images: Vec<vk::Image>,
     pub swapchain_image_views: Vec<vk::ImageView>,
-    window_extent: Option<vk::Extent2D>,
+    window_extent: vk::Extent2D,
     swapchain: Option<SwapchainKHR>,
     image_available_semaphores: Vec<vk::Semaphore>,
     render_finished_semaphores: Vec<vk::Semaphore>,
@@ -34,7 +34,7 @@ pub struct Swapchain {
 impl Swapchain {
     pub fn new(device: &Device, window_extent: vk::Extent2D) -> Swapchain {
         let mut swapchain = Swapchain::default();
-        swapchain.window_extent = Some(window_extent);
+        swapchain.window_extent = window_extent;
         Swapchain::init(&mut swapchain, None, device);
 
         return swapchain;
@@ -42,11 +42,11 @@ impl Swapchain {
 
     pub fn renew(
         device: &Device,
-        _window_extent: vk::Extent2D,
+        window_extent: vk::Extent2D,
         previous: &Swapchain,
     ) -> Swapchain {
         let mut swapchain = Swapchain::default();
-
+        swapchain.window_extent = window_extent;
         Swapchain::init(&mut swapchain, Some(previous.swapchain.as_ref().unwrap().swapchain), device);
 
         return swapchain;
@@ -73,7 +73,7 @@ impl Swapchain {
             depth_image_views: Vec::new(),
             swapchain_images: Vec::new(),
             swapchain_image_views: Vec::new(),
-            window_extent: None,
+            window_extent: vk::Extent2D::default(),
             swapchain: None,
             image_available_semaphores: Vec::new(),
             render_finished_semaphores: Vec::new(),
@@ -649,7 +649,7 @@ impl Swapchain {
             } else {
                 use num::clamp;
 
-                let window_size = self.window_extent.unwrap();
+                let window_size = self.window_extent;
                 println!(
                     "\t\tInner Window Size: ({}, {})",
                     window_size.width, window_size.height
