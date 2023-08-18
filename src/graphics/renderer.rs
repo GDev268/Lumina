@@ -23,7 +23,7 @@ pub struct PhysicalRenderer {
     current_frame_index: i32,
     pub is_frame_started: bool,
     pub pipeline: Option<Pipeline>,
-    pipeline_layout: vk::PipelineLayout,
+    pub pipeline_layout: vk::PipelineLayout,
 }
 
 impl PhysicalRenderer {
@@ -235,8 +235,8 @@ impl PhysicalRenderer {
             flags: vk::PipelineLayoutCreateFlags::empty(),
             set_layout_count: 0,
             p_set_layouts: std::ptr::null(),
-            push_constant_range_count: 0,
-            p_push_constant_ranges: std::ptr::null(),
+            push_constant_range_count: 1,
+            p_push_constant_ranges: &push_constant_range,
         };
 
         unsafe {

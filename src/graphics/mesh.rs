@@ -90,27 +90,26 @@ impl Mesh {
         assert!(vertex_count >= 3, "Vertex must be at least 3");
         let buffer_size: vk::DeviceSize =
             (std::mem::size_of::<Vertex>() * vertex_count as usize) as u64;
-        let vertex_size = std::mem::size_of::<Vertex>() as u64;
+        let vertex_size = std::mem::size_of::<Vertex>() as vk::DeviceSize;
 
         let mut staging_buffer: Buffer = Buffer::new(
             device,
             vertex_size,
-            vertex_count,
+            vertex_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            None,
+
         );
 
-        staging_buffer.map(device, Some(vertex_size), None);
-        staging_buffer.write_to_buffer(&vertices,vk::WHOLE_SIZE,0);
+        staging_buffer.map_to_buffer(device, &vertices, 0);
 
         let vertex_buffer = Buffer::new(
             device,
             vertex_size,
-            vertex_count,
+            vertex_count as u64,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            None,
+
         );
 
         device.copy_buffer(
@@ -137,22 +136,21 @@ impl Mesh {
         let mut staging_buffer = Buffer::new(
             device,
             index_size,
-            index_count,
+            index_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            None,
+
         );
 
-        staging_buffer.map(device, Some(index_size), None);
-        staging_buffer.write_to_buffer(&indices,vk::WHOLE_SIZE,0);
+        staging_buffer.map_to_buffer(device, &indices, 0);
 
         let index_buffer = Buffer::new(
             device,
             index_size,
-            index_count,
+            index_count as u64,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            None,
+
         );
 
         device.copy_buffer(

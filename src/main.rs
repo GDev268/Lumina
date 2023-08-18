@@ -6,7 +6,7 @@ mod graphics;
 use std::{cell::RefCell, ffi::c_void, rc::Rc};
 
 use ash::vk::{self};
-use components::{camera::Camera, shapes::cube::Cube};
+use components::{camera::Camera, shapes::cube::{Cube, PushConstantData}};
 use data::{
     buffer::{self, Buffer},
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
@@ -20,7 +20,7 @@ use engine::{
 use graphics::{
     pipeline::{Pipeline, PipelineConfiguration},
     renderer::{PhysicalRenderer, self},
-    shader::Shader,
+    shader::Shader, mesh::{Vertex, Mesh},
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -29,10 +29,6 @@ use winit::{
 
 use crate::components::game_object::{GameObject, GameObjectTrait};
 
-struct Vertex {
-    position: glam::Vec2,
-    color: glam::Vec3,
-}
 
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
@@ -41,42 +37,10 @@ macro_rules! add {
     }};
 }
 
-fn make_model(vertices: Vec<Vertex>, device: &Device) -> (u32, vk::Buffer) {
-    let vertex_count = vertices.len() as u32;
-
-    let buffer_size: vk::DeviceSize =
-        (std::mem::size_of::<Vertex>() as vk::DeviceSize) * vertex_count as vk::DeviceSize;
-
-    let (vertex_buffer, vertex_buffer_memory) = device.create_buffer(
-        buffer_size,
-        vk::BufferUsageFlags::VERTEX_BUFFER,
-        vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-    );
-
-    let mut data: *mut c_void = std::ptr::null_mut();
-    unsafe {
-        data = device
-            .device()
-            .map_memory(
-                vertex_buffer_memory,
-                0,
-                buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )
-            .expect("Failed to map memory on the buffer!");
-
-        std::ptr::copy_nonoverlapping(vertices.as_ptr(), data as *mut Vertex, buffer_size as usize);
-
-        device.device().unmap_memory(vertex_buffer_memory);
-    }
-
-    return (vertex_count, vertex_buffer);
-}
-
 fn bind(command_buffer:vk::CommandBuffer,vertex_buffer:vk::Buffer,device: &Device){
     let buffers = [vertex_buffer];
     let offset = [0];
-    
+
     unsafe{
         device.device().cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offset);
     }
@@ -97,28 +61,15 @@ fn main() {
 
     let mut command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
-    let vertices: Vec<Vertex> = vec![
-        Vertex {
-            position: glam::vec2(0.0, -0.5),
-            color: glam::vec3(1.0, 0.0, 0.0),
-        },
-        Vertex {
-            position: glam::vec2(0.5, 0.5),
-            color: glam::vec3(0.0, 1.0, 0.0),
-        },
-        Vertex {
-            position: glam::vec2(-0.5, 0.5),
-            color: glam::vec3(0.0, 0.0, 1.0),
-        },
-    ];
+   
     let shader = Shader::new(
         &device,
         "shaders/simple_shader.vert.spv",
         "shaders/simple_shader.frag.spv",
     );
-
-    let (count, buffer) = make_model(vertices, &device);
-
+    
+    let mut model = Cube::new(&device);
+    
     renderer.create_pipeline_layout(&device);
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &shader, &device);
 
@@ -130,8 +81,32 @@ fn main() {
 
         renderer.begin_swapchain_renderpass(command_buffer, &device);
         renderer.render_game_objects(&device,command_buffer);
-        bind(command_buffer, buffer, &device);
-        draw(command_buffer, &device, count);
+
+        let push: PushConstantData = PushConstantData {
+            model_matrix: model.game_object().transform.get_mat4(),
+            normal_matrix: model
+                .game_object()
+                .transform
+                .get_normal_matrix(),
+        };
+
+        let push_bytes: &[u8] = unsafe {
+            let struct_ptr = &push as *const _ as *const u8;
+            std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+        };
+
+        unsafe {
+            device.device().cmd_push_constants(
+                command_buffer,
+                renderer.pipeline_layout,
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                push_bytes,
+            );
+
+        }
+
+        model.test_render(command_buffer, &device);
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);
 
@@ -160,3 +135,4 @@ fn main() {
         }
     });
 }
+
