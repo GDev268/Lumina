@@ -10,6 +10,7 @@ use crate::{
 
 use crate::components::game_object::GameObject;
 
+#[derive(Debug)]
 pub struct PushConstantData {
     pub model_matrix: glam::Mat4,
     pub normal_matrix: glam::Mat4,

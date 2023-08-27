@@ -3,10 +3,14 @@ mod data;
 mod engine;
 mod graphics;
 
-use std::{cell::RefCell, ffi::c_void, rc::Rc};
+use std::{cell::RefCell, ffi::c_void, ops::Deref, rc::Rc};
 
 use ash::vk::{self};
-use components::{camera::Camera, shapes::cube::{Cube, PushConstantData}};
+use components::{
+    camera::Camera,
+    model::Model,
+    shapes::cube::{Cube, PushConstantData},
+};
 use data::{
     buffer::{self, Buffer},
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
@@ -18,9 +22,10 @@ use engine::{
     FrameInfo,
 };
 use graphics::{
+    mesh::{Mesh, Vertex},
     pipeline::{Pipeline, PipelineConfiguration},
-    renderer::{PhysicalRenderer, self},
-    shader::Shader, mesh::{Vertex, Mesh},
+    renderer::{self, PhysicalRenderer},
+    shader::Shader,
 };
 use winit::{
     event::{Event, WindowEvent},
@@ -29,7 +34,6 @@ use winit::{
 
 use crate::components::game_object::{GameObject, GameObjectTrait};
 
-
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
         let object_clone = Rc::clone(&$object);
@@ -37,18 +41,22 @@ macro_rules! add {
     }};
 }
 
-fn bind(command_buffer:vk::CommandBuffer,vertex_buffer:vk::Buffer,device: &Device){
+fn bind(command_buffer: vk::CommandBuffer, vertex_buffer: vk::Buffer, device: &Device) {
     let buffers = [vertex_buffer];
     let offset = [0];
 
-    unsafe{
-        device.device().cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offset);
+    unsafe {
+        device
+            .device()
+            .cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offset);
     }
 }
 
-fn draw(command_buffer:vk::CommandBuffer,device: &Device,vertex_count:u32){
-    unsafe{
-        device.device().cmd_draw(command_buffer, vertex_count, 1, 0, 0);
+fn draw(command_buffer: vk::CommandBuffer, device: &Device, vertex_count: u32) {
+    unsafe {
+        device
+            .device()
+            .cmd_draw(command_buffer, vertex_count, 1, 0, 0);
     }
 }
 
@@ -57,37 +65,277 @@ fn main() {
 
     let mut window = Window::new(&event_loop, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window);
-    let mut renderer = PhysicalRenderer::new(&window,&device,None);
+    let mut renderer = PhysicalRenderer::new(&window, &device, None);
 
     let mut command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
-   
     let shader = Shader::new(
         &device,
         "shaders/simple_shader.vert.spv",
         "shaders/simple_shader.frag.spv",
     );
-    
-    let mut model = Cube::new(&device);
-    
+
+    let vertices: Vec<Vertex> = vec![
+        // left face (white)
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.9, 0.9),
+            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        // right face (yellow)
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.8, 0.1),
+            normal: glam::Vec3::new(1.0, 0.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        // top face (orange)
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.9, 0.6, 0.1),
+            normal: glam::Vec3::new(0.0, -1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        // bottom face (red)
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.8, 0.1, 0.1),
+            normal: glam::Vec3::new(0.0, 1.0, 0.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        // nose face (blue)
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, 0.5),
+            color: glam::Vec3::new(0.1, 0.1, 0.8),
+            normal: glam::Vec3::new(0.0, 0.0, 1.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        // tail face (green)
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(0.0, 1.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(-0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(0.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, -0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(1.0, 0.0),
+        },
+        Vertex {
+            position: glam::Vec3::new(0.5, 0.5, -0.5),
+            color: glam::Vec3::new(0.1, 0.8, 0.1),
+            normal: glam::Vec3::new(0.0, 0.0, -1.0),
+            uv: glam::Vec2::new(1.0, 1.0),
+        },
+    ];
+
+
+    let shader = Shader::new(
+        &device,
+        "shaders/simple_shader.vert.spv",
+        "shaders/simple_shader.frag.spv",
+    );
+
+    let mut model = Model::new();
+    model.create_mesh_from_array(vertices, Vec::new(), &device);
+
+    model.game_object.transform.translation = glam::vec3(0.0, 0.0, 2.5);
+    model.game_object.transform.scale = glam::vec3(1.0, 1.0, 1.0);
+
     renderer.create_pipeline_layout(&device);
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &shader, &device);
+
+    let mut camera = Camera::new();
+    let aspect = renderer.get_aspect_ratio();
+    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 10.0);
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();
 
         let command_buffer = renderer.begin_frame(&device, &window);
 
-
         renderer.begin_swapchain_renderpass(command_buffer, &device);
-        renderer.render_game_objects(&device,command_buffer);
+        renderer.render_game_objects(&device, command_buffer);
+        model.game_object.transform.rotation.y =
+            (model.game_object().transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
+        model.game_object.transform.rotation.x =
+            (model.game_object().transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
+
 
         let push: PushConstantData = PushConstantData {
-            model_matrix: model.game_object().transform.get_mat4(),
-            normal_matrix: model
-                .game_object()
-                .transform
-                .get_normal_matrix(),
+            model_matrix: camera.get_projection() * model.game_object().transform.get_mat4(),
+            normal_matrix: model.game_object().transform.get_normal_matrix(),
         };
 
         let push_bytes: &[u8] = unsafe {
@@ -103,14 +351,11 @@ fn main() {
                 0,
                 push_bytes,
             );
-
         }
 
-        model.test_render(command_buffer, &device);
+        model.render(&device, model.game_object(), command_buffer);
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);
-
-
 
         match event {
             Event::WindowEvent {
@@ -135,4 +380,3 @@ fn main() {
         }
     });
 }
-

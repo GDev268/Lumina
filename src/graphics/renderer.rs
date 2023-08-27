@@ -152,7 +152,7 @@ impl PhysicalRenderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.0, 1.0, 1.0, 1.0],
+            float32: [0.15, 0.15, 0.15, 1.0],
         };
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
@@ -265,15 +265,8 @@ impl PhysicalRenderer {
         ));
     }
 
-    pub fn render_game_objects(
-        &self,
-        device: &Device,
-        command_buffer: vk::CommandBuffer
-    ) {
-        self.pipeline
-            .as_ref()
-            .unwrap()
-            .bind(device,command_buffer);
+    pub fn render_game_objects(&self, device: &Device, command_buffer: vk::CommandBuffer) {
+        self.pipeline.as_ref().unwrap().bind(device, command_buffer);
 
         /*unsafe {
             device.device().cmd_bind_descriptor_sets(
