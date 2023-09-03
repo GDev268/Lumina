@@ -1,7 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, borrow::Borrow};
 
 use crate::{
-    components::{game_object::GameObjectTrait, shapes::cube::PushConstantData},
+    components::{shapes::cube::PushConstantData},
     engine::{
         device::Device,
         swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
@@ -265,8 +265,13 @@ impl PhysicalRenderer {
         ));
     }
 
-    pub fn render_game_objects(&self, device: &Device, command_buffer: vk::CommandBuffer) {
-        self.pipeline.as_ref().unwrap().bind(device, command_buffer);
+    /*pub fn render_game_objects(
+        &self,
+        device: &Device,
+        frame_info: &FrameInfo,
+        game_objects: &mut Vec<&dyn GameObjectTrait>,
+    ) {
+        self.pipeline.as_ref().unwrap().bind(device, frame_info.command_buffer);
 
         /*unsafe {
             device.device().cmd_bind_descriptor_sets(
@@ -277,13 +282,12 @@ impl PhysicalRenderer {
                 &[frame_info.global_descriptor_set],
                 &[],
             );
-        }
+        }*/
 
         for game_object in game_objects {
             let push: PushConstantData = PushConstantData {
-                model_matrix: game_object.borrow().game_object().transform.get_mat4(),
+                model_matrix: game_object.game_object().transform.get_mat4(),
                 normal_matrix: game_object
-                    .borrow()
                     .game_object()
                     .transform
                     .get_normal_matrix(),
@@ -302,15 +306,11 @@ impl PhysicalRenderer {
                     0,
                     push_bytes,
                 );
-
             }
 
-            let binding = game_object.borrow_mut();
-
-            binding.render(device, binding.game_object(), frame_info.command_buffer);
-            drop(binding);
-        }*/
-    }
+            game_object.render(device, game_object.game_object(), frame_info.command_buffer);
+        }
+    }*/
 
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {

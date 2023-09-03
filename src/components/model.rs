@@ -5,7 +5,7 @@ use crate::{
     graphics::mesh::{Mesh, Vertex},
 };
 
-use super::game_object::{GameObject, GameObjectTrait};
+use super::game_object::{GameObject};
 
 struct PushConstantData {
     model_matrix: glam::Mat4,
@@ -39,7 +39,7 @@ impl Model {
 
 }
 
-impl GameObjectTrait for Model {
+/*impl GameObjectTrait for Model {
     fn render(
         &self,
         device: &Device,
@@ -60,4 +60,4 @@ impl GameObjectTrait for Model {
     fn game_object(&self) -> &GameObject {
         return &self.game_object;
     }
-}
+}*/

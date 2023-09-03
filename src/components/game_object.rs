@@ -1,18 +1,22 @@
-
-
 use ash::vk;
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 use crate::engine::device::Device;
 
 static mut CURRENT_ID: u32 = 0;
 
-pub struct TransformComponent {
+pub type Component = Box<dyn Any>;
+
+pub struct Transform {
     pub translation: glam::Vec3,
     pub scale: glam::Vec3,
     pub rotation: glam::Vec3,
 }
 
-impl TransformComponent {
+impl Transform {
     pub fn get_mat4(&self) -> glam::Mat4 {
         let c3: f32 = self.rotation.z.cos();
         let s3: f32 = self.rotation.z.sin();
@@ -90,32 +94,23 @@ impl TransformComponent {
     }
 }
 
-pub trait GameObjectTrait{
-    fn render(&self,device:&Device,game_object:&GameObject,command_buffer:vk::CommandBuffer);
-    fn game_object(&self) -> &GameObject;
-}
-
 pub struct GameObject {
-    pub id: u32,
-    pub tag: String,
-    pub layer: String,
-    pub transform: TransformComponent,
-    pub name: String,
+    id: u32,
+    tag: String,
+    layer: String,
+    name: String,
 }
 
 impl GameObject {
     pub fn new(id: u32) -> Self {
         let layer = String::from("Default");
         let tag = String::from("Entity");
-        let transform = TransformComponent::default();
         let name = String::default();
-
 
         return Self {
             id,
             layer,
             tag,
-            transform,
             name,
         };
     }
@@ -133,4 +128,57 @@ impl GameObject {
     pub fn get_id(&self) -> u32 {
         return self.id;
     }
+}
+
+
+pub struct Entity {
+    components: HashMap<TypeId, Component>,
+}
+
+impl Entity {
+    pub fn add_component<T: 'static>(&mut self, component: T) {
+        self.components
+            .insert(TypeId::of::<T>(), Box::new(component));
+    }
+
+    pub fn has_component<T: 'static>(&self) -> bool {
+        return self.components.contains_key(&TypeId::of::<T>());
+    }
+
+    pub fn get_component<T: 'static>(&self) -> Option<&T> {
+        if let Some(component) = self.components.get(&TypeId::of::<T>()) {
+            Some(component.downcast_ref::<T>().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_components<T: 'static>(&self) -> Vec<&T> {
+        return self
+            .components
+            .values()
+            .filter_map(|component| component.downcast_ref::<T>())
+            .collect();
+    }
+
+    pub fn get_mut_component<T: 'static>(&mut self) -> Option<&mut T> {
+        if let Some(component) = self.components.get_mut(&TypeId::of::<T>()) {
+            Some(component.downcast_mut::<T>().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut_components<T: 'static>(&mut self) -> Vec<&mut T> {
+        return self
+            .components
+            .values_mut()
+            .filter_map(|component| component.downcast_mut::<T>())
+            .collect();
+    }
+
+    pub fn new() -> Self{
+        return Self { components: HashMap::new() };
+    }
+
 }

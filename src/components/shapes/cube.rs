@@ -1,7 +1,6 @@
 use ash::vk;
 
 use crate::{
-    components::game_object::GameObjectTrait,
     engine::device::Device,
     graphics::{
         mesh::{Mesh, Vertex},
@@ -120,7 +119,7 @@ impl Cube {
     }
 }
 
-impl GameObjectTrait for Cube {
+/*impl GameObjectTrait for Cube {
     fn render(&self, device: &Device, game_object: &GameObject,command_buffer:vk::CommandBuffer) {
         
         for mesh in &self.meshes{
@@ -133,4 +132,4 @@ impl GameObjectTrait for Cube {
     fn game_object(&self) -> &GameObject {
         return &self.game_object;
     }
-}
+}*/

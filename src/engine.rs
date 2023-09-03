@@ -5,6 +5,7 @@ use crate::components::camera::Camera;
 pub mod device;
 pub mod swapchain;
 pub mod window;
+pub mod scene;
 
 const MAX_LIGHTS:i32  = 10;
 
@@ -21,9 +22,8 @@ struct GlobalUBO{
 }
 
 pub struct FrameInfo<'a>{
-    pub frame_index:i32,
     pub frame_time:f64,
     pub command_buffer:vk::CommandBuffer,
     pub camera:&'a Camera,
-    pub global_descriptor_set:vk::DescriptorSet,
+    //pub global_descriptor_set:vk::DescriptorSet,
 }

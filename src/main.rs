@@ -3,7 +3,7 @@ mod data;
 mod engine;
 mod graphics;
 
-use std::{cell::RefCell, ffi::c_void, ops::Deref, rc::Rc};
+use std::{cell::RefCell, ffi::c_void, ops::{Deref, DerefMut}, rc::Rc, borrow::BorrowMut};
 
 use ash::vk::{self};
 use components::{
@@ -32,32 +32,15 @@ use winit::{
     event_loop::EventLoop,
 };
 
-use crate::components::game_object::{GameObject, GameObjectTrait};
+use crate::components::game_object::{GameObject};
+
+
 
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
-        let object_clone = Rc::clone(&$object);
-        $game_objects.push(object_clone);
+        let rc_object = Rc::new(RefCell::new($object));
+        $game_objects.push(rc_object.clone());
     }};
-}
-
-fn bind(command_buffer: vk::CommandBuffer, vertex_buffer: vk::Buffer, device: &Device) {
-    let buffers = [vertex_buffer];
-    let offset = [0];
-
-    unsafe {
-        device
-            .device()
-            .cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offset);
-    }
-}
-
-fn draw(command_buffer: vk::CommandBuffer, device: &Device, vertex_count: u32) {
-    unsafe {
-        device
-            .device()
-            .cmd_draw(command_buffer, vertex_count, 1, 0, 0);
-    }
 }
 
 fn main() {
@@ -68,6 +51,8 @@ fn main() {
     let mut renderer = PhysicalRenderer::new(&window, &device, None);
 
     let mut command_buffers: Vec<vk::CommandBuffer> = Vec::new();
+
+    /*let mut game_objects: Vec<&dyn GameObjectTrait>;
 
     let shader = Shader::new(
         &device,
@@ -313,24 +298,31 @@ fn main() {
     model.game_object.transform.translation = glam::vec3(0.0, 0.0, 2.5);
     model.game_object.transform.scale = glam::vec3(1.0, 1.0, 1.0);
 
+    //game_objects.push(&model);
+
     renderer.create_pipeline_layout(&device);
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &shader, &device);
 
     let mut camera = Camera::new();
     let aspect = renderer.get_aspect_ratio();
-    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 10.0);
+    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 10.0);*/
 
+    
     event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();
+        /*let command_buffer = renderer.begin_frame(&device, &window);
 
-        let command_buffer = renderer.begin_frame(&device, &window);
+        let frame_info: FrameInfo<'_> = FrameInfo{
+            frame_time: 0.0,
+            command_buffer,
+            camera: &camera
+        };
 
         renderer.begin_swapchain_renderpass(command_buffer, &device);
-        renderer.render_game_objects(&device, command_buffer);
         model.game_object.transform.rotation.y =
-            (model.game_object().transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
+        (model.game_object().transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
         model.game_object.transform.rotation.x =
-            (model.game_object().transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
+        (model.game_object().transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
+        renderer.render_game_objects(&device, &frame_info,&mut game_objects);
 
 
         let push: PushConstantData = PushConstantData {
@@ -355,7 +347,9 @@ fn main() {
 
         model.render(&device, model.game_object(), command_buffer);
         renderer.end_swapchain_renderpass(command_buffer, &device);
-        renderer.end_frame(&device, &mut window);
+        renderer.end_frame(&device, &mut window);*/
+
+
 
         match event {
             Event::WindowEvent {
@@ -379,4 +373,5 @@ fn main() {
             _ => (),
         }
     });
+
 }
