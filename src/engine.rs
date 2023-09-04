@@ -6,6 +6,7 @@ pub mod device;
 pub mod swapchain;
 pub mod window;
 pub mod scene;
+pub mod entity;
 
 const MAX_LIGHTS:i32  = 10;
 

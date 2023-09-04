@@ -1,6 +1,6 @@
 use crate::engine::device::Device;
 use ash::vk;
-use std::{ffi::c_void, ptr::NonNull};
+use std::{ffi::c_void};
 
 pub struct Buffer {
     pub buffer: vk::Buffer,
@@ -44,7 +44,7 @@ impl Buffer {
         return instance_size;
     }
 
-    pub fn map_to_buffer<T>(&mut self, device: &Device,data: &[T],offset: vk::DeviceSize) {
+    pub fn map_to_buffer<T>(&mut self, device: &Device,data: &[T],_offset: vk::DeviceSize) {
         unsafe{
         self.mapped = device
             .device()

@@ -3,36 +3,25 @@ mod data;
 mod engine;
 mod graphics;
 
-use std::{cell::RefCell, ffi::c_void, ops::{Deref, DerefMut}, rc::Rc, borrow::BorrowMut};
+
 
 use ash::vk::{self};
-use components::{
-    camera::Camera,
-    model::Model,
-    shapes::cube::{Cube, PushConstantData},
-};
-use data::{
-    buffer::{self, Buffer},
-    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
-};
+
+
 use engine::{
     device::Device,
-    swapchain::{self, Swapchain},
     window::Window,
-    FrameInfo,
 };
 use graphics::{
-    mesh::{Mesh, Vertex},
-    pipeline::{Pipeline, PipelineConfiguration},
-    renderer::{self, PhysicalRenderer},
-    shader::Shader,
+    mesh::{Vertex},
+    renderer::{PhysicalRenderer},
 };
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
 };
 
-use crate::components::game_object::{GameObject};
+
 
 
 
@@ -48,9 +37,9 @@ fn main() {
 
     let mut window = Window::new(&event_loop, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window);
-    let mut renderer = PhysicalRenderer::new(&window, &device, None);
+    let _renderer = PhysicalRenderer::new(&window, &device, None);
 
-    let mut command_buffers: Vec<vk::CommandBuffer> = Vec::new();
+    let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
     /*let mut game_objects: Vec<&dyn GameObjectTrait>;
 
