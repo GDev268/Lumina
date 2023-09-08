@@ -1,22 +1,15 @@
-mod components;
-mod data;
-mod engine;
-mod graphics;
-
 use std::{any::TypeId, rc::Rc};
 
 use ash::vk::{self};
 
-use components::{
-    camera::Camera, model::Model, shapes::cube::PushConstantData, transform::Transform,
-};
-use engine::{
-    device::Device,
-    scene::{self, Scene},
-    window::Window,
-    FrameInfo,
-};
-use graphics::{mesh::Vertex, renderer::PhysicalRenderer, shader::Shader};
+use revier_render::camera::Camera;
+use revier_geometry::{model::Model,shapes::{self}};
+use revier_object::transform::Transform;
+use revier_core::{device::Device,swapchain::Swapchain,window::Window};
+use revier_scene::{scene::Scene,FrameInfo};
+use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
+
+
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
@@ -47,7 +40,7 @@ fn main() {
 
     let mut renderer = PhysicalRenderer::new(&window, &device, None, Rc::clone(&shader));
 
-    let mut cube = components::cube(&mut scene, &device);
+    let mut cube = shapes::cube(&mut scene, &device);
 
     if let Some(transform) = scene.query_mut::<Transform>(&cube) {
         transform.translation = glam::vec3(0.0, 0.0, 2.5);
@@ -55,7 +48,7 @@ fn main() {
     }
 
 
-    let mut cube2 = components::cube(&mut scene, &device);
+    let mut cube2 = shapes::cube(&mut scene, &device);
 
     if let Some(transform) = scene.query_mut::<Transform>(&cube2) {
         transform.translation = glam::vec3(1.0, 0.0, 5.0);

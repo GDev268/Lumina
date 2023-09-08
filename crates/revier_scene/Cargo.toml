@@ -1,0 +1,13 @@
+[package]
+name = "revier_scene"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+revier_object = {path="../revier_object",version = "0.1.0"}
+revier_render = {path="../revier_render",version = "0.1.0"}
+
+ash = {version="0.37.3",features = ["linked", "debug"]}
+glam = "0.24.1"
