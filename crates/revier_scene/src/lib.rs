@@ -1,4 +1,5 @@
 pub mod scene;
+pub mod query;
 
 use ash::vk;
 use revier_render::camera::Camera;

@@ -8,7 +8,7 @@ use revier_core::{
 
 use revier_geometry::model::{PushConstantData,Model};
 use revier_object::transform::Transform;
-use revier_scene::{scene::Scene,FrameInfo};
+use revier_scene::{query::Query,FrameInfo};
 
 use ash::vk;
 
@@ -266,7 +266,7 @@ impl PhysicalRenderer {
         ));
     }
 
-    pub fn render_game_objects(&self, device: &Device, frame_info: &FrameInfo, scene: &mut Scene) {
+    pub fn render_game_objects(&self, device: &Device, frame_info: &FrameInfo, scene: &mut Query) {
         self.pipeline
             .as_ref()
             .unwrap()

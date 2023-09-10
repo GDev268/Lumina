@@ -2,18 +2,25 @@ use std::{any::TypeId, rc::Rc};
 
 use ash::vk::{self};
 
+use revier_debug::logger::Logger;
 use revier_render::camera::Camera;
 use revier_geometry::{model::Model,shapes::{self}};
 use revier_object::transform::Transform;
 use revier_core::{device::Device,swapchain::Swapchain,window::Window};
-use revier_scene::{scene::Scene,FrameInfo};
+use revier_scene::{query::Query,FrameInfo};
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
-
 
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
 };
+
+use lazy_static::lazy_static;
+
+// Create a lazy-static instance of your global struct
+lazy_static! {
+    static ref LOGGER: Logger = Logger::new();
+}
 
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
@@ -30,7 +37,8 @@ fn main() {
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
-    let mut scene = Scene::new();
+    let mut query = Query::new();
+
 
     let shader = Rc::new(Shader::new(
         &device,
@@ -40,17 +48,17 @@ fn main() {
 
     let mut renderer = PhysicalRenderer::new(&window, &device, None, Rc::clone(&shader));
 
-    let mut cube = shapes::cube(&mut scene, &device);
+    let mut cube = shapes::cube(&mut query, &device);
 
-    if let Some(transform) = scene.query_mut::<Transform>(&cube) {
+    if let Some(transform) = query.query_mut::<Transform>(&cube) {
         transform.translation = glam::vec3(0.0, 0.0, 2.5);
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
 
-    let mut cube2 = shapes::cube(&mut scene, &device);
+    let mut cube2 = shapes::cube(&mut query, &device);
 
-    if let Some(transform) = scene.query_mut::<Transform>(&cube2) {
+    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
         transform.translation = glam::vec3(1.0, 0.0, 5.0);
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
@@ -63,6 +71,7 @@ fn main() {
     let aspect = renderer.get_aspect_ratio();
     camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 10.0);
     camera.set_view_yxz(view.translation, view.rotation);
+
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -92,14 +101,14 @@ fn main() {
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
-            if let Some(transform) = scene.query_mut::<Transform>(&cube) {
+            if let Some(transform) = query.query_mut::<Transform>(&cube) {
                 transform.rotation.y =
                     (transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
                 transform.rotation.x =
                     (transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
             }
 
-            if let Some(transform) = scene.query_mut::<Transform>(&cube2) {
+            if let Some(transform) = query.query_mut::<Transform>(&cube2) {
                 transform.rotation.y =
                     (transform.rotation.y - 0.00055) % (std::f32::consts::PI * 2.0);
                 transform.rotation.x =
@@ -107,7 +116,7 @@ fn main() {
             }
 
 
-            renderer.render_game_objects(&device, &frame_info ,&mut scene);
+            renderer.render_game_objects(&device, &frame_info ,&mut query);
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
         }

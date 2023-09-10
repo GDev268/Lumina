@@ -1,11 +1,11 @@
 use revier_core::device::Device;
 use revier_object::game_object::GameObject;
 use revier_render::mesh::Vertex;
-use revier_scene::scene::Scene;
+use revier_scene::query::Query;
 
 use crate::model::Model;
 
-pub fn cube(scene: &mut Scene, device: &Device) -> GameObject {
+pub fn cube(scene: &mut Query, device: &Device) -> GameObject {
     let mut model = Model::new();
 
     let vertices: Vec<Vertex> = vec![

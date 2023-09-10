@@ -3,38 +3,38 @@ use super::game_object::Component;
 pub struct Transform {
     pub translation: glam::Vec3,
     pub scale: glam::Vec3,
-    pub rotation: glam::Vec3,
+    pub rotation: glam::Vec3, // Rotation angles for X, Y, and Z axes
 }
 
 impl Transform {
     pub fn get_mat4(&self) -> glam::Mat4 {
-        let c1 = self.rotation.x.cos();
-        let s1 = self.rotation.x.sin();
-        let c2 = self.rotation.y.cos();
-        let s2 = self.rotation.y.sin();
-        let c3 = self.rotation.z.cos();
-        let s3 = self.rotation.z.sin();
+        let c1_x = self.rotation.x.cos();
+        let s1_x = self.rotation.x.sin();
+        let c2_y = self.rotation.y.cos();
+        let s2_y = self.rotation.y.sin();
+        let c3_z = self.rotation.z.cos(); // Use the absolute value of Z-axis rotation
+        let s3_z = self.rotation.z.sin(); // Use the absolute value of Z-axis rotation
 
-        return glam::mat4(
-            glam::vec4(
-                self.scale.x * (c2 * c3),
-                self.scale.x * (c1 * s3 + s1 * s2 * c3),
-                self.scale.x * (s1 * s3 - c1 * s2 * c3),
+        return glam::Mat4::from_cols(
+            glam::Vec4::new(
+                self.scale.x * (c2_y * c3_z),
+                self.scale.x * (s1_x * s2_y * c3_z - c1_x * s3_z),
+                self.scale.x * (c1_x * s2_y * c3_z + s1_x * s3_z),
                 0.0,
             ),
-            glam::vec4(
-                self.scale.y * (-c2 * s3),
-                self.scale.y * (c1 * c3 - s1 * s2 * s3),
-                self.scale.y * (s1 * c3 + c1 * s2 * s3),
+            glam::Vec4::new(
+                self.scale.y * (c2_y * s3_z),
+                self.scale.y * (s1_x * s2_y * s3_z + c1_x * c3_z),
+                self.scale.y * (c1_x * s2_y * s3_z - s1_x * c3_z),
                 0.0,
             ),
-            glam::vec4(
-                self.scale.z * (s2),
-                self.scale.z * (-s1 * c2),
-                self.scale.z * (c1 * c2),
+            glam::Vec4::new(
+                self.scale.z * (-s2_y),
+                self.scale.z * (s1_x * c2_y),
+                self.scale.z * (c1_x * c2_y),
                 0.0,
             ),
-            glam::vec4(
+            glam::Vec4::new(
                 self.translation.x,
                 self.translation.y,
                 self.translation.z,
@@ -52,26 +52,26 @@ impl Transform {
         let s1: f32 = self.rotation.y.sin();
         let inverse_scale: glam::Vec3 = 1.0 / self.scale;
 
-        return glam::mat4(
-            glam::vec4(
+        return glam::Mat4::from_cols(
+            glam::Vec4::new(
                 inverse_scale.x * (c1 * c3 + s1 * s2 * s3),
                 inverse_scale.x * (c2 * s3),
                 inverse_scale.x * (c1 * s2 * s3 - c3 * s1),
                 1.0,
             ),
-            glam::vec4(
+            glam::Vec4::new(
                 inverse_scale.y * (c3 * s1 * s2 - c1 * s3),
                 inverse_scale.y * (c2 * c3),
                 inverse_scale.y * (c1 * c3 * s2 + s1 * s3),
                 1.0,
             ),
-            glam::vec4(
+            glam::Vec4::new(
                 inverse_scale.z * (c2 * s1),
                 inverse_scale.z * (-s2),
                 inverse_scale.z * (c1 * c2),
                 1.0,
             ),
-            glam::vec4(1.0, 1.0, 1.0, 1.0),
+            glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
         );
     }
 

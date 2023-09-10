@@ -13,10 +13,12 @@ dependencies = [
  "egui 0.22.0",
  "egui-winit-ash-integration",
  "glam",
+ "lazy_static",
  "num",
  "raw-window-handle 0.5.2",
  "revier_core",
  "revier_data",
+ "revier_debug",
  "revier_geometry",
  "revier_graphic",
  "revier_object",
@@ -1629,6 +1631,10 @@ dependencies = [
  "ash",
  "revier_core",
 ]
+
+[[package]]
+name = "revier_debug"
+version = "0.1.0"
 
 [[package]]
 name = "revier_geometry"

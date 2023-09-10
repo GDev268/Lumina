@@ -4,27 +4,30 @@ version = "0.1.0"
 edition = "2021"
 authors = ["G..."]
 description = "Rust Game Engine"
-keywords = ["game","engine","rust","ash"]
+keywords = ["game", "engine", "rust", "ash"]
 
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 
 
 [features]
-default = ["revier_core","revier_data","revier_render","revier_graphic","revier_geometry","revier_object","revier_scene"]
+default = ["revier_core", "revier_data", "revier_render", "revier_graphic", "revier_geometry", "revier_object", "revier_scene", "revier_debug"]
 optional = []
 
 [dependencies]
-revier_core = {path="crates/revier_core",version = "0.1.0",optional = true}
-revier_data = {path="crates/revier_data",version = "0.1.0",optional = true}
-revier_render = {path="crates/revier_render",version = "0.1.0",optional = true}
-revier_graphic = {path="crates/revier_graphic",version = "0.1.0",optional = true}
-revier_geometry = {path="crates/revier_geometry",version = "0.1.0",optional = true}
-revier_object = {path="crates/revier_object",version = "0.1.0",optional = true}
-revier_scene = {path="crates/revier_scene",version = "0.1.0",optional = true}
+#Revier
+revier_core = { path = "crates/revier_core", version = "0.1.0", optional = true }
+revier_data = { path = "crates/revier_data", version = "0.1.0", optional = true }
+revier_render = { path = "crates/revier_render", version = "0.1.0", optional = true }
+revier_graphic = { path = "crates/revier_graphic", version = "0.1.0", optional = true }
+revier_geometry = { path = "crates/revier_geometry", version = "0.1.0", optional = true }
+revier_object = { path = "crates/revier_object", version = "0.1.0", optional = true }
+revier_scene = { path = "crates/revier_scene", version = "0.1.0", optional = true }
+revier_debug = { path = "crates/revier_debug", version = "0.1.0", optional = true }
 
 
-ash = {version="0.37.3",features = ["linked", "debug"]}
+#Other
+ash = { version = "0.37.3", features = ["linked", "debug"] }
 ash-window = "0.12.0"
 cgmath = "0.18.0"
 color-print = "0.3.4"
@@ -37,3 +40,4 @@ simple_logger = "4.2.0"
 softbuffer = "0.3.0"
 sprintf = "0.1.3"
 winit = "0.28.6"
+lazy_static = "1.4.0"

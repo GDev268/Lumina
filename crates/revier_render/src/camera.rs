@@ -89,18 +89,18 @@ impl Camera {
         let s2 = rotation.y.sin();
         let c3 = rotation.z.cos();
         let s3 = rotation.z.sin();
-
-        let u = glam::Vec3::new(c1 * c3 - s1 * s2 * s3, -s3 * c2, c3 * s1 + c1 * s2 * s3);
+    
+        let u = glam::Vec3::new(c1 * c3 + s1 * s2 * s3, -s3 * c2, c3 * s1 - c1 * s2 * s3);
         let v = glam::Vec3::new(c1 * s2, c2, s1 * s2);
-        let w = glam::Vec3::new(-s1 * c3 - c1 * s2 * s3, s3 * c2, -c1 * c3 + s1 * s2 * s3);
-
+        let w = glam::Vec3::new(s1 * c3 - c1 * s2 * s3, s3 * c2, -c1 * c3 - s1 * s2 * s3);
+    
         // Adjust the Z-component of the position vector for movement along the negative Z-axis.
         let adjusted_position = glam::Vec3::new(
             translation.x,
             translation.y,
-            -translation.z, // Adjusted for movement along the negative Z-axis
+            translation.z, // No adjustment needed for Z-axis
         );
-
+    
         self.view_matrix = glam::Mat4::from_cols(
             u.extend(0.0),
             v.extend(0.0),
@@ -112,7 +112,7 @@ impl Camera {
                 0.0,
             ),
         );
-
+    
         self.inverse_view_matrix = glam::Mat4::from_cols(
             u.extend(0.0),
             v.extend(0.0),
@@ -120,6 +120,7 @@ impl Camera {
             adjusted_position.extend(1.0),
         );
     }
+    
     
     
 
