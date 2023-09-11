@@ -103,10 +103,21 @@ impl Image {
         return self._image_view;
     }
 
-    pub fn clean(&mut self, device: &Device) {
+    pub fn clean_view(&mut self, device: &Device) {
         unsafe {
             device.device().destroy_image_view(self._image_view, None);
+        }
+    }
+
+    pub fn clean_image(&mut self, device: &Device) {
+        unsafe {
             device.device().destroy_image(self._image, None);
+        }
+    }
+
+    pub fn clean_memory(&mut self, device: &Device) {
+        unsafe {
+            device.device().free_memory(self.memory, None);
         }
     }
 }

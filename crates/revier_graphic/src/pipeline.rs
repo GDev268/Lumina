@@ -1,9 +1,8 @@
 use revier_core::device::Device;
-use revier_render::{offset_of, mesh::Vertex};
+use revier_render::{mesh::Vertex, offset_of};
 
-use std::ffi::CString;
 use ash::vk::{self};
-
+use std::ffi::CString;
 
 pub struct PipelineConfiguration {
     pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
@@ -221,7 +220,7 @@ impl Pipeline {
                 offset: offset_of!(Vertex, color),
             });
 
-            pipeline_config
+        pipeline_config
             .attribute_descriptions
             .push(vk::VertexInputAttributeDescription {
                 location: 2,
@@ -230,7 +229,7 @@ impl Pipeline {
                 offset: offset_of!(Vertex, color),
             });
 
-            pipeline_config
+        pipeline_config
             .attribute_descriptions
             .push(vk::VertexInputAttributeDescription {
                 location: 3,
@@ -239,16 +238,17 @@ impl Pipeline {
                 offset: offset_of!(Vertex, color),
             });
 
-            let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
-        vk::PipelineVertexInputStateCreateInfo {
-            flags: vk::PipelineVertexInputStateCreateFlags::empty(),
-            s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            vertex_attribute_description_count: pipeline_config.attribute_descriptions.len() as u32,
-            vertex_binding_description_count: pipeline_config.binding_descriptions.len() as u32,
-            p_vertex_attribute_descriptions: pipeline_config.attribute_descriptions.as_ptr(),
-            p_vertex_binding_descriptions: pipeline_config.binding_descriptions.as_ptr(),
-            p_next: std::ptr::null(),
-        };
+        let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
+            vk::PipelineVertexInputStateCreateInfo {
+                flags: vk::PipelineVertexInputStateCreateFlags::empty(),
+                s_type: vk::StructureType::PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                vertex_attribute_description_count: pipeline_config.attribute_descriptions.len()
+                    as u32,
+                vertex_binding_description_count: pipeline_config.binding_descriptions.len() as u32,
+                p_vertex_attribute_descriptions: pipeline_config.attribute_descriptions.as_ptr(),
+                p_vertex_binding_descriptions: pipeline_config.binding_descriptions.as_ptr(),
+                p_next: std::ptr::null(),
+            };
 
         let create_info: vk::GraphicsPipelineCreateInfo = vk::GraphicsPipelineCreateInfo {
             flags: vk::PipelineCreateFlags::empty(),
@@ -301,8 +301,9 @@ impl Pipeline {
         }
     }
 
-    pub unsafe fn cleanup(&mut self,device: &Device){
-        device.device().destroy_pipeline(self.graphics_pipeline.unwrap(), None);
-        self.graphics_pipeline = None;
+    pub unsafe fn cleanup(&mut self, device: &Device) {
+        device
+            .device()
+            .destroy_pipeline(self.graphics_pipeline.unwrap(), None);
     }
 }

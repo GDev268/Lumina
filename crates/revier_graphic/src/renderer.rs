@@ -6,9 +6,9 @@ use revier_core::{
     window::Window,
 };
 
-use revier_geometry::model::{PushConstantData,Model};
+use revier_geometry::model::{Model, PushConstantData};
 use revier_object::transform::Transform;
-use revier_scene::{query::Query,FrameInfo};
+use revier_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 

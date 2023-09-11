@@ -17,8 +17,7 @@ pub struct Swapchain {
     swapchain_framebuffers: Vec<vk::Framebuffer>,
     renderpass: Option<vk::RenderPass>,
     depth_images: Vec<Image>,
-    swapchain_images: Vec<vk::Image>,
-    swapchain_image_views: Vec<vk::ImageView>,
+    swapchain_images: Vec<Image>,
     window_extent: vk::Extent2D,
     swapchain: Option<SwapchainKHR>,
     image_available_semaphores: Vec<vk::Semaphore>,
@@ -67,7 +66,6 @@ impl Swapchain {
             renderpass: None,
             depth_images: Vec::new(),
             swapchain_images: Vec::new(),
-            swapchain_image_views: Vec::new(),
             window_extent: vk::Extent2D::default(),
             swapchain: None,
             image_available_semaphores: Vec::new(),
@@ -87,7 +85,7 @@ impl Swapchain {
     }
 
     pub fn get_image_view(&self, index: usize) -> vk::ImageView {
-        return self.swapchain_image_views[index];
+        return self.swapchain_images[index].get_image_view();
     }
 
     pub fn image_count(&self) -> usize {
@@ -327,9 +325,13 @@ impl Swapchain {
                 .create_swapchain(&create_info, None)
                 .expect("Failed to create swapchain!");
 
-            self.swapchain_images = swapchain_loader.get_swapchain_images(_swapchain).unwrap();
+            let vulkan_images = swapchain_loader.get_swapchain_images(_swapchain).unwrap();
 
-            
+            for vulkan_image in vulkan_images {
+                let image = Image::new_swapchain(surface_format.format, extent, vulkan_image);
+                self.swapchain_images.push(image);
+            }
+
             self.swapchain_image_format = Some(surface_format.format);
             self.swapchain_extent = Some(extent);
 
@@ -341,37 +343,8 @@ impl Swapchain {
     }
 
     fn create_image_views(self: &mut Swapchain, device: &Device) {
-        for &image in self.swapchain_images.iter() {
-            let view_info = vk::ImageViewCreateInfo {
-                s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
-                p_next: ptr::null(),
-                flags: vk::ImageViewCreateFlags::empty(),
-                view_type: vk::ImageViewType::TYPE_2D,
-                format: self.swapchain_image_format.unwrap(),
-                components: vk::ComponentMapping {
-                    r: vk::ComponentSwizzle::IDENTITY,
-                    g: vk::ComponentSwizzle::IDENTITY,
-                    b: vk::ComponentSwizzle::IDENTITY,
-                    a: vk::ComponentSwizzle::IDENTITY,
-                },
-                subresource_range: vk::ImageSubresourceRange {
-                    aspect_mask: vk::ImageAspectFlags::COLOR,
-                    base_mip_level: 0,
-                    level_count: 1,
-                    base_array_layer: 0,
-                    layer_count: 1,
-                },
-                image: image,
-            };
-
-            unsafe {
-                let swapchain_image_view = device
-                    .device()
-                    .create_image_view(&view_info, None)
-                    .expect("Failed to create image view!");
-
-                self.swapchain_image_views.push(swapchain_image_view);
-            }
+        for image in self.swapchain_images.iter_mut() {
+            image.new_image_view(device, vk::ImageAspectFlags::COLOR);
         }
     }
 
@@ -465,8 +438,10 @@ impl Swapchain {
             .resize(image_count, vk::Framebuffer::default());
 
         for i in 0..self.image_count() {
-            let attachments: [vk::ImageView; 2] =
-                [self.swapchain_image_views[i], self.depth_images[i].get_image_view()];
+            let attachments: [vk::ImageView; 2] = [
+                self.swapchain_images[i].get_image_view(),
+                self.depth_images[i].get_image_view(),
+            ];
 
             let _swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
 
@@ -609,23 +584,47 @@ impl Swapchain {
     }
 
     pub unsafe fn cleanup(&mut self, device: &Device) {
-        self.swapchain_framebuffers
-            .iter()
-            .for_each(|framebuffer| device.device().destroy_framebuffer(*framebuffer, None));
-        self.swapchain_framebuffers.clear();
-        device
-            .device()
-            .destroy_render_pass(self.renderpass.unwrap(), None);
-        self.renderpass = None;
-        self.swapchain_image_views
-            .iter()
-            .for_each(|image_view| device.device().destroy_image_view(*image_view, None));
-        self.swapchain_image_views.clear();
+        self.swapchain_images
+            .iter_mut()
+            .for_each(|image| image.clean_view(device));
+
         self.swapchain
             .as_ref()
             .unwrap()
             .swapchain_loader
             .destroy_swapchain(self.swapchain.as_ref().unwrap().swapchain, None);
+
+        self.depth_images
+            .iter_mut()
+            .for_each(|image| image.clean_view(device));
+
+        self.depth_images
+            .iter_mut()
+            .for_each(|image| image.clean_image(device));
+
+        self.depth_images
+            .iter_mut()
+            .for_each(|image| image.clean_memory(device));
+
+        self.swapchain_framebuffers
+            .iter()
+            .for_each(|f| device.device().destroy_framebuffer(*f, None));
+
+        device
+            .device()
+            .destroy_render_pass(self.renderpass.unwrap(), None);
+
+        self.render_finished_semaphores
+            .iter()
+            .for_each(|s| device.device().destroy_semaphore(*s, None));
+
+        self.image_available_semaphores
+            .iter()
+            .for_each(|s| device.device().destroy_semaphore(*s, None));
+
+        self.in_flight_fences
+            .iter()
+            .for_each(|f| device.device().destroy_fence(*f, None));
     }
 }
 
