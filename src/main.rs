@@ -1,14 +1,17 @@
-use std::{any::TypeId, rc::Rc};
+use std::{any::TypeId, fs::File, io::Write, rc::Rc};
 
 use ash::vk::{self};
 
+use revier_core::{device::Device, swapchain::Swapchain, window::Window};
 use revier_debug::logger::Logger;
-use revier_render::camera::Camera;
-use revier_geometry::{model::Model,shapes::{self}};
-use revier_object::transform::Transform;
-use revier_core::{device::Device,swapchain::Swapchain,window::Window};
-use revier_scene::{query::Query,FrameInfo};
+use revier_geometry::{
+    model::Model,
+    shapes::{self},
+};
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
+use revier_object::{game_object::GameObject, transform::Transform};
+use revier_render::camera::Camera;
+use revier_scene::{query::Query, FrameInfo};
 
 use winit::{
     event::{Event, WindowEvent},
@@ -39,39 +42,40 @@ fn main() {
 
     let mut query = Query::new();
 
-
     let shader = Rc::new(Shader::new(
         &device,
         "shaders/simple_shader.vert.spv",
         "shaders/simple_shader.frag.spv",
     ));
 
-    let mut renderer = PhysicalRenderer::new(&window, &device, None, Rc::clone(&shader));
+    let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
-    let mut cube = shapes::cube(&mut query, &device);
+    let mut game_objects: Vec<GameObject> = Vec::new();
 
-    if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation = glam::vec3(0.0, 0.0, 2.5);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    for i in 0..10 {
+        for j in 0..75 {
+            let mut cube = shapes::cube(&mut query, &device);
+            if let Some(transform) = query.query_mut::<Transform>(&cube) {
+                transform.translation =
+                    glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
+                transform.scale = glam::vec3(1.0, 1.0, 1.0);
+            }
+
+            game_objects.push(cube);
+        }
     }
 
-
-    let mut cube2 = shapes::cube(&mut query, &device);
-
-    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-        transform.translation = glam::vec3(1.0, 0.0, 5.0);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
-    }
-
+    println!("{:?}",query.entities.len());
     renderer.create_pipeline_layout(&device);
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
 
     let mut camera = Camera::new();
     let mut view = Transform::default();
     let aspect = renderer.get_aspect_ratio();
-    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 10.0);
+    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
     camera.set_view_yxz(view.translation, view.rotation);
 
+    let mut time: f32 = 0.0;
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -93,6 +97,16 @@ fn main() {
             _ => (),
         }
 
+        for i in 0..game_objects.len() {
+            if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
+                let wave = (std::f32::consts::PI / 30.0) * (transform.translation.x - (10.0 * time));
+
+                transform.translation.y = 10.0 * wave.cos();
+
+            }
+            
+        }
+
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_info: FrameInfo<'_> = FrameInfo {
                 frame_time: 0.0,
@@ -101,24 +115,11 @@ fn main() {
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
-            if let Some(transform) = query.query_mut::<Transform>(&cube) {
-                transform.rotation.y =
-                    (transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
-                transform.rotation.x =
-                    (transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
-            }
 
-            if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-                transform.rotation.y =
-                    (transform.rotation.y - 0.00055) % (std::f32::consts::PI * 2.0);
-                transform.rotation.x =
-                    (transform.rotation.x - 0.00055) % (std::f32::consts::PI * 2.0);
-            }
-
-
-            renderer.render_game_objects(&device, &frame_info ,&mut query);
+            renderer.render_game_objects(&device, &frame_info, &mut query);
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
+            time = time + 0.005;
         }
 
         renderer.end_frame(&device, &mut window);

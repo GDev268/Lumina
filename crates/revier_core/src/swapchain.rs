@@ -1,4 +1,5 @@
 use crate::device::{Device, QueueFamily, SwapChainSupportDetails};
+use crate::framebuffer::{Framebuffer, self};
 use crate::image::Image;
 use ash::vk::{self};
 use std::ptr::{self};
@@ -14,7 +15,7 @@ pub struct Swapchain {
     swapchain_image_format: Option<vk::Format>,
     swapchain_depth_format: Option<vk::Format>,
     swapchain_extent: Option<vk::Extent2D>,
-    swapchain_framebuffers: Vec<vk::Framebuffer>,
+    swapchain_framebuffers: Vec<Framebuffer>,
     renderpass: Option<vk::RenderPass>,
     depth_images: Vec<Image>,
     swapchain_images: Vec<Image>,
@@ -77,7 +78,7 @@ impl Swapchain {
     }
 
     pub fn get_framebuffer(&self, index: usize) -> vk::Framebuffer {
-        return self.swapchain_framebuffers[index];
+        return self.swapchain_framebuffers[index].get_framebuffer();
     }
 
     pub fn get_renderpass(&self) -> vk::RenderPass {
@@ -434,9 +435,6 @@ impl Swapchain {
     fn create_framebuffers(self: &mut Swapchain, device: &Device) {
         let image_count = self.image_count();
 
-        self.swapchain_framebuffers
-            .resize(image_count, vk::Framebuffer::default());
-
         for i in 0..self.image_count() {
             let attachments: [vk::ImageView; 2] = [
                 self.swapchain_images[i].get_image_view(),
@@ -445,24 +443,9 @@ impl Swapchain {
 
             let _swapchain_extent: vk::Extent2D = self.get_swapchain_extent();
 
-            let framebuffer_info = vk::FramebufferCreateInfo {
-                s_type: vk::StructureType::FRAMEBUFFER_CREATE_INFO,
-                render_pass: self.renderpass.unwrap(),
-                p_next: std::ptr::null(),
-                flags: vk::FramebufferCreateFlags::empty(),
-                attachment_count: attachments.len() as u32,
-                p_attachments: attachments.as_ptr(),
-                width: self.swapchain_extent.unwrap().width,
-                height: self.swapchain_extent.unwrap().height,
-                layers: 1,
-            };
+            let framebuffer = Framebuffer::new(device,attachments,self.renderpass.unwrap(),_swapchain_extent.width,_swapchain_extent.height);
 
-            unsafe {
-                self.swapchain_framebuffers[i] = device
-                    .device()
-                    .create_framebuffer(&framebuffer_info, None)
-                    .expect("Failed to create framebuffer!");
-            }
+            self.swapchain_framebuffers.push(framebuffer);
         }
     }
 
@@ -607,8 +590,8 @@ impl Swapchain {
             .for_each(|image| image.clean_memory(device));
 
         self.swapchain_framebuffers
-            .iter()
-            .for_each(|f| device.device().destroy_framebuffer(*f, None));
+            .iter_mut()
+            .for_each(|framebuffer| framebuffer.clean_framebuffer(device));
 
         device
             .device()

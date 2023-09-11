@@ -1,0 +1,2 @@
+Panic occurred in file: crates/revier_core/src/swapchain.rs, line: 80
+panicked at 'index out of bounds: the len is 0 but the index is 0', crates/revier_core/src/swapchain.rs:80:16

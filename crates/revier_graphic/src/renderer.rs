@@ -32,8 +32,8 @@ impl PhysicalRenderer {
     pub fn new(
         window: &Window,
         device: &Device,
-        swapchain: Option<&Swapchain>,
         shader: Rc<Shader>,
+        swapchain: Option<&Swapchain>
     ) -> Self {
         let swapchain = PhysicalRenderer::create_swapchain(window, device, swapchain);
         let command_buffers = PhysicalRenderer::create_command_buffers(device);
