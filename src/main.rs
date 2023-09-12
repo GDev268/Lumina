@@ -3,6 +3,7 @@ use std::{any::TypeId, fs::File, io::Write, rc::Rc};
 use ash::vk::{self};
 
 use revier_core::{device::Device, swapchain::Swapchain, window::Window};
+use revier_data::buffer::Buffer;
 use revier_debug::logger::Logger;
 use revier_geometry::{
     model::Model,
@@ -11,7 +12,7 @@ use revier_geometry::{
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;
-use revier_scene::{query::Query, FrameInfo};
+use revier_scene::{query::Query, FrameInfo, GlobalUBO};
 
 use winit::{
     event::{Event, WindowEvent},
@@ -50,6 +51,23 @@ fn main() {
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
+    let ubo_buffers: Vec<Buffer> = vec![
+        Buffer::new(
+            &device,
+            std::mem::size_of::<GlobalUBO>() as u64,
+            1,
+            vk::BufferUsageFlags::UNIFORM_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE,
+        ),
+        Buffer::new(
+            &device,
+            std::mem::size_of::<GlobalUBO>() as u64,
+            1,
+            vk::BufferUsageFlags::UNIFORM_BUFFER,
+            vk::MemoryPropertyFlags::HOST_VISIBLE,
+        ),
+    ];
+
     let mut game_objects: Vec<GameObject> = Vec::new();
 
     for i in 0..10 {
@@ -65,7 +83,6 @@ fn main() {
         }
     }
 
-    println!("{:?}",query.entities.len());
     renderer.create_pipeline_layout(&device);
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
 
@@ -76,7 +93,6 @@ fn main() {
     camera.set_view_yxz(view.translation, view.rotation);
 
     let mut time: f32 = 0.0;
-
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -100,13 +116,12 @@ fn main() {
 
         for i in 0..game_objects.len() {
             if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
-                let wave = (std::f32::consts::PI / 30.0) * (transform.translation.x - (10.0 * time));
+                let wave =
+                    (std::f32::consts::PI / 30.0) * (transform.translation.x - (10.0 * time));
 
                 transform.translation.y = 10.0 * wave.sin();
-                transform.rotation.z =  0.5 * wave.sin();
-
+                transform.rotation.z = 0.5 * wave.sin();
             }
-            
         }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {

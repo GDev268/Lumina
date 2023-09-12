@@ -11,9 +11,9 @@ struct PointLight{
     color:glam::Vec4
 }
 
-struct GlobalUBO{
-    projection:glam::Mat4,
-    light_direction:glam::Vec3
+pub struct GlobalUBO{
+    pub projection:glam::Mat4,
+    pub light_direction:glam::Vec3
 }
 
 pub struct FrameInfo<'a>{

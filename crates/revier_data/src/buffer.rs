@@ -38,6 +38,7 @@ impl Buffer {
         instance_size: vk::DeviceSize,
         min_offset_alignment: vk::DeviceSize,
     ) -> vk::DeviceSize {
+        vk::DeviceSize::default();
         if min_offset_alignment > 0 {
             return (instance_size + min_offset_alignment - 1) & !(min_offset_alignment - 1);
         }
@@ -61,6 +62,28 @@ impl Buffer {
         }
 
     }
+
+    pub fn map(size:Option<vk::DeviceSize>,offset: Option<vk::DeviceSize>){
+        let new_size = if size.is_none(){
+            vk::WHOLE_SIZE
+        }else{
+            size.unwrap()
+        };
+
+        let new_offset = if offset.is_none(){
+            0
+        }else{
+            offset.unwrap()
+        };
+    }
+
+    pub fn write_to_buffer<T>(&mut self,data: &[T]){
+        unsafe{
+            std::ptr::copy_nonoverlapping(data.as_ptr(), self.mapped as *mut T, data.len());
+        }
+    }
+
+
 
     pub fn unmap(&self,device: &Device){
         unsafe {
