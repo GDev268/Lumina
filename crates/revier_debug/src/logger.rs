@@ -21,7 +21,7 @@ impl Message {
         let message: Message = unsafe { Message::new(CURRENT_ID,severity,message,parent_id) };
 
         unsafe {
-            CURRENT_ID = CURRENT_ID + 1;
+            CURRENT_ID += 1;
         }
 
         return message;

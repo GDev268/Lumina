@@ -141,31 +141,6 @@ impl Swapchain {
         }
     }
 
-    pub fn wooork_dammit(&self, device: &Device) -> (u32, bool) {
-        unsafe {
-            device
-                .device()
-                .wait_for_fences(&[self.in_flight_fences[self.current_frame]], true, u64::MAX)
-                .expect("Failed to wait for fences!");
-
-            let result = self
-                .swapchain
-                .as_ref()
-                .unwrap()
-                .swapchain_loader
-                .acquire_next_image(
-                    self.swapchain.as_ref().unwrap().swapchain,
-                    std::u64::MAX,
-                    self.image_available_semaphores[self.current_frame],
-                    vk::Fence::null(),
-                )
-                .expect("Failed to acquire next image!");
-
-            println!("{} | {}", result.0, result.1);
-            return result;
-        }
-    }
-
     pub fn compare_swap_formats(&self, swapchain: &Swapchain) -> bool {
         return swapchain.swapchain_depth_format.unwrap() == self.swapchain_depth_format.unwrap()
             && swapchain.swapchain_image_format.unwrap() == self.swapchain_image_format.unwrap();

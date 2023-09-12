@@ -77,6 +77,7 @@ fn main() {
 
     let mut time: f32 = 0.0;
 
+
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent {
@@ -101,25 +102,26 @@ fn main() {
             if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
                 let wave = (std::f32::consts::PI / 30.0) * (transform.translation.x - (10.0 * time));
 
-                transform.translation.y = 10.0 * wave.cos();
+                transform.translation.y = 10.0 * wave.sin();
+                transform.rotation.z =  0.5 * wave.sin();
 
             }
             
         }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
-            let frame_info: FrameInfo<'_> = FrameInfo {
+            /*let frame_info: FrameInfo<'_> = FrameInfo {
                 frame_time: 0.0,
                 command_buffer,
                 camera: &camera,
-            };
+            };*/
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
 
-            renderer.render_game_objects(&device, &frame_info, &mut query);
+            //renderer.render_game_objects(&device, &frame_info, &mut query);
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
-            time = time + 0.005;
+            time += 0.005;
         }
 
         renderer.end_frame(&device, &mut window);

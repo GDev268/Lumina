@@ -35,7 +35,7 @@ impl GameObject {
         let game_object: GameObject = unsafe { GameObject::new(CURRENT_ID) };
 
         unsafe {
-            CURRENT_ID = CURRENT_ID + 1;
+            CURRENT_ID += 1;
         }
 
         return game_object;

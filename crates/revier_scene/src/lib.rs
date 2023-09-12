@@ -13,14 +13,12 @@ struct PointLight{
 
 struct GlobalUBO{
     projection:glam::Mat4,
-    view:glam::Mat4,
-    inverseview:glam::Mat4,
-    ambient_light_color:glam::Vec4
+    light_direction:glam::Vec3
 }
 
 pub struct FrameInfo<'a>{
     pub frame_time:f64,
     pub command_buffer:vk::CommandBuffer,
     pub camera:&'a Camera,
-    //pub global_descriptor_set:vk::DescriptorSet,
+    pub global_descriptor_set:vk::DescriptorSet,
 }
