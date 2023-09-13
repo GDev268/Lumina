@@ -1,7 +1,7 @@
 use revier_core::device::Device;
 
 use ash::vk;
-use std::{ffi::c_void};
+use std::ffi::c_void;
 
 pub struct Buffer {
     pub buffer: vk::Buffer,
@@ -20,11 +20,8 @@ impl Buffer {
     ) -> Self {
         let buffer_size = instance_size * instance_count;
 
-        let (vertex_buffer, vertex_buffer_memory) = device.create_buffer(
-            buffer_size,
-            usage,
-            properties
-        );
+        let (vertex_buffer, vertex_buffer_memory) =
+            device.create_buffer(buffer_size, usage, properties);
 
         Self {
             buffer: vertex_buffer,
@@ -46,59 +43,80 @@ impl Buffer {
         return instance_size;
     }
 
-    pub fn map_to_buffer<T>(&mut self, device: &Device,data: &[T],_offset: vk::DeviceSize) {
-        unsafe{
-        self.mapped = device
-            .device()
-            .map_memory(
-                self.memory,
-                0,
-                self.buffer_size,
-                vk::MemoryMapFlags::empty(),
-            )
-            .expect("Failed to map memory on the buffer!");
+    pub fn map(
+        &mut self,
+        device: &Device,
+        size: Option<vk::DeviceSize>,
+        offset: Option<vk::DeviceSize>,
+    ) {
+        let new_size = size.unwrap_or(vk::WHOLE_SIZE);
+        let new_offset = offset.unwrap_or(0);
 
-        std::ptr::copy_nonoverlapping(data.as_ptr(), self.mapped as *mut T, data.len());
+        assert!(self.mapped.is_null(), "Memory is already mapped"); // Check if memory is already mapped
+
+        unsafe {
+            self.mapped = device
+                .device()
+                .map_memory(
+                    self.memory,
+                    new_offset,
+                    new_size,
+                    vk::MemoryMapFlags::empty(),
+                )
+                .expect("Failed to map memory on the buffer!");
         }
-
     }
 
-    pub fn map(size:Option<vk::DeviceSize>,offset: Option<vk::DeviceSize>){
-        let new_size = if size.is_none(){
-            vk::WHOLE_SIZE
-        }else{
+    pub fn write_to_buffer<T>(
+        &mut self,
+        data: &[T],
+        size: Option<vk::DeviceSize>,
+        offset: Option<vk::DeviceSize>,
+    ) {
+        let new_size = if size.is_none() {
+            self.buffer_size
+        } else {
             size.unwrap()
         };
 
-        let new_offset = if offset.is_none(){
-            0
-        }else{
-            offset.unwrap()
-        };
-    }
+        let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
 
-    pub fn write_to_buffer<T>(&mut self,data: &[T]){
-        unsafe{
-            std::ptr::copy_nonoverlapping(data.as_ptr(), self.mapped as *mut T, data.len());
+        unsafe {
+            let mem_offset = (self.mapped as *mut u8).offset(new_offset as isize);
+            std::ptr::copy_nonoverlapping(
+                data.as_ptr() as *const c_void,
+                mem_offset as *mut c_void,
+                new_size as usize,
+            );
         }
     }
 
-
-
-    pub fn unmap(&self,device: &Device){
+    pub fn unmap(&self, device: &Device) {
         unsafe {
             device.device().unmap_memory(self.memory);
         }
     }
 
+    pub fn flush(
+        &self,
+        size: Option<vk::DeviceSize>,
+        offset: Option<vk::DeviceSize>,
+        device: &Device,
+    ) {
+        let new_size = if size.is_none() {
+            vk::WHOLE_SIZE
+        } else {
+            size.unwrap()
+        };
 
-    pub fn flush(&self, size: vk::DeviceSize, offset: vk::DeviceSize, device: &Device) {
-        let mapped_range: [vk::MappedMemoryRange; 1] = [vk::MappedMemoryRange {
+        let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
+
+        let mapped_range = [vk::MappedMemoryRange {
             s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
             p_next: std::ptr::null(),
             memory: self.memory,
-            size: size,
-            offset: offset,
+            size: new_size,
+            offset: new_offset,
         }];
 
         unsafe {
@@ -118,16 +136,13 @@ impl Buffer {
         size: Option<vk::DeviceSize>,
         offset: Option<vk::DeviceSize>,
     ) -> vk::DescriptorBufferInfo {
-        let mut new_size: vk::DeviceSize = 0;
-        let mut new_offset: vk::DeviceSize = 0;
+        let new_size = if size.is_none() {
+            vk::WHOLE_SIZE
+        } else {
+            size.unwrap()
+        };
 
-        if size.is_none() {
-            new_size = vk::WHOLE_SIZE;
-        }
-
-        if offset.is_none() {
-            new_offset = 0;
-        }
+        let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
 
         return vk::DescriptorBufferInfo {
             buffer: self.buffer,

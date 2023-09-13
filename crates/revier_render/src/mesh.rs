@@ -99,7 +99,8 @@ impl Mesh {
 
         );
 
-        staging_buffer.map_to_buffer(device, &vertices, 0);
+        staging_buffer.map(device,None,None);
+        staging_buffer.write_to_buffer(&vertices,None,None);
 
         let vertex_buffer = Buffer::new(
             device,
@@ -140,7 +141,8 @@ impl Mesh {
 
         );
 
-        staging_buffer.map_to_buffer(device, &indices, 0);
+        staging_buffer.map(device,None,None);
+        staging_buffer.write_to_buffer(&indices,None,None);
 
         let index_buffer = Buffer::new(
             device,

@@ -259,23 +259,26 @@ impl DescriptorWriter {
     }
 
     pub fn build(
-        &self,
+        &mut self,
         device: &Device,
         descriptor_set_layout: vk::DescriptorSetLayout,
         pool: &DescriptorPool,
     ) -> vk::DescriptorSet {
-        return pool.allocate_descriptor(device, descriptor_set_layout);
+        let set = pool.allocate_descriptor(device, descriptor_set_layout);
+        
+        self.overwrite(device, &set);
+        
+
+        return set;
     }
 
-    pub fn overwrite(&mut self, device: &Device, set: vk::DescriptorSet) {
-        for writer in self.writers.iter_mut() {
-            writer.dst_set = set;
-        }
+    pub fn overwrite(&mut self, device: &Device, set: &vk::DescriptorSet) {
+        self.writers.iter_mut().for_each(|writer| {
+            writer.dst_set = *set;
+        });
 
         unsafe {
-            device
-                .device()
-                .update_descriptor_sets(&self.writers, &[vk::CopyDescriptorSet::default()]);
+            device.device().update_descriptor_sets(&self.writers, &[]);
         }
     }
 }

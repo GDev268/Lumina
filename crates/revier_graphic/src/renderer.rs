@@ -228,19 +228,21 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device) {
+    pub fn create_pipeline_layout(&mut self, device: &Device,global_set_layout:vk::DescriptorSetLayout) {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
             size: std::mem::size_of::<PushConstantData>() as u32,
         };
 
+        let descriptor_set_layouts = vec![global_set_layout];
+
         let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::PipelineLayoutCreateFlags::empty(),
-            set_layout_count: 0,
-            p_set_layouts: std::ptr::null(),
+            set_layout_count: descriptor_set_layouts.len() as u32,
+            p_set_layouts: descriptor_set_layouts.as_ptr(),
             push_constant_range_count: 1,
             p_push_constant_ranges: &push_constant_range,
         };
@@ -272,7 +274,7 @@ impl PhysicalRenderer {
             .unwrap()
             .bind(device, frame_info.command_buffer);
 
-        /*unsafe {
+        unsafe {
             device.device().cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -281,13 +283,12 @@ impl PhysicalRenderer {
                 &[frame_info.global_descriptor_set],
                 &[],
             );
-        }*/
+        }
 
         for (id, entity) in scene.entities.iter_mut() {
             let push: PushConstantData = if entity.has_component::<Transform>() {
                 PushConstantData {
-                    model_matrix: frame_info.camera.get_projection()
-                        * entity.get_mut_component::<Transform>().unwrap().get_mat4(),
+                    model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),
                     normal_matrix: entity
                         .get_mut_component::<Transform>()
                         .unwrap()
@@ -381,8 +382,6 @@ impl PhysicalRenderer {
 
         self.cleanup(device);
         self.swapchain = PhysicalRenderer::create_swapchain(window, device, None);
-        self.create_pipeline_layout(&device);
-        self.create_pipeline(self.get_swapchain_renderpass(), device);
         self.command_buffers = PhysicalRenderer::create_command_buffers(device);
     }
 
@@ -392,11 +391,6 @@ impl PhysicalRenderer {
                 .device()
                 .free_command_buffers(device.get_command_pool(), &self.command_buffers);
             self.command_buffers.clear();
-            self.pipeline.as_mut().unwrap().cleanup(device);
-            device
-                .device()
-                .destroy_pipeline_layout(self.pipeline_layout, None);
-            self.pipeline_layout = vk::PipelineLayout::null();
             self.swapchain.cleanup(device);
         }
     }
