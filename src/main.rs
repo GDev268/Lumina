@@ -86,7 +86,7 @@ fn main() {
         DescriptorSetLayout::add_binding(
             0,
             vk::DescriptorType::UNIFORM_BUFFER,
-            vk::ShaderStageFlags::empty(),
+            vk::ShaderStageFlags::VERTEX,
             Some(1),
             None,
         ),
@@ -125,6 +125,8 @@ fn main() {
     let mut camera = Camera::new();
 
     let mut view = Transform::default();
+    view.translation = glam::Vec3::ONE;
+    view.rotation = glam::Vec3::ZERO;
 
     let aspect = renderer.get_aspect_ratio();
     camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
@@ -174,9 +176,11 @@ fn main() {
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
 
+
+            
             let ubo: GlobalUBO = GlobalUBO {
                 projection: camera.get_projection() * camera.get_view(),
-                light_direction: glam::vec3(1.0, -3.0, -1.0),
+                light_direction: glam::vec3(1.0, -2.0, -1.0),
             };
 
             ubo_buffers[frame_index].write_to_buffer(&[ubo],None,None);
