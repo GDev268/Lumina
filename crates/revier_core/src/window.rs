@@ -1,4 +1,4 @@
-use ash::vk::{self};
+use ash::vk::{self, Handle};
 
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
@@ -7,8 +7,10 @@ use winit::{
     window::{self, WindowBuilder},
 };
 
+use sdl2::video;
+
 pub struct Window {
-    pub _window: window::Window,
+    pub _window: video::Window,
     pub width: u32,
     pub height: u32,
     pub framebuffer_resized: bool,
@@ -16,15 +18,10 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(event_loop: &EventLoop<()>, title: &str, width: u32, height: u32) -> Self {
-        let window = WindowBuilder::new()
-            .with_title(title)
-            .with_inner_size(winit::dpi::LogicalSize::new(
-                f64::from(width),
-                f64::from(height),
-            ))
-            .build(&event_loop)
-            .unwrap();
+    pub fn new(sdl:&sdl2::Sdl, title: &str, width: u32, height: u32) -> Self {
+        let window_subsystem = sdl.video().unwrap();
+
+        let window = window_subsystem.window(title, width, height).vulkan().build().expect("Failed to create sdl2 window!");
 
         return Self {
             _window: window,
@@ -50,25 +47,19 @@ impl Window {
         self.framebuffer_resized = false;
     }
 
-    pub fn get_window(&self) -> &window::Window {
+    pub fn get_window(&self) -> &video::Window {
         return &self._window;
     }
 
     pub fn create_window_surface(
         &self,
         instance: &ash::Instance,
-        entry: &ash::Entry,
     ) -> vk::SurfaceKHR {
-        unsafe {
-            return ash_window::create_surface(
-                entry,
-                instance,
-                self._window.raw_display_handle(),
-                self._window.raw_window_handle(),
-                None,
-            )
-            .unwrap();
-        }
+        let raw_instance = instance.handle().as_raw() as usize;
+
+        let raw_surface = self._window.vulkan_create_surface(raw_instance).expect("Failed to create vulkan surface");
+        
+        return vk::SurfaceKHR::from_raw(raw_surface);
     }
 
     pub fn framebuffer_resize_callback(window: &mut Window, width: u32, height: u32) {

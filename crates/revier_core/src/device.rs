@@ -7,6 +7,7 @@ use cgmath::Zero;
 use color_print::cprintln;
 
 use raw_window_handle::HasRawDisplayHandle;
+use sdl2::libc::CS;
 use sprintf::sprintf;
 use std::collections::BTreeSet;
 use std::ffi::{c_char, CStr, CString};
@@ -23,7 +24,7 @@ unsafe extern "system" fn vulkan_debug_callback(
     _p_user_data: *mut c_void,
 ) -> vk::Bool32 {
     let message = CStr::from_ptr((*p_callback_data).p_message);
-
+    
     match message_severity {
         vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => {
             cprintln!("[Debug][Verbose]{:?}", message)
@@ -498,8 +499,7 @@ impl Device {
                 self.instance.as_ref().unwrap(),
             ),
             _surface: window.create_window_surface(
-                self.instance.as_ref().unwrap(),
-                self.entry.as_ref().unwrap(),
+                self.instance.as_ref().unwrap()
             ),
         };
         return Some(surface);
@@ -772,16 +772,21 @@ impl Device {
     }
 
     fn get_required_extensions(&self,window:&Window) -> Vec<*const i8> {
-        let mut extensions = ash_window::enumerate_required_extensions(
-            window._window.raw_display_handle(),
-        )
-        .unwrap()
-        .to_vec();
+        let raw_extensions = window._window.vulkan_instance_extensions().expect("Failed to get extensions");
+
+        println!("{:?}",raw_extensions);
+        let mut extensions = Vec::new();
+
+        for name in raw_extensions.iter() {
+            let c_name = name.as_ptr() as *const i8;
+            extensions.push(c_name);
+        }
+        
 
         if self.enable_validation_layers {
             extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
         }
-
+        
         return extensions;
     }
 

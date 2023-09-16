@@ -2,6 +2,7 @@ use std::{any::TypeId, fs::File, io::Write, rc::Rc};
 
 use ash::vk::{self};
 
+
 use revier_core::{device::Device, swapchain::Swapchain, window::Window};
 use revier_data::{
     buffer::Buffer,
@@ -24,6 +25,8 @@ use winit::{
 
 use lazy_static::lazy_static;
 
+use sdl2::keyboard::Keycode;
+
 // Create a lazy-static instance of your global struct
 lazy_static! {
     static ref LOGGER: Logger = Logger::new();
@@ -38,9 +41,15 @@ macro_rules! add {
 
 
 fn main() {
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        std::env::set_var("SDL_VIDEODRIVER", "wayland");
+    }
+
     let event_loop = EventLoop::new();
 
-    let mut window = Window::new(&event_loop, "Hello Vulkan!", 800, 640);
+    let sdl_context = sdl2::init().unwrap();
+
+    let mut window = Window::new(&sdl_context, "Hello Vulkan!", 800, 640);
     let device = Device::new(&window);
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
@@ -134,26 +143,19 @@ fn main() {
 
     let mut time: f32 = 0.0;
 
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } if window_id == window._window.id() => control_flow.set_exit(),
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::Resized(new_size) => {
-                    Window::framebuffer_resize_callback(
-                        &mut window,
-                        new_size.width,
-                        new_size.height,
-                    );
-                }
-                _ => (),
-            },
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
-            _ => (),
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit {..} |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    break 'running
+                },
+                _ => {}
+            }
         }
-
+        
         for i in 0..game_objects.len() {
             if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
                 let wave =
@@ -193,5 +195,5 @@ fn main() {
         }
 
         renderer.end_frame(&device, &mut window);
-    });
+    }
 }
