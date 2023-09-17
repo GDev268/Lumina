@@ -2,7 +2,6 @@ use std::{any::TypeId, fs::File, io::Write, rc::Rc};
 
 use ash::vk::{self};
 
-
 use revier_core::{device::Device, swapchain::Swapchain, window::Window};
 use revier_data::{
     buffer::Buffer,
@@ -14,18 +13,16 @@ use revier_geometry::{
     shapes::{self},
 };
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
+use revier_input::keyboard::Keyboard;
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;
 use revier_scene::{query::Query, FrameInfo, GlobalUBO};
 
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::EventLoop,
-};
 
 use lazy_static::lazy_static;
 
 use sdl2::keyboard::Keycode;
+use sdl2::event::Event;
 
 // Create a lazy-static instance of your global struct
 lazy_static! {
@@ -45,11 +42,11 @@ fn main() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
     }
 
-    let event_loop = EventLoop::new();
+    //let event_loop = EventLoop::new();
 
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "Hello Vulkan!", 800, 640);
+    let mut window = Window::new(&sdl_context, "Revier", 800, 640);
     let device = Device::new(&window);
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
@@ -74,6 +71,8 @@ fn main() {
     let global_pool: DescriptorPool = pool_config.build(&device);
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
+
+    let mut keyboard_pool = Keyboard::new();
 
     for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
         let mut buffer = Buffer::new(
@@ -117,7 +116,7 @@ fn main() {
 
     for i in 0..10 {
         for j in 0..75 {
-            let mut cube = shapes::cube(&mut query, &device);
+            let cube = shapes::cube(&mut query, &device);
             if let Some(transform) = query.query_mut::<Transform>(&cube) {
                 transform.translation =
                     glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
@@ -146,16 +145,23 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
+        keyboard_pool.reset_keys(); 
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
+                Event::KeyDown { keycode, .. } => {
+                    //keyboard_pool.change_key(keycode.unwrap() as u32)
+                    println!("{:?}",keycode.unwrap() as u32);
+                },
                 _ => {}
             }
+
         }
-        
+
         for i in 0..game_objects.len() {
             if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
                 let wave =
@@ -196,4 +202,5 @@ fn main() {
 
         renderer.end_frame(&device, &mut window);
     }
+
 }

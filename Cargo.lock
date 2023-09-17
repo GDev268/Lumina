@@ -21,6 +21,7 @@ dependencies = [
  "revier_debug",
  "revier_geometry",
  "revier_graphic",
+ "revier_input",
  "revier_object",
  "revier_render",
  "revier_scene",
@@ -1826,6 +1827,13 @@ dependencies = [
  "revier_object",
  "revier_render",
  "revier_scene",
+]
+
+[[package]]
+name = "revier_input"
+version = "0.1.0"
+dependencies = [
+ "winit 0.28.6",
 ]
 
 [[package]]
