@@ -240,7 +240,7 @@ pub enum Keycode {
 }
 
 pub struct Keyboard {
-    keys: HashMap<u32,bool>,
+    pub keys: HashMap<u32,bool>,
     keys_changed: HashMap<u32,bool>
 }
 
@@ -490,10 +490,10 @@ impl Keyboard {
         for keycode in all_keycodes{
             let number = keycode as u32;
             keys.insert(number, false);
-            keys.insert(number, false);
+            keys_changed.insert(number, false);
         }
 
-        Self { keys, keys_changed }
+        return Self { keys, keys_changed };
     }
 
     pub fn change_key(&mut self,keycode:u32){
@@ -532,6 +532,10 @@ impl Keyboard {
 
     pub fn reset_keys(&mut self){
         for (_,value) in &mut self.keys_changed{
+            *value = false;
+        }
+
+        for (_,value) in &mut self.keys{
             *value = false;
         }
     }

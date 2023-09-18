@@ -13,7 +13,7 @@ use revier_geometry::{
     shapes::{self},
 };
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
-use revier_input::keyboard::Keyboard;
+use revier_input::keyboard::{Keyboard, Keycode};
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;
 use revier_scene::{query::Query, FrameInfo, GlobalUBO};
@@ -21,7 +21,6 @@ use revier_scene::{query::Query, FrameInfo, GlobalUBO};
 
 use lazy_static::lazy_static;
 
-use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 
 // Create a lazy-static instance of your global struct
@@ -149,18 +148,21 @@ fn main() {
 
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit {..} |
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                Event::Quit {..} => {
                     break 'running
                 },
                 Event::KeyDown { keycode, .. } => {
-                    //keyboard_pool.change_key(keycode.unwrap() as u32)
-                    println!("{:?}",keycode.unwrap() as u32);
+                    keyboard_pool.change_key(keycode.unwrap() as u32); 
                 },
                 _ => {}
             }
 
         }
+        if keyboard_pool.get_key(Keycode::Escape){
+            break 'running;
+        }
+
+
 
         for i in 0..game_objects.len() {
             if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
@@ -200,6 +202,11 @@ fn main() {
             time += 0.005;
         }
 
+        for (key,value) in &keyboard_pool.keys{
+            if *value{
+                println!("Just pressed: {:?}",keyboard_pool.from_u32(&key).unwrap());
+            }
+        }
         renderer.end_frame(&device, &mut window);
     }
 
