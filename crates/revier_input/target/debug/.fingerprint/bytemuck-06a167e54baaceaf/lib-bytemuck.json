@@ -1,1 +1,0 @@
-{"rustc":12970975996024363646,"features":"[\"aarch64_simd\"]","target":15295123418435159834,"profile":3735503092003429423,"path":10330264960740055343,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"debug/.fingerprint/bytemuck-06a167e54baaceaf/dep-lib-bytemuck"}}],"rustflags":[],"metadata":5417891915809776353,"config":2202906307356721367,"compile_kind":0}
