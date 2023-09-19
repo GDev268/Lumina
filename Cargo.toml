@@ -11,17 +11,7 @@ license = "MIT OR Apache-2.0"
 
 
 [features]
-default = [
-    "revier_core",
-    "revier_data",
-    "revier_render",
-    "revier_graphic",
-    "revier_geometry",
-    "revier_object",
-    "revier_scene",
-    "revier_debug",
-    "revier_input",
-]
+default = ["revier_core", "revier_data", "revier_render", "revier_graphic", "revier_geometry", "revier_object", "revier_scene", "revier_debug", "revier_input"]
 optional = []
 
 [dependencies]
@@ -53,3 +43,4 @@ winit = "0.28.6"
 lazy_static = "1.4.0"
 gilrs = "0.10.2"
 sdl2 = { default-features = false }
+rand = "0.6.5"

@@ -1,6 +1,7 @@
 use std::{any::TypeId, fs::File, io::Write, rc::Rc};
 
 use ash::vk::{self};
+use rand::Rng;
 
 use revier_core::{device::Device, swapchain::Swapchain, window::Window};
 use revier_data::{
@@ -111,19 +112,19 @@ fn main() {
         global_descriptor_sets.push(descriptor_set);
     }
 
-    let mut game_objects: Vec<GameObject> = Vec::new();
+    let mut cube = shapes::cube(&mut query, &device);
 
-    for i in 0..10 {
-        for j in 0..75 {
-            let cube = shapes::cube(&mut query, &device);
-            if let Some(transform) = query.query_mut::<Transform>(&cube) {
-                transform.translation =
-                    glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
-                transform.scale = glam::vec3(1.0, 1.0, 1.0);
-            }
+    if let Some(transform) = query.query_mut::<Transform>(&cube) {
+        transform.translation = glam::vec3(0.0, 0.0, 2.5);
+        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    }
 
-            game_objects.push(cube);
-        }
+
+    let mut cube2 = shapes::cube(&mut query, &device);
+
+    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
+        transform.translation = glam::vec3(1.0, 0.0, 5.0);
+        transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
     renderer.create_pipeline_layout(&device,global_set_layout.get_descriptor_set_layout());
@@ -137,7 +138,7 @@ fn main() {
 
     let aspect = renderer.get_aspect_ratio();
     camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
-    camera.set_view_yxz(view.translation, view.rotation);
+    
 
     let mut time: f32 = 0.0;
 
@@ -152,7 +153,10 @@ fn main() {
                     break 'running
                 },
                 Event::KeyDown { keycode, .. } => {
-                    keyboard_pool.change_key(keycode.unwrap() as u32); 
+                    if keycode.is_some(){
+                        println!("{:?}",keycode);
+                        keyboard_pool.change_key(keycode.unwrap() as u32);
+                    }
                 },
                 _ => {}
             }
@@ -161,17 +165,33 @@ fn main() {
         if keyboard_pool.get_key(Keycode::Escape){
             break 'running;
         }
+        
+        if keyboard_pool.get_key(Keycode::Up){
+            view.translation.x += 1.0;
+        }
+        if keyboard_pool.get_key(Keycode::Down){
+            view.translation.x -= 1.0;
+        }
+        if keyboard_pool.get_key(Keycode::Right){
+            view.translation.z += 1.0; 
+        } 
+        if keyboard_pool.get_key(Keycode::Left){
+            view.translation.z -= 1.0; 
+        }
+        
 
+        if let Some(transform) = query.query_mut::<Transform>(&cube) {
+            transform.rotation.y =
+            (transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
+            transform.rotation.x =
+            (transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
+        }
 
-
-        for i in 0..game_objects.len() {
-            if let Some(transform) = query.query_mut::<Transform>(&game_objects[i]) {
-                let wave =
-                    (std::f32::consts::PI / 30.0) * (transform.translation.x - (10.0 * time));
-
-                transform.translation.y = 10.0 * wave.sin();
-                transform.rotation.z = 0.5 * wave.sin();
-            }
+        if let Some(transform) = query.query_mut::<Transform>(&cube2) {
+            transform.rotation.y =
+            (transform.rotation.y - 0.00055) % (std::f32::consts::PI * 2.0);
+            transform.rotation.x =
+            (transform.rotation.x - 0.00055) % (std::f32::consts::PI * 2.0);
         }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
@@ -200,6 +220,7 @@ fn main() {
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
             time += 0.005;
+            camera.set_view_yxz(view.translation, view.rotation);
         }
 
         for (key,value) in &keyboard_pool.keys{
