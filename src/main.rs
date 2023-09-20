@@ -1,9 +1,10 @@
-use std::{any::TypeId, fs::File, io::Write, rc::Rc};
+use std::{any::TypeId, fs::File, io::Write, rc::Rc, time::{Instant, Duration},thread};
 
 use ash::vk::{self};
 use rand::Rng;
 
-use revier_core::{device::Device, swapchain::Swapchain, window::Window};
+use revier_core::{device::Device, swapchain::Swapchain, window::Window, fps_manager::FPS};
+
 use revier_data::{
     buffer::Buffer,
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
@@ -14,11 +15,10 @@ use revier_geometry::{
     shapes::{self},
 };
 use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
-use revier_input::keyboard::{Keyboard, Keycode};
+use revier_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;
 use revier_scene::{query::Query, FrameInfo, GlobalUBO};
-
 
 use lazy_static::lazy_static;
 
@@ -73,6 +73,8 @@ fn main() {
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
     let mut keyboard_pool = Keyboard::new();
+
+    let mut mouse_pool = Mouse::new();
 
     for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
         let mut buffer = Buffer::new(
@@ -144,8 +146,17 @@ fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    let mut fps = FPS::new();
+    let mut global_timer = Instant::now();
+    let mut start_tick = Instant::now();
+    let mut delta_time = 0.0;
+
+    fps.fps_limit = Duration::new(0, 1000000000u32/320);
+    println!("{:?}",fps.fps_limit);
+
     'running: loop {
-        keyboard_pool.reset_keys(); 
+        start_tick = Instant::now();
+        keyboard_pool.reset_keys();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -158,6 +169,9 @@ fn main() {
                         keyboard_pool.change_key(keycode.unwrap() as u32);
                     }
                 },
+                Event::MouseButtonDown {mouse_btn, ..} => {
+                    mouse_pool.change_button(mouse_btn as u32);
+                }
                 _ => {}
             }
 
@@ -167,31 +181,34 @@ fn main() {
         }
         
         if keyboard_pool.get_key(Keycode::Up){
-            view.translation.x += 1.0;
+            view.translation.z += 1.0;
         }
         if keyboard_pool.get_key(Keycode::Down){
-            view.translation.x -= 1.0;
+            view.translation.z -= 1.0;
         }
         if keyboard_pool.get_key(Keycode::Right){
-            view.translation.z += 1.0; 
+            view.translation.x += 1.0; 
         } 
         if keyboard_pool.get_key(Keycode::Left){
-            view.translation.z -= 1.0; 
+            view.translation.x -= 1.0; 
         }
-        
+       
+        if mouse_pool.get_button(MouseButton::Left){
+            println!("BONK!");
+        }
 
         if let Some(transform) = query.query_mut::<Transform>(&cube) {
             transform.rotation.y =
-            (transform.rotation.y + 0.00055) % (std::f32::consts::PI * 2.0);
+            (transform.rotation.y + 0.055) % (std::f32::consts::PI * 2.0);
             transform.rotation.x =
-            (transform.rotation.x + 0.00055) % (std::f32::consts::PI * 2.0);
+            (transform.rotation.x + 0.055) % (std::f32::consts::PI * 2.0);
         }
 
         if let Some(transform) = query.query_mut::<Transform>(&cube2) {
             transform.rotation.y =
-            (transform.rotation.y - 0.00055) % (std::f32::consts::PI * 2.0);
+            (transform.rotation.y - 0.055) % (std::f32::consts::PI * 2.0);
             transform.rotation.x =
-            (transform.rotation.x - 0.00055) % (std::f32::consts::PI * 2.0);
+            (transform.rotation.x - 0.055) % (std::f32::consts::PI * 2.0);
         }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
@@ -205,9 +222,7 @@ fn main() {
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
-
-
-            
+    
             let ubo: GlobalUBO = GlobalUBO {
                 projection: camera.get_projection() * camera.get_view(),
                 light_direction: glam::vec3(1.0, -2.0, -1.0),
@@ -219,7 +234,6 @@ fn main() {
             renderer.render_game_objects(&device, &frame_info, &mut query);
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
-            time += 0.005;
             camera.set_view_yxz(view.translation, view.rotation);
         }
 
@@ -229,6 +243,12 @@ fn main() {
             }
         }
         renderer.end_frame(&device, &mut window);
+        //print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+        delta_time = start_tick.elapsed().as_millis() as f32;
+        if start_tick.elapsed() < fps.fps_limit {
+            thread::sleep(fps.fps_limit - start_tick.elapsed());
+        }
+        fps.update();
     }
 
 }

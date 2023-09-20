@@ -1,1 +1,11 @@
 /target
+../Revier/crates/revier_core/target/
+../Revier/crates/revier_data/target/
+../Revier/crates/revier_debug/target/
+../Revier/crates/revier_geometry/target/
+../Revier/crates/revier_graphic/target/
+../Revier/crates/revier_input/target/
+../Revier/crates/revier_object/target/
+../Revier/crates/revier_render/target/
+../Revier/crates/revier_scene/target/
+
