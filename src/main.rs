@@ -243,7 +243,10 @@ fn main() {
             }
         }
         renderer.end_frame(&device, &mut window);
-        //print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+        print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+
+        //NOTE FOR TOMORROW: CHANGE THIS TO ANOTHER TYPE SO IT DOESN'T OVERFLOW WHEN CONVERTING
+        //FROM U128 TO F32 AS IT'S BEING DOING RN (THANK YOU RUST! :) )
         delta_time = start_tick.elapsed().as_millis() as f32;
         if start_tick.elapsed() < fps.fps_limit {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
