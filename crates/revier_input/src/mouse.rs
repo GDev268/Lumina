@@ -93,6 +93,13 @@ impl Mouse{
         *self.buttons_changed.get_mut(&button).unwrap() = true;
     }
 
+    pub fn change_motion(&mut self,x:i32,y:i32,dx:i32,dy:i32){
+        self.x = x as f64;
+        self.y = y as f64;
+        self.dx = dx as f64;
+        self.dy = dy as f64;
+    }
+
     pub fn get_button(&self,button:MouseButton) -> bool{
         return *self.buttons.get(&(button as u32)).unwrap();
     }

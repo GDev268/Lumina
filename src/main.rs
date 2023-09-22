@@ -147,11 +147,12 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut fps = FPS::new();
+    fps._fps = 1000;
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
-    let mut delta_time = 0.0;
 
-    fps.fps_limit = Duration::new(0, 1000000000u32/320);
+    fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
+    let delta_time = 1.0 / fps._fps as f32;
     println!("{:?}",fps.fps_limit);
 
     'running: loop {
@@ -163,7 +164,7 @@ fn main() {
                 Event::Quit {..} => {
                     break 'running
                 },
-                Event::KeyDown { keycode, .. } => {
+                Event::KeyDown { keycode, ..} => {
                     if keycode.is_some(){
                         println!("{:?}",keycode);
                         keyboard_pool.change_key(keycode.unwrap() as u32);
@@ -171,6 +172,9 @@ fn main() {
                 },
                 Event::MouseButtonDown {mouse_btn, ..} => {
                     mouse_pool.change_button(mouse_btn as u32);
+                },
+                Event::MouseMotion{x, y, xrel, yrel,.. } => {
+                    mouse_pool.change_motion(x, y, xrel, yrel);
                 }
                 _ => {}
             }
@@ -193,23 +197,27 @@ fn main() {
             view.translation.x -= 1.0; 
         }
        
-        if mouse_pool.get_button(MouseButton::Left){
-            println!("BONK!");
-        }
+
 
         if let Some(transform) = query.query_mut::<Transform>(&cube) {
-            transform.rotation.y =
-            (transform.rotation.y + 0.055) % (std::f32::consts::PI * 2.0);
-            transform.rotation.x =
-            (transform.rotation.x + 0.055) % (std::f32::consts::PI * 2.0);
+            transform.rotation.y += 1.0 * delta_time;
+            transform.rotation.x += 1.0 * delta_time;
+
+            // Apply modulo operation to keep rotation within [0, 2 * PI]
+            transform.rotation.y %= std::f32::consts::PI * 2.0;
+            transform.rotation.x %= std::f32::consts::PI * 2.0;
+
         }
 
         if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-            transform.rotation.y =
-            (transform.rotation.y - 0.055) % (std::f32::consts::PI * 2.0);
-            transform.rotation.x =
-            (transform.rotation.x - 0.055) % (std::f32::consts::PI * 2.0);
+            transform.rotation.y -= 1.0 * delta_time;
+            transform.rotation.x -= 1.0 * delta_time;
+
+            // Apply modulo operation to keep rotation within [0, 2 * PI]
+            transform.rotation.y %= std::f32::consts::PI * 2.0;
+            transform.rotation.x %= std::f32::consts::PI * 2.0;
         }
+
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
@@ -243,11 +251,8 @@ fn main() {
             }
         }
         renderer.end_frame(&device, &mut window);
+       
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
-
-        //NOTE FOR TOMORROW: CHANGE THIS TO ANOTHER TYPE SO IT DOESN'T OVERFLOW WHEN CONVERTING
-        //FROM U128 TO F32 AS IT'S BEING DOING RN (THANK YOU RUST! :) )
-        delta_time = start_tick.elapsed().as_millis() as f32;
         if start_tick.elapsed() < fps.fps_limit {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }

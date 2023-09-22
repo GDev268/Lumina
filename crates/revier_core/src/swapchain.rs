@@ -282,12 +282,12 @@ impl Swapchain {
             image_usage: vk::ImageUsageFlags::COLOR_ATTACHMENT,
             image_sharing_mode: image_sharing,
             p_queue_family_indices: queue_family_indices.as_ptr(),
-            queue_family_index_count: queue_family_index_count,
+            queue_family_index_count,
             pre_transform: swapchain_support.surface_capabilities.current_transform,
             composite_alpha: vk::CompositeAlphaFlagsKHR::OPAQUE,
-            present_mode: present_mode,
+            present_mode,
             clipped: vk::TRUE,
-            old_swapchain: old_swapchain,
+            old_swapchain,
             image_array_layers: 1,
         };
 
