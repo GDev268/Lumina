@@ -232,7 +232,7 @@ impl PhysicalRenderer {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
-            size: std::mem::size_of::<PushConstantData>() as u32,
+            size: std::mem::size_of::<PushConstantData>() as u32 - 20,
         };
 
         let descriptor_set_layouts = vec![global_set_layout];
@@ -306,15 +306,15 @@ impl PhysicalRenderer {
                 std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
             };
 
-            unsafe {
+            let push_result = unsafe {
                 device.device().cmd_push_constants(
                     frame_info.command_buffer,
                     self.pipeline_layout,
                     vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                     0,
                     push_bytes,
-                );
-            }
+                )
+            };
 
             if entity.has_component::<Model>() {
                 entity

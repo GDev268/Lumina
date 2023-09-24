@@ -36,7 +36,7 @@ macro_rules! add {
     }};
 }
 
-
+ 
 fn main() {
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
@@ -151,6 +151,8 @@ fn main() {
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
 
+    let mut light_pos = glam::vec3(0.0, -10.0,4.0);
+
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
     println!("{:?}",fps.fps_limit);
@@ -198,27 +200,6 @@ fn main() {
         }
        
 
-
-        if let Some(transform) = query.query_mut::<Transform>(&cube) {
-            transform.rotation.y += 1.0 * delta_time;
-            transform.rotation.x += 1.0 * delta_time;
-
-            // Apply modulo operation to keep rotation within [0, 2 * PI]
-            transform.rotation.y %= std::f32::consts::PI * 2.0;
-            transform.rotation.x %= std::f32::consts::PI * 2.0;
-
-        }
-
-        if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-            transform.rotation.y -= 1.0 * delta_time;
-            transform.rotation.x -= 1.0 * delta_time;
-
-            // Apply modulo operation to keep rotation within [0, 2 * PI]
-            transform.rotation.y %= std::f32::consts::PI * 2.0;
-            transform.rotation.x %= std::f32::consts::PI * 2.0;
-        }
-
-
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
 
@@ -230,10 +211,12 @@ fn main() {
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
-    
+   
+            light_pos.y += 2.0 * delta_time;
+            
             let ubo: GlobalUBO = GlobalUBO {
                 projection: camera.get_projection() * camera.get_view(),
-                light_direction: glam::vec3(1.0, -2.0, -1.0),
+                light_direction: light_pos,
             };
 
             ubo_buffers[frame_index].write_to_buffer(&[ubo],None,None);
