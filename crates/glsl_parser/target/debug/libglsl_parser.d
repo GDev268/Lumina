@@ -1,1 +1,0 @@
-/mnt/9A30C50530C4E979/Works/Rust/Revier/crates/glsl_parser/target/debug/libglsl_parser.rlib: /mnt/9A30C50530C4E979/Works/Rust/Revier/crates/glsl_parser/src/lib.rs /mnt/9A30C50530C4E979/Works/Rust/Revier/crates/glsl_parser/src/parser.rs
