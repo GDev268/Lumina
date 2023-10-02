@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 
 
 [features]
-default = ["revier_core", "revier_data", "revier_render", "revier_graphic", "revier_geometry", "revier_object", "revier_scene", "revier_debug", "revier_input"]
+default = ["revier_core", "revier_data", "revier_render", "revier_graphic", "revier_geometry", "revier_object", "revier_scene", "revier_debug", "revier_input","glsl_parser"]
 optional = []
 
 [dependencies]
@@ -25,7 +25,7 @@ revier_object = { path = "crates/revier_object", version = "0.1.0", optional = t
 revier_scene = { path = "crates/revier_scene", version = "0.1.0", optional = true }
 revier_debug = { path = "crates/revier_debug", version = "0.1.0", optional = true }
 revier_input = { path = "crates/revier_input", version = "0.1.0", optional = true }
-
+glsl_parser = { path = "crates/glsl_parser", version = "0.1.0", optional = true } 
 
 #Other
 ash = { version = "0.37.3", features = ["linked", "debug"] }
