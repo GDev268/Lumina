@@ -232,7 +232,7 @@ impl PhysicalRenderer {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
-            size: std::mem::size_of::<PushConstantData>() as u32 - 20,
+            size: std::mem::size_of::<PushConstantData>() as u32,
         };
 
         let descriptor_set_layouts = vec![global_set_layout];

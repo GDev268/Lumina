@@ -7,6 +7,8 @@ use revier_core::device::Device;
 pub struct Shader {
     pub vert_module: vk::ShaderModule,
     pub frag_module: vk::ShaderModule,
+    pub vert_path: String,
+    pub frag_path: String
 }
 
 impl Shader {
@@ -14,6 +16,8 @@ impl Shader {
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(vert_file_path), device),
             frag_module: Shader::create_shader_module(Shader::read_file(frag_file_path), device),
+            vert_path: String::from(vert_file_path),
+            frag_path: String::from(frag_file_path)
         };
     }
 

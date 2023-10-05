@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
+use revier_graphic::shader::Shader;
 
 enum INSERT_TYPE{
     PUSH,
@@ -12,9 +13,12 @@ enum INSERT_TYPE{
 
 struct Parser{
     types:HashMap<String,Box<dyn std::any::Any>>,
-    structs:HashMap<String,Vec<String>>,
-    push_constants:HashMap<String,Vec<String>>,
-    descriptors:HashMap<String,Vec<String>>
+    vert_structs:HashMap<String,Vec<String>>,
+    vert_push_constants:HashMap<String,Vec<String>>,
+    vert_descriptors:HashMap<String,Vec<String>>,
+    frag_structs:HashMap<String,Vec<String>>,
+    frag_push_constants:HashMap<String,Vec<String>>,
+    frag_descriptors:HashMap<String,Vec<String>>
 }
 
 impl Parser{
@@ -55,122 +59,90 @@ impl Parser{
         
         return Self{
             types,
-            structs: HashMap::new(),
-            push_constants: HashMap::new(),
-            descriptors: HashMap::new()
+            vert_structs: HashMap::new(),
+            vert_push_constants: HashMap::new(),
+            vert_descriptors: HashMap::new(),
+            frag_structs: HashMap::new(),
+            frag_push_constants: HashMap::new(),
+            frag_descriptors: HashMap::new(),
         };
     }
 
-    pub fn parse_shader(vert_path:&str,frag_path:&str){
+    pub fn parse_shader(&mut self,shader:&Shader){
         let mut inside_struct = false;
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
 
- 
-    } 
-}
+        let vert = File::open(&shader.vert_path).unwrap();
+        let mut buf_reader = BufReader::new(vert);
+        let mut contents = String::new();
 
-/*
-*
-*     let test = File::open("simple_shader.vert").unwrap();
-    
-    let mut buf_reader = BufReader::new(test);
-    let mut contents = String::new();
+        buf_reader.read_to_string(&mut contents).unwrap();
 
-    buf_reader.read_to_string(&mut contents).unwrap();
-
-    let vector:Vec<String> = contents.split("\n").map(|line| line.replace(";", "")).collect();
-    let mut glsl_descriptors:HashMap<String,Vec<String>> = HashMap::new();
-    let mut glsl_push_constants:HashMap<String,Vec<String>> = HashMap::new();
-    let mut glsl_structs:HashMap<String,Vec<String>> = HashMap::new();
-    let mut glsl_types:HashMap<String,Box<dyn std::any::Any>> = new();
-
-    let num:adsa = adsa { asddss: 24, sad: 42.3, ds: String::from("222222") };
-    println!("{:?} | {:?}",get_size_of(&num),std::mem::size_of::<adsa>());
-
-    let mut inside_struct = false;
-    let mut cur_value = String::new();
-    let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;*/
-
-    //for line in vector{
-        //if line.contains("//") || line.contains("*/") || line.contains("/*"){
-
-/*        }
-        else{
-            if line.contains("}") && inside_struct{
-                inside_struct = false;
+        let vector:Vec<String> = contents.split("\n").map(|line| line.replace(";", "")).collect();
+        
+        for line in vector{
+            if line.contains("//") || line.contains("*/") || line.contains("/*"){
+                
             }
-
-            if inside_struct{
-                let words:Vec<&str> = line.split_whitespace().collect();
-               
-                match cur_type{
-                    INSERT_TYPE::PUSH => glsl_push_constants.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                    INSERT_TYPE::DESCRIPTOR => glsl_descriptors.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                    INSERT_TYPE::STRUCT => glsl_structs.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                    _ => println!("ERROR: Invalid Type!")
-                };
-
-            }
-
-            if line.contains("struct"){
-                let words:Vec<&str> = line.split_whitespace().collect();
-                let uniform_pos = words.iter().position(|&word| word == "struct").expect("Failed to get the position");
-
-
-                if line.contains("{"){
-                    println!("Struct Name: {:?}",words[uniform_pos + 1]);
-                    cur_type = INSERT_TYPE::STRUCT; 
-                    cur_value = String::from(words[uniform_pos + 1]); 
-                    glsl_structs.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                    
-
+            else{
+                if line.contains("}") && inside_struct {
+                    inside_struct = false;
                 }
 
-                inside_struct = true;
-
-            }
-
-            if line.contains("uniform"){
-                let words:Vec<&str> = line.split_whitespace().collect();
-                let uniform_pos = words.iter().position(|&word| word == "uniform").expect("Failed to get the position");
-    
-
-                if line.contains("{"){
-
-                    if line.contains("(push_constant)"){
-                        println!("Push Constant: {:?}",words[uniform_pos + 1]);
-                        cur_type = INSERT_TYPE::PUSH; 
-                        cur_value = String::from(words[uniform_pos + 1]); 
-                        glsl_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                    }
-                    else{
-                        cur_type = INSERT_TYPE::DESCRIPTOR; 
-                        cur_value = String::from(words[uniform_pos + 1]); 
-                        glsl_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                        println!("Descriptor {:?}",words[uniform_pos + 1]);
-                    }
+                if inside_struct{
+                    let words:Vec<&str> = line.split_whitespace().collect();
                     
+                    match cur_type{
+                        INSERT_TYPE::PUSH => self.vert_push_constants.get_mut(&cur_value).unwrap().push(String::from(words[0])),
+                        INSERT_TYPE::DESCRIPTOR => self.vert_descriptors.get_mut(&cur_value).unwrap().push(String::from(words[0])),
+                        INSERT_TYPE::STRUCT => self.vert_structs.get_mut(&cur_value).unwrap().push(String::from(words[0])),
+                        _ => println!("ERROR: Invalid Type!")
+                    };  
+                }
+
+                if line.contains("struct"){
+                    let words:Vec<&str> = line.split_whitespace().collect();
+                    let uniform_pos = words.iter().position(|&word| word == "struct").expect("Failed to get the position");
+                   
+                    if line.contains("{"){
+                        cur_type = INSERT_TYPE::STRUCT;
+                        cur_value = String::from(words[uniform_pos + 1]);
+                        self.vert_structs.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                    }
+                
                     inside_struct = true;
-                }else{
-                    if line.contains("(push_constant)"){
-                        println!("Push Constant: {:?}",words[uniform_pos + 2]);
-                        glsl_push_constants.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                }
 
+                if line.contains("uniform"){
+                    let words:Vec<&str> = line.split_whitespace().collect();
+                    let uniform_pos = words.iter().position(|&word| word == "uniform").expect("Failed to get the position");
+
+                    if line.contains("{"){
+                        if line.contains("(push_constant)"){
+                            cur_type = INSERT_TYPE::PUSH;
+                            cur_value = String::from(words[uniform_pos + 1]);
+                            self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                        }
+                        else{
+                            cur_type = INSERT_TYPE::DESCRIPTOR;
+                            cur_value = String::from(words[uniform_pos + 1]);
+                            self.vert_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                        }                       
+
+                        inside_struct = true;
                     }
                     else{
-                        println!("Descriptor {:?}",words[uniform_pos + 2]);
-                        glsl_descriptors.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
-
+                        if line.contains("(push_constant)"){
+                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                        }
+                        else{
+                            self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                        }
                     }
-                    //parse_ou(line);
                 }
             }
-
-
         }
     }
+}
 
-    println!("Pushes: {:?}",glsl_push_constants);
-    println!("Descriptors: {:?}",glsl_descriptors);
-    println!("Structs: {:?}",glsl_structs);*/

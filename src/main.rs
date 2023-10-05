@@ -147,7 +147,7 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut fps = FPS::new();
-    fps._fps = 1000;
+    fps._fps = 360;
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
 
@@ -159,19 +159,18 @@ fn main() {
 
     'running: loop {
         start_tick = Instant::now();
-        keyboard_pool.reset_keys();
 
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} => {
                     break 'running
                 },
-                Event::KeyDown { keycode, ..} => {
-                    if keycode.is_some(){
-                        println!("{:?}",keycode);
-                        keyboard_pool.change_key(keycode.unwrap() as u32);
-                    }
+                Event::KeyDown { keycode:Some(keycode), ..} => {
+                    keyboard_pool.change_key_down(keycode as u32); 
                 },
+                Event::KeyUp { keycode:Some(keycode), .. } => {
+                    keyboard_pool.change_key_up(keycode as u32); 
+                }
                 Event::MouseButtonDown {mouse_btn, ..} => {
                     mouse_pool.change_button(mouse_btn as u32);
                 },
@@ -187,16 +186,16 @@ fn main() {
         }
         
         if keyboard_pool.get_key(Keycode::Up){
-            view.translation.z += 1.0;
+            view.translation.z += 3.0 * delta_time;
         }
         if keyboard_pool.get_key(Keycode::Down){
-            view.translation.z -= 1.0;
+            view.translation.z -= 3.0 * delta_time;
         }
         if keyboard_pool.get_key(Keycode::Right){
-            view.translation.x += 1.0; 
+            view.translation.x += 3.0 * delta_time;
         } 
         if keyboard_pool.get_key(Keycode::Left){
-            view.translation.x -= 1.0; 
+            view.translation.x -= 3.0 * delta_time;
         }
        
 

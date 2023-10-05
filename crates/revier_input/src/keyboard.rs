@@ -496,7 +496,7 @@ impl Keyboard {
         return Self { keys, keys_changed };
     }
 
-    pub fn change_key(&mut self,keycode:u32){
+    pub fn change_key_down(&mut self,keycode:u32){
         *self.keys.get_mut(&keycode).unwrap() = true;
         *self.keys_changed.get_mut(&keycode).unwrap() = true;
     }
@@ -530,14 +530,9 @@ impl Keyboard {
         return *self.keys.get(number).unwrap() && self.keys_changed(self.from_u32(number).unwrap());
     }
 
-    pub fn reset_keys(&mut self){
-        for (_,value) in &mut self.keys_changed{
-            *value = false;
-        }
-
-        for (_,value) in &mut self.keys{
-            *value = false;
-        }
+    pub fn change_key_up(&mut self,keycode:u32){
+        *self.keys.get_mut(&keycode).unwrap() = false;
+        *self.keys_changed.get_mut(&keycode).unwrap() = false;
     }
 
     pub fn from_u32(&self,value: &u32) -> Option<Keycode> {

@@ -1038,6 +1038,9 @@ checksum = "42218cb640844e3872cc3c153dc975229e080a6c4733b34709ef445610550226"
 [[package]]
 name = "glsl_parser"
 version = "0.1.0"
+dependencies = [
+ "revier_graphic",
+]
 
 [[package]]
 name = "gpu-allocator"
