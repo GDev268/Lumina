@@ -14,14 +14,14 @@ pub struct Shader {
 impl Shader {
     pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str) -> Self {
         return Self {
-            vert_module: Shader::create_shader_module(Shader::read_file(vert_file_path), device),
-            frag_module: Shader::create_shader_module(Shader::read_file(frag_file_path), device),
+            vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),
+            frag_module: Shader::create_shader_module(Shader::read_file(String::from(frag_file_path.to_owned() + &".spv".to_owned())), device),
             vert_path: String::from(vert_file_path),
             frag_path: String::from(frag_file_path)
         };
     }
 
-    pub fn read_file(file_path: &str) -> Vec<u8> {
+    pub fn read_file(file_path: String) -> Vec<u8> {
         let file = File::open(file_path).expect("Failed to open shader file");
 
         return file.bytes().filter_map(|byte| byte.ok()).collect();

@@ -19,6 +19,7 @@ use revier_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;
 use revier_scene::{query::Query, FrameInfo, GlobalUBO};
+use glsl_parser::parser::Parser;
 
 use lazy_static::lazy_static;
 
@@ -52,12 +53,21 @@ fn main() {
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
     let mut query = Query::new();
+    let mut parser = Parser::new();
 
     let shader = Rc::new(Shader::new(
         &device,
-        "shaders/simple_shader.vert.spv",
-        "shaders/simple_shader.frag.spv",
+        "shaders/simple_shader.vert",
+        "shaders/simple_shader.frag",
     ));
+
+    parser.parse_shader(&shader);
+    println!("{:?}",parser.vert_structs);
+    println!("{:?}",parser.vert_push_constants);
+    println!("{:?}",parser.vert_descriptors);
+    println!("{:?}",parser.frag_structs);
+    println!("{:?}",parser.frag_push_constants);
+    println!("{:?}",parser.frag_descriptors);
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
@@ -226,12 +236,7 @@ fn main() {
             renderer.end_swapchain_renderpass(command_buffer, &device);
             camera.set_view_yxz(view.translation, view.rotation);
         }
-
-        for (key,value) in &keyboard_pool.keys{
-            if *value{
-                println!("Just pressed: {:?}",keyboard_pool.from_u32(&key).unwrap());
-            }
-        }
+        
         renderer.end_frame(&device, &mut window);
        
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
