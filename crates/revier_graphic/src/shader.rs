@@ -1,23 +1,38 @@
-use std::{fs::File, io::Read};
+use std::{fs::File, io::Read, collections::HashMap};
 
 use ash::vk;
 
 use revier_core::device::Device;
+use glsl_parser::parser::Parser;
 
 pub struct Shader {
     pub vert_module: vk::ShaderModule,
     pub frag_module: vk::ShaderModule,
     pub vert_path: String,
-    pub frag_path: String
+    pub frag_path: String,
+    pub push_values:HashMap<String,Box<dyn std::any::Any>>,
+    pub descriptor_values:HashMap<String,Box<dyn std::any::Any>>,
+    pub push_fields:HashMap<String,vk::PushConstantRange>,
+    pub descriptor_fields:HashMap<String,vk::DescriptorSetLayout>
 }
 
 impl Shader {
     pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str) -> Self {
+
+        let mut parser = Parser::new(); 
+
+        parser.parse_shader(vert_file_path,frag_file_path);
+
+        for push in parser.vert_push_constants{
+            
+        }
+
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),
             frag_module: Shader::create_shader_module(Shader::read_file(String::from(frag_file_path.to_owned() + &".spv".to_owned())), device),
             vert_path: String::from(vert_file_path),
-            frag_path: String::from(frag_file_path)
+            frag_path: String::from(frag_file_path),
+            fields: HashMap::new(),
         };
     }
 
@@ -43,6 +58,7 @@ impl Shader {
                 .expect("Failed to create shader module!");
         }
     }
+
 }
 
 //PLAN HAVING THE GLSL_TYPES ENUM HAVING THE TYPE NAME WITH THEIR RESPECTIVE RUST TYPE EQUAL

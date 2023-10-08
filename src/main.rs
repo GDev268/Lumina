@@ -61,7 +61,7 @@ fn main() {
         "shaders/simple_shader.frag",
     ));
 
-    parser.parse_shader(&shader);
+    parser.parse_shader(&shader.vert_path,&shader.frag_path);
     println!("{:?}",parser.vert_structs);
     println!("{:?}",parser.vert_push_constants);
     println!("{:?}",parser.vert_descriptors);
@@ -207,7 +207,12 @@ fn main() {
         if keyboard_pool.get_key(Keycode::Left){
             view.translation.x -= 3.0 * delta_time;
         }
-       
+        if keyboard_pool.get_key(Keycode::Space){
+            view.translation.y -= 3.0 * delta_time;
+        }       
+        if keyboard_pool.get_key(Keycode::LCtrl){
+            view.translation.y += 3.0 * delta_time;
+        }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;

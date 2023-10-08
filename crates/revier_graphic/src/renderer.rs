@@ -306,7 +306,7 @@ impl PhysicalRenderer {
                 std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
             };
 
-            let push_result = unsafe {
+            unsafe {
                 device.device().cmd_push_constants(
                     frame_info.command_buffer,
                     self.pipeline_layout,

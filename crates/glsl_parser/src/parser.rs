@@ -3,8 +3,6 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::ops::Deref;
-use std::ops::DerefMut;
-use revier_graphic::shader::Shader;
 
 pub enum INSERT_TYPE{
     PUSH,
@@ -15,7 +13,7 @@ pub enum INSERT_TYPE{
 
 
 pub struct Parser{
-    types:HashMap<String,Box<dyn std::any::Any>>,
+    types:Vec<String>,
     pub vert_structs:HashMap<String,Vec<String>>,
     pub vert_push_constants:HashMap<String,Vec<String>>,
     pub vert_descriptors:HashMap<String,Vec<String>>,
@@ -26,39 +24,39 @@ pub struct Parser{
 
 impl Parser{
     pub fn new() -> Self{
-        let mut types:HashMap<String,Box<dyn std::any::Any>> = HashMap::new();
+        let mut types:Vec<String> = Vec::new();
 
-        types.insert(String::from("int"), Box::new(()));
-        types.insert(String::from("uint"),Box::new(()));
-        types.insert(String::from("float"),Box::new(()));
-        types.insert(String::from("double"), Box::new(()));
-        types.insert(String::from("bool"), Box::new(()));
-        types.insert(String::from("bvec2"), Box::new(()));
-        types.insert(String::from("bvec3"), Box::new(()));
-        types.insert(String::from("bvec4"), Box::new(()));
-        types.insert(String::from("ivec2"), Box::new(()));
-        types.insert(String::from("ivec3"), Box::new(()));
-        types.insert(String::from("ivec4"), Box::new(()));
-        types.insert(String::from("uvec2"), Box::new(()));
-        types.insert(String::from("uvec3"), Box::new(()));
-        types.insert(String::from("uvec4"), Box::new(()));
-        types.insert(String::from("vec2"), Box::new(()));
-        types.insert(String::from("vec3"), Box::new(()));
-        types.insert(String::from("vec4"), Box::new(()));
-        types.insert(String::from("dvec2"), Box::new(()));
-        types.insert(String::from("dvec3"), Box::new(()));
-        types.insert(String::from("dvec4"), Box::new(()));
-        types.insert(String::from("mat2"), Box::new(()));
-        types.insert(String::from("mat3"), Box::new(()));
-        types.insert(String::from("mat4"), Box::new(()));
-        types.insert(String::from("sampler1D"), Box::new(()));
-        types.insert(String::from("sampler2D"), Box::new(()));
-        types.insert(String::from("sampler3D"), Box::new(()));
-        types.insert(String::from("samplerCube"), Box::new(()));
-        types.insert(String::from("sampler2DRect"), Box::new(()));
-        types.insert(String::from("sampler1DArray"), Box::new(()));
-        types.insert(String::from("sampler2DArray"), Box::new(()));
-        types.insert(String::from("samplerCubeArray"), Box::new(()));
+        types.push(String::from("int"));
+        types.push(String::from("uint"));
+        types.push(String::from("float"));
+        types.push(String::from("double"));
+        types.push(String::from("bool"));
+        types.push(String::from("bvec2"));
+        types.push(String::from("bvec3"));
+        types.push(String::from("bvec4"));
+        types.push(String::from("ivec2"));
+        types.push(String::from("ivec3"));
+        types.push(String::from("ivec4"));
+        types.push(String::from("uvec2"));
+        types.push(String::from("uvec3"));
+        types.push(String::from("uvec4"));
+        types.push(String::from("vec2"));
+        types.push(String::from("vec3"));
+        types.push(String::from("vec4"));
+        types.push(String::from("dvec2"));
+        types.push(String::from("dvec3"));
+        types.push(String::from("dvec4"));
+        types.push(String::from("mat2"));
+        types.push(String::from("mat3"));
+        types.push(String::from("mat4"));
+        types.push(String::from("sampler1D"));
+        types.push(String::from("sampler2D"));
+        types.push(String::from("sampler3D"));
+        types.push(String::from("samplerCube"));
+        types.push(String::from("sampler2DRect"));
+        types.push(String::from("sampler1DArray"));
+        types.push(String::from("sampler2DArray"));
+        types.push(String::from("samplerCubeArray"));
         
         return Self{
             types,
@@ -105,7 +103,7 @@ impl Parser{
             for i in 0..value_pool.len(){
                 let mut finished = false;
                 let value = String::from(value_pool[i]);
-                if self.types.contains_key(&value){
+                if self.types.contains(&value){
                     delete_pool.push(i);
                     finished = true;
                 }
@@ -139,12 +137,20 @@ impl Parser{
         return true;
     }
 
-    pub fn parse_shader(&mut self,shader:&Shader){
+    fn decompose_structs(&mut self){
+        for (_,fields) in self.vert_push_constants{
+            for field in fields{
+                
+            }
+        }
+    }
+
+    pub fn parse_shader(&mut self,vert_path:&str,frag_path:&str){
         let mut inside_struct = false;
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
 
-        let vert = File::open(&shader.vert_path).unwrap();
+        let vert = File::open(&vert_path).unwrap();
         let mut buf_reader = BufReader::new(vert);
         let mut contents = String::new();
 
@@ -240,7 +246,7 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed!")}
 
-        let frag = File::open(&shader.frag_path).unwrap();
+        let frag = File::open(&frag_path).unwrap();
         let mut buf_reader = BufReader::new(frag);
         let mut contents = String::new();
 

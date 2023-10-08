@@ -12,6 +12,8 @@ revier_render = {path="../revier_render",version = "0.1.0"}
 revier_geometry = {path="../revier_geometry",version = "0.1.0"}
 revier_object = {path="../revier_object",version = "0.1.0"}
 revier_scene = {path="../revier_scene",version = "0.1.0"}
+glsl_parser = { path = "../glsl_parser", version = "0.1.0"} 
+
 
 #Other
 ash = {version="0.37.3",features = ["linked", "debug"]}
