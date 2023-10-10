@@ -61,13 +61,13 @@ fn main() {
         "shaders/simple_shader.frag",
     ));
 
-    parser.parse_shader(&shader.vert_path,&shader.frag_path);
+    /*parser.parse_shader("shaders/simple_shader.vert","shaders/simple_shader.frag");
     println!("{:?}",parser.vert_structs);
     println!("{:?}",parser.vert_push_constants);
     println!("{:?}",parser.vert_descriptors);
     println!("{:?}",parser.frag_structs);
     println!("{:?}",parser.frag_push_constants);
-    println!("{:?}",parser.frag_descriptors);
+    println!("{:?}",parser.frag_descriptors);*/
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 

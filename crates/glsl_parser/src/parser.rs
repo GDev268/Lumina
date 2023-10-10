@@ -4,6 +4,7 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::ops::Deref;
 
+#[derive(Debug)]
 pub enum INSERT_TYPE{
     PUSH,
     DESCRIPTOR,
@@ -14,12 +15,12 @@ pub enum INSERT_TYPE{
 
 pub struct Parser{
     types:Vec<String>,
-    pub vert_structs:HashMap<String,Vec<String>>,
-    pub vert_push_constants:HashMap<String,Vec<String>>,
-    pub vert_descriptors:HashMap<String,Vec<String>>,
-    pub frag_structs:HashMap<String,Vec<String>>,
-    pub frag_push_constants:HashMap<String,Vec<String>>,
-    pub frag_descriptors:HashMap<String,Vec<String>>
+    pub vert_structs:HashMap<String,Vec<(String,String)>>,
+    pub vert_push_constants:HashMap<String,Vec<(String,String)>>,
+    pub vert_descriptors:HashMap<String,Vec<(String,String)>>,
+    pub frag_structs:HashMap<String,Vec<(String,String)>>,
+    pub frag_push_constants:HashMap<String,Vec<(String,String)>>,
+    pub frag_descriptors:HashMap<String,Vec<(String,String)>>
 }
 
 impl Parser{
@@ -71,27 +72,26 @@ impl Parser{
 
     pub fn verify_parse(&self,cur_type:INSERT_TYPE,value:String,is_vertex:bool) -> bool{
         let mut value_pool:Vec<&str> = Vec::new();
-
         match(cur_type){
             INSERT_TYPE::PUSH => {
                 if is_vertex {
-                    self.vert_push_constants.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.vert_push_constants.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }else{
-                    self.frag_push_constants.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.frag_push_constants.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }
             }
             INSERT_TYPE::DESCRIPTOR => {
                 if is_vertex {
-                    self.vert_descriptors.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.vert_descriptors.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }else{
-                    self.frag_descriptors.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.frag_descriptors.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }
             }
             INSERT_TYPE::STRUCT => {
                 if is_vertex {
-                    self.vert_structs.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.vert_structs.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }else{
-                    self.vert_structs.get(&value).unwrap().iter().for_each(|value| value_pool.push(value.deref()));
+                    self.vert_structs.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }
             }
 
@@ -138,10 +138,24 @@ impl Parser{
     }
 
     fn decompose_structs(&mut self){
-        for (_,fields) in self.vert_push_constants{
-            for field in fields{
-                
+        for (_,fields) in self.vert_push_constants.iter_mut(){
+            for i in 0..fields.len(){
+               if self.vert_structs.contains_key(&fields[i].1){
+                    if let Some(reverse_fields) = self.vert_structs.get(&fields[i].1){
+                        for field in reverse_fields.iter().rev(){
+                            if fields.len() <= i + 1{
+                                fields.push(field.to_owned());
+                            }
+                            else{
+                                fields.insert(i + 1, field.to_owned());
+                            }
+                        }
+
+                        fields.remove(i);
+                    }
+                } 
             }
+            println!("{:?}",fields);
         }
     }
 
@@ -149,6 +163,9 @@ impl Parser{
         let mut inside_struct = false;
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
+
+
+        //VERT SHADER
 
         let vert = File::open(&vert_path).unwrap();
         let mut buf_reader = BufReader::new(vert);
@@ -159,6 +176,7 @@ impl Parser{
         let vector:Vec<String> = contents.split("\n").map(|line| line.replace(";", "")).collect();
         
         for line in vector{
+            if !line.trim().is_empty(){
             if line.contains("//") || line.contains("*/") || line.contains("/*"){
                 
             }
@@ -169,11 +187,10 @@ impl Parser{
 
                 if inside_struct{
                     let words:Vec<&str> = line.split_whitespace().collect();
-                    
                     match cur_type{
-                        INSERT_TYPE::PUSH => self.vert_push_constants.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                        INSERT_TYPE::DESCRIPTOR => self.vert_descriptors.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                        INSERT_TYPE::STRUCT => self.vert_structs.get_mut(&cur_value).unwrap().push(String::from(words[0])),
+                        INSERT_TYPE::PUSH => self.vert_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::DESCRIPTOR => self.vert_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::STRUCT => self.vert_structs.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         _ => println!("ERROR: Invalid Type!")
                     };  
                 }
@@ -211,13 +228,14 @@ impl Parser{
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                         else{
-                            self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                            self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                     }
                 }
+            }
             }
         }
         
@@ -240,21 +258,26 @@ impl Parser{
         for (value,_) in self.vert_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), true){
                 finished = false;
-                println!("AAAAA2")
+                println!("AAAAA3")
             }
         }
 
         if !finished{panic!("Shader parser failed!")}
 
+
+        //FRAG SHADER
+
         let frag = File::open(&frag_path).unwrap();
         let mut buf_reader = BufReader::new(frag);
         let mut contents = String::new();
+
 
         buf_reader.read_to_string(&mut contents).unwrap();
 
         let vector:Vec<String> = contents.split("\n").map(|line| line.replace(";", "")).collect();
         
         for line in vector{
+            if !line.trim().is_empty(){
             if line.contains("//") || line.contains("*/") || line.contains("/*"){
                 
             }
@@ -267,9 +290,9 @@ impl Parser{
                     let words:Vec<&str> = line.split_whitespace().collect();
                     
                     match cur_type{
-                        INSERT_TYPE::PUSH => self.frag_push_constants.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                        INSERT_TYPE::DESCRIPTOR => self.frag_descriptors.get_mut(&cur_value).unwrap().push(String::from(words[0])),
-                        INSERT_TYPE::STRUCT => self.frag_structs.get_mut(&cur_value).unwrap().push(String::from(words[0])),
+                        INSERT_TYPE::PUSH => self.frag_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::DESCRIPTOR => self.frag_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::STRUCT => self.frag_structs.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         _ => println!("ERROR: Invalid Type!")
                     };  
                 }
@@ -307,13 +330,14 @@ impl Parser{
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                            self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                         else{
-                            self.frag_descriptors.insert(String::from(words[uniform_pos + 2]), vec![String::from(words[uniform_pos + 1])]);
+                            self.frag_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                     }
                 }
+            }
             }
         }
      
@@ -336,12 +360,15 @@ impl Parser{
         for (value,_) in self.vert_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), true){
                 finished = false;
-                println!("AAAAA2")
+                println!("AAAAA3")
             }
         }
 
         if !finished{panic!("Shader parser failed!")}
-
+    
+        self.decompose_structs();
     }
 }
+
+
 

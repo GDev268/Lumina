@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, collections::HashMap};
+use std::{fs::File, io::Read, collections::HashMap, ops::Deref};
 
 use ash::vk;
 
@@ -10,21 +10,35 @@ pub struct Shader {
     pub frag_module: vk::ShaderModule,
     pub vert_path: String,
     pub frag_path: String,
-    pub push_values:HashMap<String,Box<dyn std::any::Any>>,
-    pub descriptor_values:HashMap<String,Box<dyn std::any::Any>>,
+    pub shader_structs:HashMap<String,Vec<(String,String)>>, 
+    pub push_values:HashMap<String,Vec<(String,String)>>,
+    pub descriptor_values:HashMap<String,Vec<(String,String)>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
     pub descriptor_fields:HashMap<String,vk::DescriptorSetLayout>
 }
 
 impl Shader {
     pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str) -> Self {
+        let mut shader_structs:HashMap<String,Vec<(String,String)>> = HashMap::new(); 
+        let mut push_values:HashMap<String,Vec<(String,String)>> = HashMap::new();
+        let mut descriptor_values:HashMap<String,Vec<(String,String)>> = HashMap::new();
 
         let mut parser = Parser::new(); 
 
         parser.parse_shader(vert_file_path,frag_file_path);
 
-        for push in parser.vert_push_constants{
-            
+        for (name,values) in parser.vert_structs.iter(){
+            shader_structs.insert("VERT-".to_string() + name, values.clone());
+        }
+
+        println!("{:?}",shader_structs);
+
+        for (name,values) in parser.vert_push_constants.iter(){
+            push_values.insert(name.to_owned(), values.clone());
+        }
+
+        for (name,values) in parser.vert_descriptors.iter(){
+            descriptor_values.insert(name.to_owned(), values.clone());
         }
 
         return Self {
@@ -32,7 +46,11 @@ impl Shader {
             frag_module: Shader::create_shader_module(Shader::read_file(String::from(frag_file_path.to_owned() + &".spv".to_owned())), device),
             vert_path: String::from(vert_file_path),
             frag_path: String::from(frag_file_path),
-            fields: HashMap::new(),
+            shader_structs,
+            push_values,
+            descriptor_values,
+            push_fields: HashMap::new(),
+            descriptor_fields: HashMap::new()
         };
     }
 
