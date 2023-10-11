@@ -14,7 +14,7 @@ pub enum INSERT_TYPE{
 
 
 pub struct Parser{
-    types:Vec<String>,
+    types:HashMap<String,u8>,
     pub vert_structs:HashMap<String,Vec<(String,String)>>,
     pub vert_push_constants:HashMap<String,Vec<(String,String)>>,
     pub vert_descriptors:HashMap<String,Vec<(String,String)>>,
@@ -25,39 +25,45 @@ pub struct Parser{
 
 impl Parser{
     pub fn new() -> Self{
-        let mut types:Vec<String> = Vec::new();
+        let mut types:HashMap<String,u8> = HashMap::new();
 
-        types.push(String::from("int"));
-        types.push(String::from("uint"));
-        types.push(String::from("float"));
-        types.push(String::from("double"));
-        types.push(String::from("bool"));
-        types.push(String::from("bvec2"));
-        types.push(String::from("bvec3"));
-        types.push(String::from("bvec4"));
-        types.push(String::from("ivec2"));
-        types.push(String::from("ivec3"));
-        types.push(String::from("ivec4"));
-        types.push(String::from("uvec2"));
-        types.push(String::from("uvec3"));
-        types.push(String::from("uvec4"));
-        types.push(String::from("vec2"));
-        types.push(String::from("vec3"));
-        types.push(String::from("vec4"));
-        types.push(String::from("dvec2"));
-        types.push(String::from("dvec3"));
-        types.push(String::from("dvec4"));
-        types.push(String::from("mat2"));
-        types.push(String::from("mat3"));
-        types.push(String::from("mat4"));
-        types.push(String::from("sampler1D"));
-        types.push(String::from("sampler2D"));
-        types.push(String::from("sampler3D"));
-        types.push(String::from("samplerCube"));
-        types.push(String::from("sampler2DRect"));
-        types.push(String::from("sampler1DArray"));
-        types.push(String::from("sampler2DArray"));
-        types.push(String::from("samplerCubeArray"));
+
+        types.insert(String::from("int"),4);
+        types.insert(String::from("uint"),4);
+        types.insert(String::from("float"),4);
+        types.insert(String::from("bool"),1);
+        types.insert(String::from("bvec2"),2);
+        types.insert(String::from("bvec3"),3);
+        types.insert(String::from("bvec4"),4);
+        types.insert(String::from("ivec2"),8);
+        types.insert(String::from("ivec3"),12);
+        types.insert(String::from("ivec4"),16);
+        types.insert(String::from("uvec2"),8);
+        types.insert(String::from("uvec3"),12);
+        types.insert(String::from("uvec4"),16);
+        types.insert(String::from("vec2"),8);
+        types.insert(String::from("vec3"),12);
+        types.insert(String::from("vec4"),16);
+        types.insert(String::from("mat2"),32);
+        types.insert(String::from("mat3"),48);
+        types.insert(String::from("mat4"),64);
+        types.insert(String::from("mat2x2"),32);
+        types.insert(String::from("mat2x3"),48);
+        types.insert(String::from("mat2x4"),64);
+        types.insert(String::from("mat3x2"),48);
+        types.insert(String::from("mat3x3"),72);
+        types.insert(String::from("mat3x4"),96);
+        types.insert(String::from("mat4x2"),64);
+        types.insert(String::from("mat4x3"),96);
+        types.insert(String::from("mat4x4"),128);
+        types.insert(String::from("sampler1D"),0);
+        types.insert(String::from("sampler2D"),0);
+        types.insert(String::from("sampler3D"),0);
+        types.insert(String::from("samplerCube"),0);
+        types.insert(String::from("sampler2DRect"),0);
+        types.insert(String::from("sampler1DArray"),0);
+        types.insert(String::from("sampler2DArray"),0);
+        types.insert(String::from("samplerCubeArray"),0);
         
         return Self{
             types,
@@ -68,6 +74,10 @@ impl Parser{
             frag_push_constants: HashMap::new(),
             frag_descriptors: HashMap::new(),
         };
+    }
+
+    pub fn convert_to_size(&self,field_types:&String) -> u8{
+        return *self.types.get(field_types).unwrap_or(&(0 as u8));
     }
 
     pub fn verify_parse(&self,cur_type:INSERT_TYPE,value:String,is_vertex:bool) -> bool{
@@ -103,7 +113,7 @@ impl Parser{
             for i in 0..value_pool.len(){
                 let mut finished = false;
                 let value = String::from(value_pool[i]);
-                if self.types.contains(&value){
+                if self.types.contains_key(&value){
                     delete_pool.push(i);
                     finished = true;
                 }
@@ -214,21 +224,26 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                            cur_type = INSERT_TYPE::PUSH;
-                            cur_value = String::from(words[uniform_pos + 1]);
-                            self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            if self.vert_push_constants.len() < 1{
+                                cur_type = INSERT_TYPE::PUSH;
+                                cur_value = String::from(words[uniform_pos + 1]);
+                                self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                                inside_struct = true
+                            }
                         }
                         else{
                             cur_type = INSERT_TYPE::DESCRIPTOR;
                             cur_value = String::from(words[uniform_pos + 1]);
                             self.vert_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            inside_struct = true;
                         }                       
 
-                        inside_struct = true;
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            if self.vert_push_constants.len() < 1{
+                                self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            }
                         }
                         else{
                             self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
@@ -316,24 +331,29 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                            cur_type = INSERT_TYPE::PUSH;
-                            cur_value = String::from(words[uniform_pos + 1]);
-                            self.frag_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            if self.vert_push_constants.len() < 1{
+                                cur_type = INSERT_TYPE::PUSH;
+                                cur_value = String::from(words[uniform_pos + 1]);
+                                self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                                inside_struct = true
+                            }
                         }
                         else{
                             cur_type = INSERT_TYPE::DESCRIPTOR;
                             cur_value = String::from(words[uniform_pos + 1]);
-                            self.frag_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            self.vert_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            inside_struct = true;
                         }                       
 
-                        inside_struct = true;
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            if self.vert_push_constants.len() < 1{
+                                self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            }
                         }
                         else{
-                            self.frag_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                     }
                 }

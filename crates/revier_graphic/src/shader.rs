@@ -35,16 +35,19 @@ impl Shader {
 
         for (name,values) in parser.vert_push_constants.iter(){
             push_values.insert(name.to_owned(), values.clone());
+            let mut max_value = 0;
+
+            for value in values{
+                max_value += parser.convert_to_size(&value.0);
+
+            }
             
+            push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::VERTEX, offset: 0, size: max_value as u32 });
         }
 
         for (name,values) in parser.vert_descriptors.iter(){
             descriptor_values.insert(name.to_owned(), values.clone());
         }
-
-        println!("{:?}",shader_structs);
-        println!("{:?}",push_values);
-        println!("{:?}",descriptor_values);
 
         for (name,values) in parser.frag_structs.iter(){
             shader_structs.insert("FRAG-".to_string() + name, values.clone());
@@ -52,9 +55,14 @@ impl Shader {
 
         for (name,values) in parser.frag_push_constants{
             if push_values.contains_key(&name) && &values == push_values.get(&name).unwrap(){
-                
+                push_fields.get_mut(&name).unwrap().stage_flags = vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT; 
             }
         }
+
+        println!("{:?}",shader_structs);
+        println!("{:?}",push_values);
+        println!("{:?}",descriptor_values);
+        println!("{:?}",push_fields);
 
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),

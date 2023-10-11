@@ -139,6 +139,13 @@ fn main() {
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
+    let mut grass = shapes::cube(&mut query, &device);
+
+    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
+        transform.translation = glam::vec3(1.0, 10.0, 0.0);
+        transform.scale = glam::vec3(10000.0, 0.1, 10000.0);
+    }
+
     renderer.create_pipeline_layout(&device,global_set_layout.get_descriptor_set_layout());
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
 

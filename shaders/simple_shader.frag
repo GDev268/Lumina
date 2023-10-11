@@ -4,6 +4,11 @@ layout (location = 0) in vec3 fragColor;
 
 layout (location = 0) out vec4 outColor;
 
+struct Darkness{
+  mat4 afs;
+  mat4 dasf;
+}
+
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
