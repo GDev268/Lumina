@@ -7,7 +7,6 @@ use cgmath::Zero;
 use color_print::cprintln;
 
 use raw_window_handle::HasRawDisplayHandle;
-use sdl2::libc::CS;
 use sprintf::sprintf;
 use std::collections::BTreeSet;
 use std::ffi::{c_char, CStr, CString};

@@ -22,6 +22,7 @@ impl Shader {
         let mut shader_structs:HashMap<String,Vec<(String,String)>> = HashMap::new(); 
         let mut push_values:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut descriptor_values:HashMap<String,Vec<(String,String)>> = HashMap::new();
+        let mut push_fields:HashMap<String,vk::PushConstantRange> = HashMap::new();
 
         let mut parser = Parser::new(); 
 
@@ -31,14 +32,28 @@ impl Shader {
             shader_structs.insert("VERT-".to_string() + name, values.clone());
         }
 
-        println!("{:?}",shader_structs);
 
         for (name,values) in parser.vert_push_constants.iter(){
             push_values.insert(name.to_owned(), values.clone());
+            
         }
 
         for (name,values) in parser.vert_descriptors.iter(){
             descriptor_values.insert(name.to_owned(), values.clone());
+        }
+
+        println!("{:?}",shader_structs);
+        println!("{:?}",push_values);
+        println!("{:?}",descriptor_values);
+
+        for (name,values) in parser.frag_structs.iter(){
+            shader_structs.insert("FRAG-".to_string() + name, values.clone());
+        }
+
+        for (name,values) in parser.frag_push_constants{
+            if push_values.contains_key(&name) && &values == push_values.get(&name).unwrap(){
+                
+            }
         }
 
         return Self {
