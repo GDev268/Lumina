@@ -193,22 +193,22 @@ fn main() {
         }
         
         if keyboard_pool.get_key(Keycode::Up){
-            view.translation.z += 3.0 * delta_time;
+            view.translation.z += 10.0 * delta_time;
         }
         if keyboard_pool.get_key(Keycode::Down){
-            view.translation.z -= 3.0 * delta_time;
+            view.translation.z -= 10.0 * delta_time;
         }
         if keyboard_pool.get_key(Keycode::Right){
-            view.translation.x += 3.0 * delta_time;
+            view.translation.x += 10.0 * delta_time;
         } 
         if keyboard_pool.get_key(Keycode::Left){
-            view.translation.x -= 3.0 * delta_time;
+            view.translation.x -= 10.0 * delta_time;
         }
         if keyboard_pool.get_key(Keycode::Space){
-            view.translation.y -= 3.0 * delta_time;
+            view.translation.y -= 10.0 * delta_time;
         }       
         if keyboard_pool.get_key(Keycode::LCtrl){
-            view.translation.y += 3.0 * delta_time;
+            view.translation.y += 10.0 * delta_time;
         }
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
@@ -223,7 +223,7 @@ fn main() {
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
    
-            light_pos.y += 2.0 * delta_time;
+            light_pos.y += 20.0 * delta_time;
             
             let ubo: GlobalUBO = GlobalUBO {
                 projection: camera.get_projection() * camera.get_view(),
