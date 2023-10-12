@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 #Revier
 revier_core = {path="../revier_core",version = "0.1.0"}
+revier_data = {path="../revier_data",version = "0.1.0"}
 revier_render = {path="../revier_render",version = "0.1.0"}
 revier_geometry = {path="../revier_geometry",version = "0.1.0"}
 revier_object = {path="../revier_object",version = "0.1.0"}

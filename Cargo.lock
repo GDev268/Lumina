@@ -1970,6 +1970,7 @@ dependencies = [
  "glam",
  "glsl_parser",
  "revier_core",
+ "revier_data",
  "revier_geometry",
  "revier_object",
  "revier_render",

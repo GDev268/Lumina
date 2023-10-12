@@ -3,6 +3,7 @@ use revier_core::device::Device;
 use ash::vk;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct DescriptorSetLayout {
     descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,

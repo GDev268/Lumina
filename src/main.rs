@@ -25,10 +25,6 @@ use lazy_static::lazy_static;
 
 use sdl2::event::Event;
 
-// Create a lazy-static instance of your global struct
-lazy_static! {
-    static ref LOGGER: Logger = Logger::new();
-}
 
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
@@ -61,13 +57,6 @@ fn main() {
         "shaders/simple_shader.frag",
     ));
 
-    /*parser.parse_shader("shaders/simple_shader.vert","shaders/simple_shader.frag");
-    println!("{:?}",parser.vert_structs);
-    println!("{:?}",parser.vert_push_constants);
-    println!("{:?}",parser.vert_descriptors);
-    println!("{:?}",parser.frag_structs);
-    println!("{:?}",parser.frag_push_constants);
-    println!("{:?}",parser.frag_descriptors);*/
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
@@ -173,6 +162,7 @@ fn main() {
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
     println!("{:?}",fps.fps_limit);
+
 
     'running: loop {
         start_tick = Instant::now();
