@@ -90,29 +90,56 @@ impl Shader {
             if push_values.contains_key(name) && &values == &push_values.get(name).unwrap(){
                 push_fields.get_mut(name).unwrap().stage_flags = vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT; 
             }
+            else{
+                push_values.insert(name.to_owned(), values.clone());
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                }
+            
+                push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::FRAGMENT, offset: 0, size: max_value as u32 });
+            }
         }
 
-        for (name,values) in parser.vert_descriptors.iter(){
-            descriptor_values.insert(name.to_owned(), values.clone());
+      for (name,values) in parser.frag_descriptors.iter(){
+            if !descriptor_values.contains_key(name) && &values == &descriptor_values.get(name).unwrap(){
+                descriptor_values.insert(name.to_owned(), values.clone());
 
-            let mut max_value = 0;
+                let mut max_value = 0;
 
-            for value in values{
-                max_value += parser.convert_to_size(&value.0);
-            }
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                }
            
-            if !values.iter().any(|string| string.0.contains("sampler")) && !descriptor_fields.contains_key(name){
-                let set_layout = DescriptorSetLayout::build(
-                    device,
-                    DescriptorSetLayout::add_binding(
-                        1,
-                        vk::DescriptorType::UNIFORM_BUFFER,
-                        vk::ShaderStageFlags::VERTEX,
-                        Some(1),
-                        None 
-                    )
-                );
-                descriptor_fields.insert(name.to_owned(),set_layout);
+                if !values.iter().any(|string| string.0.contains("sampler")) {
+                    let set_layout = DescriptorSetLayout::build(
+                        device,
+                        DescriptorSetLayout::add_binding(
+                            0,
+                            vk::DescriptorType::UNIFORM_BUFFER,
+                            vk::ShaderStageFlags::VERTEX,
+                            Some(1),
+                            None 
+                        )
+                    );
+                    descriptor_fields.insert(name.to_owned(),set_layout);
+                }
+                else{
+                    let set_layout =  DescriptorSetLayout::build(
+                        device,
+                        DescriptorSetLayout::add_binding(
+                            0,
+                            vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                            vk::ShaderStageFlags::VERTEX,
+                            Some(1),
+                            None 
+                        )
+                    ); 
+                }
+            }
+            else{
+
             }
         }
 
