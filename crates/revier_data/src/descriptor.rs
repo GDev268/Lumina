@@ -49,7 +49,7 @@ impl DescriptorSetLayout {
         let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
             bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
 
-        let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo {
+       let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo {
             s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
             p_next: std::ptr::null(),
             flags: vk::DescriptorSetLayoutCreateFlags::empty(),

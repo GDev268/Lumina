@@ -128,12 +128,7 @@ fn main() {
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
-    let mut grass = shapes::cube(&mut query, &device);
 
-    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-        transform.translation = glam::vec3(1.0, 10.0, 0.0);
-        transform.scale = glam::vec3(10000.0, 0.1, 10000.0);
-    }
 
     renderer.create_pipeline_layout(&device,global_set_layout.get_descriptor_set_layout());
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
@@ -153,12 +148,13 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut fps = FPS::new();
-    fps._fps = 360;
+    fps._fps = 60;
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
+    let benchmark_time = Instant::now();
 
-    let mut light_pos = glam::vec3(0.0, -10.0,4.0);
-
+    let mut light_pos = glam::vec3(0.0,3.0,4.0);
+    
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
     println!("{:?}",fps.fps_limit);
@@ -188,6 +184,7 @@ fn main() {
             }
 
         }
+
         if keyboard_pool.get_key(Keycode::Escape){
             break 'running;
         }
@@ -211,6 +208,7 @@ fn main() {
             view.translation.y += 10.0 * delta_time;
         }
 
+
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
 
@@ -223,8 +221,7 @@ fn main() {
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
    
-            light_pos.y += 20.0 * delta_time;
-            
+          
             let ubo: GlobalUBO = GlobalUBO {
                 projection: camera.get_projection() * camera.get_view(),
                 light_direction: light_pos,
@@ -249,3 +246,4 @@ fn main() {
     }
 
 }
+

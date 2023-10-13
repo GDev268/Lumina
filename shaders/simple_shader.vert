@@ -21,9 +21,9 @@ layout(push_constant) uniform Push {
 struct Light{
   mat4 afs;
   mat4 dasf;
-}
+};
 
-const float AMBIENT = 0.000001;
+const float AMBIENT = 0.00000000000000000000001;
 
 void main() {
   gl_Position = ubo.projectionViewMatrix * push.modelMatrix * vec4(position, 1.0);

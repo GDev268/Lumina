@@ -103,9 +103,43 @@ impl Shader {
         }
 
       for (name,values) in parser.frag_descriptors.iter(){
-            if !descriptor_values.contains_key(name) && &values == &descriptor_values.get(name).unwrap(){
+            if descriptor_values.contains_key(name) && &values == &descriptor_values.get(name).unwrap(){
                 descriptor_values.insert(name.to_owned(), values.clone());
 
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                }
+           
+                let set_layout = if !values.iter().any(|string| string.0.contains("sampler")) {
+                    DescriptorSetLayout::build(
+                        device,
+                        DescriptorSetLayout::add_binding(
+                            0,
+                            vk::DescriptorType::UNIFORM_BUFFER,
+                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                            Some(1),
+                            None 
+                        )
+                    )
+                }
+                else{
+                    DescriptorSetLayout::build(
+                        device,
+                        DescriptorSetLayout::add_binding(
+                            0,
+                            vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                            Some(1),
+                            None 
+                        )
+                    )
+                };
+
+                descriptor_fields.insert(name.to_owned(),set_layout);
+            }
+            else{
                 let mut max_value = 0;
 
                 for value in values{
@@ -137,8 +171,6 @@ impl Shader {
                         )
                     ); 
                 }
-            }
-            else{
 
             }
         }
@@ -186,6 +218,9 @@ impl Shader {
         }
     }
 
-}
+    pub fn push_1i(location:String,value:i32,){
 
+    }
+
+}
 
