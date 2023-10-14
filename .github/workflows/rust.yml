@@ -1,4 +1,4 @@
-name: Rust
+name: Revier Test
 
 on:
   push:
@@ -8,25 +8,50 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  
+
 jobs:
-  build:
-    name: Build test on Operative System ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    
+  buildLinux:
+    name: Build and Test on Linux
+    runs-on: ubuntu-latest
     steps:
-    - name: Libudev installation (Linux)
-      run: |
-        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-          sudo apt-get update
-          sudo apt-get install libudev-dev -y
-        fi
-    
     - uses: actions/checkout@v3
+    - name: Install libudev
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev -y
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+  buildMacOS:
+    name: Build and Test on macOS
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  buildWindows:
+    name: Build and Test on Windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo
