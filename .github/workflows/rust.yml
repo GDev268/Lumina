@@ -19,10 +19,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libudev-dev -y
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -33,10 +29,6 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -47,10 +39,6 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
     - name: Build
       run: cargo build --verbose
     - name: Run tests
