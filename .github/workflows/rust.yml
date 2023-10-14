@@ -19,6 +19,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libudev-dev -y
+    - name: Install SDL2 and SDL2_image
+      run: |
+        sudo apt-get install libsdl2-dev libsdl2-image-dev -y
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -42,4 +45,5 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run tests
-      run: cargo
+      run: cargo test --verbose
+
