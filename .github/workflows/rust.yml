@@ -18,6 +18,13 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     
     steps:
+    - name: Libudev installation (Linux)
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          sudo apt-get update
+          sudo apt-get install libudev-dev -y
+        fi
+    
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
