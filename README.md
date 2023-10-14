@@ -1,7 +1,7 @@
 <p align="center">
 <picture>
-  <source width="50%" height="50%" media="(prefers-color-scheme: dark)" srcset="./docs/RevierHeaderDark.png">
-  <img width="50%" height="50%" alt="Light Mode" src="./docs/RevierHeaderLight.png">
+  <source width="50%" height="50%" media="(prefers-color-scheme: dark)" srcset="./docs/RevierLogoDark.png">
+  <img width="50%" height="50%" alt="Light Mode" src="./docs/RevierLogoLight.png">
 </picture>
   </p>
 
