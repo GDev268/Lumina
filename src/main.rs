@@ -23,7 +23,7 @@ use glsl_parser::parser::Parser;
 
 use lazy_static::lazy_static;
 
-use sdl2::event::Event;
+use sdl2::{event::Event, image::LoadSurface};
 
 
 macro_rules! add {
@@ -51,7 +51,13 @@ fn main() {
     let mut query = Query::new();
     let mut parser = Parser::new();
 
-    let shader = Rc::new(Shader::new(
+
+    let window_icon = sdl2::surface::Surface::from_file("icons/2.png").unwrap();
+
+    window._window.set_icon(window_icon);
+
+
+     let shader = Rc::new(Shader::new(
         &device,
         "shaders/simple_shader.vert",
         "shaders/simple_shader.frag",
@@ -148,7 +154,7 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut fps = FPS::new();
-    fps._fps = 60;
+    fps._fps = 300;
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
     let benchmark_time = Instant::now();

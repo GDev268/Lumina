@@ -218,9 +218,4 @@ impl Shader {
         }
     }
 
-    pub fn push_1i(location:String,value:i32,){
-
-    }
-
 }
-

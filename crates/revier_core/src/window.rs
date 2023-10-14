@@ -21,7 +21,7 @@ impl Window {
     pub fn new(sdl:&sdl2::Sdl, title: &str, width: u32, height: u32) -> Self {
         let window_subsystem = sdl.video().unwrap();
 
-        let window = window_subsystem.window(title, width, height).vulkan().build().expect("Failed to create sdl2 window!");
+        let window = window_subsystem.window(title, width, height).resizable().vulkan().build().expect("Failed to create sdl2 window!");
 
         return Self {
             _window: window,
