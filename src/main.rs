@@ -52,7 +52,7 @@ fn main() {
     let mut parser = Parser::new();
 
 
-    let window_icon = sdl2::surface::Surface::from_file("icons/2.png").unwrap();
+    let window_icon = sdl2::surface::Surface::from_file("icons/RevierLogoMain.png").unwrap();
 
     window._window.set_icon(window_icon);
 
