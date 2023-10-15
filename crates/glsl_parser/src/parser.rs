@@ -47,15 +47,6 @@ impl Parser{
         types.insert(String::from("mat2"),32);
         types.insert(String::from("mat3"),48);
         types.insert(String::from("mat4"),64);
-        types.insert(String::from("mat2x2"),32);
-        types.insert(String::from("mat2x3"),48);
-        types.insert(String::from("mat2x4"),64);
-        types.insert(String::from("mat3x2"),48);
-        types.insert(String::from("mat3x3"),72);
-        types.insert(String::from("mat3x4"),96);
-        types.insert(String::from("mat4x2"),64);
-        types.insert(String::from("mat4x3"),96);
-        types.insert(String::from("mat4x4"),128);
         types.insert(String::from("sampler1D"),0);
         types.insert(String::from("sampler2D"),0);
         types.insert(String::from("sampler3D"),0);
@@ -147,16 +138,20 @@ impl Parser{
         return true;
     }
 
-    fn decompose_structs(&mut self){
-        for (_,fields) in self.vert_push_constants.iter_mut(){
+    fn decompose_structs(&self,fields:&HashMap<String,Vec<(String,String)>>,check_struct:&HashMap<String,Vec<(String,String)>>) -> HashMap<String,Vec<(String,String)>>{
+        let mut result: HashMap<String,Vec<(String,String)>> = fields.clone();
+
+        for (_,fields) in result.iter_mut(){
             for i in 0..fields.len(){
-               if self.vert_structs.contains_key(&fields[i].1){
-                    if let Some(reverse_fields) = self.vert_structs.get(&fields[i].1){
+               if check_struct.contains_key(&fields[i].0){
+                    if let Some(reverse_fields) = check_struct.get(&fields[i].0){
                         for field in reverse_fields.iter().rev(){
                             if fields.len() <= i + 1{
+                                println!("1: {:?}",field);
                                 fields.push(field.to_owned());
                             }
                             else{
+                                println!("2: {:?}",field);
                                 fields.insert(i + 1, field.to_owned());
                             }
                         }
@@ -165,8 +160,11 @@ impl Parser{
                     }
                 } 
             }
-            println!("{:?}",fields);
+            //println!("{:?}",fields);
         }
+
+        return result;
+
     }
 
     pub fn parse_shader(&mut self,vert_path:&str,frag_path:&str){
@@ -174,7 +172,7 @@ impl Parser{
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
 
-
+ 
         //VERT SHADER
 
         let vert = File::open(&vert_path).unwrap();
@@ -388,7 +386,10 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed!")}
     
-        self.decompose_structs();
+        self.vert_descriptors = self.decompose_structs(&self.vert_descriptors,&self.vert_structs);
+        self.vert_push_constants = self.decompose_structs(&self.vert_push_constants,&self.vert_structs);
+        self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);
+        self.frag_descriptors = self.decompose_structs(&self.frag_descriptors,&self.frag_structs);
     }
 }
 
