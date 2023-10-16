@@ -57,7 +57,7 @@ fn main() {
     window._window.set_icon(window_icon);
 
 
-     let shader = Rc::new(Shader::new(
+    let shader = Rc::new(Shader::new(
         &device,
         "shaders/simple_shader.vert",
         "shaders/simple_shader.frag",

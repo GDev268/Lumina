@@ -10,7 +10,7 @@ use revier_data::descriptor::DescriptorSetLayout;
 pub struct FieldData{
     name:String,
     data_type:String,
-    value:Vec<Box<dyn Any>>   
+    value:Box<dyn Any> 
 }
 
 
@@ -205,11 +205,11 @@ impl Shader {
         }
 
 
-        println!("{:?}",shader_structs); 
+        //println!("{:?}",shader_structs); 
         println!("{:?}",push_values);
-        println!("{:?}",descriptor_values);
-        println!("{:?}",push_fields);
-        println!("{:?}",descriptor_fields);
+        println!("{:?}",descriptor_values.get("GlobalUBO").unwrap()[3]);
+        //println!("{:?}",push_fields);
+        //println!("{:?}",descriptor_fields);
 
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),

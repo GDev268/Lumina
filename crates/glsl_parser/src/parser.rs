@@ -144,15 +144,16 @@ impl Parser{
         for (_,fields) in result.iter_mut(){
             for i in 0..fields.len(){
                if check_struct.contains_key(&fields[i].0){
+                    let pre_word:String = fields[i].0.to_uppercase() + "-";
                     if let Some(reverse_fields) = check_struct.get(&fields[i].0){
                         for field in reverse_fields.iter().rev(){
                             if fields.len() <= i + 1{
-                                println!("1: {:?}",field);
-                                fields.push(field.to_owned());
+                                let push_field = (field.0.clone(),(pre_word.to_string() + field.1.as_str()));
+                                fields.push(push_field.to_owned());
                             }
                             else{
-                                println!("2: {:?}",field);
-                                fields.insert(i + 1, field.to_owned());
+                                let push_field = (field.0.clone(),(pre_word.to_string() + field.1.as_str()));
+                                fields.insert(i + 1, push_field.to_owned());
                             }
                         }
 
@@ -390,6 +391,8 @@ impl Parser{
         self.vert_push_constants = self.decompose_structs(&self.vert_push_constants,&self.vert_structs);
         self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);
         self.frag_descriptors = self.decompose_structs(&self.frag_descriptors,&self.frag_structs);
+
+        println!("{:?}",self.frag_descriptors);
     }
 }
 
