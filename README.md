@@ -1,9 +1,10 @@
-<p align="center">
-<picture>
-  <source width="50%" height="50%" media="(prefers-color-scheme: dark)" srcset="./docs/RevierLogoDark.png">
+<div align="center" style="display: flex; flex-direction: column; align-items: center;">
   <img width="50%" height="50%" alt="Light Mode" src="./docs/RevierLogoLight.png">
-</picture>
-  </p>
+  <picture style="width: 50%; height: 50%;">
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/RevierLogoDark.png">
+  </picture>
+</div>
+
 
 <h1 align="center">From Everyone to Everyone</h1>
 
