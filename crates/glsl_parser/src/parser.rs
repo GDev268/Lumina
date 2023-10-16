@@ -124,6 +124,7 @@ impl Parser{
                 }
 
                 if !finished{
+                   println!("{:?}",value_pool);
                    return false; 
                 }
             }
@@ -144,7 +145,7 @@ impl Parser{
         for (_,fields) in result.iter_mut(){
             for i in 0..fields.len(){
                if check_struct.contains_key(&fields[i].0){
-                    let pre_word:String = fields[i].0.to_uppercase() + "-";
+                    let pre_word:String = fields[i].0.to_string() + ".";
                     if let Some(reverse_fields) = check_struct.get(&fields[i].0){
                         for field in reverse_fields.iter().rev(){
                             if fields.len() <= i + 1{
@@ -261,6 +262,8 @@ impl Parser{
             }
         }
 
+        if !finished{panic!("Shader parser failed! 1")}
+
         for (value,_) in self.vert_push_constants.iter(){
             if !self.verify_parse(INSERT_TYPE::PUSH, value.to_owned(), true){
                 finished = false;
@@ -269,6 +272,8 @@ impl Parser{
             }
         }
 
+        if !finished{panic!("Shader parser failed! 2")}
+
         for (value,_) in self.vert_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), true){
                 finished = false;
@@ -276,7 +281,7 @@ impl Parser{
             }
         }
 
-        if !finished{panic!("Shader parser failed!")}
+        if !finished{panic!("Shader parser failed! 3")}
 
 
         //FRAG SHADER
@@ -363,14 +368,17 @@ impl Parser{
         }
      
         let mut finished = true;
-        for (value,_) in self.vert_structs.iter(){
+        for (value,_) in self.frag_structs.iter(){
             if !self.verify_parse(INSERT_TYPE::STRUCT, value.to_owned(), true){
                 finished = false;
                 println!("AAAAA1")
             }
         }
 
-        for (value,_) in self.vert_push_constants.iter(){
+        if !finished{panic!("Shader parser failed! 1")}
+
+
+        for (value,_) in self.frag_push_constants.iter(){
             if !self.verify_parse(INSERT_TYPE::PUSH, value.to_owned(), true){
                 finished = false;
                 println!("AAAAA2")
@@ -378,15 +386,17 @@ impl Parser{
             }
         }
 
-        for (value,_) in self.vert_descriptors.iter(){
+        if !finished{panic!("Shader parser failed! 2")}
+
+        for (value,_) in self.frag_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), true){
                 finished = false;
                 println!("AAAAA3")
             }
         }
 
-        if !finished{panic!("Shader parser failed!")}
-    
+        if !finished{panic!("Shader parser failed! 3")}
+
         self.vert_descriptors = self.decompose_structs(&self.vert_descriptors,&self.vert_structs);
         self.vert_push_constants = self.decompose_structs(&self.vert_push_constants,&self.vert_structs);
         self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);

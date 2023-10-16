@@ -110,16 +110,9 @@ impl Shader {
             }
         }
 
-      for (name,values) in parser.frag_descriptors.iter(){
+        for (name,values) in parser.frag_descriptors.iter(){
             if descriptor_returns.contains_key(name) && &values == &descriptor_returns.get(name).unwrap(){
-                descriptor_returns.insert(name.to_owned(), values.clone());
 
-                let mut max_value = 0;
-
-                for value in values{
-                    max_value += parser.convert_to_size(&value.0);
-                }
-           
                 let set_layout = if !values.iter().any(|string| string.0.contains("sampler")) {
                     DescriptorSetLayout::build(
                         device,
@@ -148,12 +141,8 @@ impl Shader {
                 descriptor_fields.insert(name.to_owned(),set_layout);
             }
             else{
-                let mut max_value = 0;
+                descriptor_returns.insert(name.to_owned(), values.clone());
 
-                for value in values{
-                    max_value += parser.convert_to_size(&value.0);
-                }
-           
                 if !values.iter().any(|string| string.0.contains("sampler")) {
                     let set_layout = DescriptorSetLayout::build(
                         device,
@@ -195,9 +184,9 @@ impl Shader {
 
         let mut descriptor_values:HashMap<String,Vec<FieldData>> = HashMap::new();
 
+
         for (name,values) in descriptor_returns.iter(){
             let mut result_values:Vec<FieldData> = Vec::new();
-
             for value in values{
                 result_values.push(FieldData { name: value.1.clone(), data_type: value.0.clone(), value: Shader::default_value(value.0.clone()) })
             }
@@ -205,11 +194,6 @@ impl Shader {
         }
 
 
-        //println!("{:?}",shader_structs); 
-        println!("{:?}",push_values);
-        println!("{:?}",descriptor_values.get("GlobalUBO").unwrap()[3]);
-        //println!("{:?}",push_fields);
-        //println!("{:?}",descriptor_fields);
 
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),
