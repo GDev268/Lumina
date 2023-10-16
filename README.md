@@ -1,7 +1,7 @@
 <div align="center" style="display: flex; flex-direction: column; align-items: center;">
-  <img width="50%" height="50%" alt="Light Mode" src="./docs/RevierLogoDark.png">
+  <img width="50%" height="50%" alt="Light Mode" src="./docs/RevierLogoLight.png">
   <picture style="width: 50%; height: 50%;">
-    <source media="(prefers-color-scheme: dark)" srcset="./docs/RevierLogoLight.png">
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/RevierLogoDark.png">
   </picture>
 </div>
 
