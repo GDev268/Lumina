@@ -7,17 +7,21 @@ layout(location = 3) in vec2 uv;
 
 layout(location = 0) out vec3 fragColor;
 
+struct Lime {
+  mat4 afs;
+  mat3 fas;
+}
+
 layout(set = 0, binding = 0) uniform GlobalUBO {
   mat4 projectionViewMatrix;
   vec3 directionToLight;
+  Lime das;
 } ubo;
-
 
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
 } push;
-
 
 const float AMBIENT = 0.00000000000000000000001;
 
