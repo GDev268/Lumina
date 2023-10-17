@@ -74,4 +74,5 @@ impl Query {
             .and_then(|entity| Some(entity.get_mut_components::<T>()))
             .unwrap()
     }
+
 }

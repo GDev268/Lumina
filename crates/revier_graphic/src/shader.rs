@@ -5,6 +5,7 @@ use ash::vk;
 use revier_core::device::Device;
 use glsl_parser::parser::Parser;
 use revier_data::descriptor::DescriptorSetLayout;
+use revier_object::game_object::Component;
 
 #[derive(Debug)]
 pub struct FieldData{
@@ -19,7 +20,6 @@ pub struct Shader {
     pub frag_module: vk::ShaderModule,
     pub vert_path: String,
     pub frag_path: String,
-    pub shader_structs:HashMap<String,Vec<(String,String)>>, 
     pub push_values:HashMap<String,Vec<FieldData>>,
     pub descriptor_values:HashMap<String,Vec<FieldData>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
@@ -28,7 +28,6 @@ pub struct Shader {
 
 impl Shader {
     pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str) -> Self {
-        let mut shader_structs:HashMap<String,Vec<(String,String)>> = HashMap::new(); 
         let mut push_returns:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut descriptor_returns:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut push_fields:HashMap<String,vk::PushConstantRange> = HashMap::new();
@@ -37,10 +36,6 @@ impl Shader {
         let mut parser = Parser::new(); 
 
         parser.parse_shader(vert_file_path,frag_file_path);
-
-        for (name,values) in parser.vert_structs.iter(){
-            shader_structs.insert("VERT-".to_string() + name, values.clone());
-        }
 
         for (name,values) in parser.vert_push_constants.iter(){
             push_returns.insert(name.to_owned(), values.clone());
@@ -88,10 +83,6 @@ impl Shader {
                     )
                 ); 
             }
-        }
-
-        for (name,values) in parser.frag_structs.iter(){
-            shader_structs.insert("FRAG-".to_string() + name, values.clone());
         }
 
         for (name,values) in &parser.frag_push_constants{
@@ -192,7 +183,6 @@ impl Shader {
             descriptor_values.insert(name.deref().to_string(), result_values);
         }
 
-        println!("{:?}",shader_structs);
         println!("{:?}",push_values);
         println!("{:?}",descriptor_values);
         println!("{:?}",push_fields);
@@ -203,7 +193,6 @@ impl Shader {
             frag_module: Shader::create_shader_module(Shader::read_file(String::from(frag_file_path.to_owned() + &".spv".to_owned())), device),
             vert_path: String::from(vert_file_path),
             frag_path: String::from(frag_file_path),
-            shader_structs,
             push_values,
             descriptor_values,
             push_fields: HashMap::new(),
@@ -259,4 +248,20 @@ impl Shader {
              
         }
     }
+    
+    pub fn change_uniform_1f(&mut self,location:String,value:f32){
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "float" {
+                        field.value = Box::new(value);
+                    }
+                }
+            }
+        }
+    }
 }
+
+impl Component for Shader {}
