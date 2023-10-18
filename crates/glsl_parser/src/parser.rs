@@ -125,7 +125,6 @@ impl Parser{
                 }
 
                 if !finished{
-                   println!("{:?}",value_pool);
                    return false; 
                 }
             }
@@ -163,7 +162,6 @@ impl Parser{
                     }
                 } 
             }
-            //println!("{:?}",fields);
         }
 
         return result;
@@ -403,8 +401,6 @@ impl Parser{
         self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);
         self.frag_descriptors = self.decompose_structs(&self.frag_descriptors,&self.frag_structs);
 
-        println!("{:?}",self.frag_descriptors);
-        println!("{:?}",self.vert_descriptors);
     }
 }
 

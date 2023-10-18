@@ -63,6 +63,19 @@ fn main() {
         "shaders/simple_shader.frag",
     ));
 
+    let mut shader1 = Shader::new(
+        &device,
+        "shaders/simple_shader.vert",
+        "shaders/simple_shader.frag",
+    );
+
+    
+    let adw = shader1.change_uniform_1f("Push.test", 42.2);
+
+    if adw.is_err(){
+        println!("ERROR: {:?}",adw.err().unwrap())
+    }
+
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 

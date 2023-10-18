@@ -15,7 +15,6 @@ layout(set = 0, binding = 0) uniform GlobalUBO {
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
-  
 } push;
 
 
