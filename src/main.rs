@@ -25,6 +25,9 @@ use lazy_static::lazy_static;
 
 use sdl2::{event::Event, image::LoadSurface};
 
+lazy_static!(
+    static ref LOGGER:Logger = Logger::new();
+);
 
 macro_rules! add {
     ($object:expr, $game_objects:expr) => {{
@@ -33,6 +36,11 @@ macro_rules! add {
     }};
 }
 
+macro_rules! log {
+    () => {
+       LOGGER.log("AAAAA");
+    };
+}
  
 fn main() {
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
@@ -76,6 +84,10 @@ fn main() {
         println!("ERROR: {:?}",adw.err().unwrap())
     }
 
+
+    let logger = Logger::new();
+    logger.log("Test log #1");
+    log!();
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
