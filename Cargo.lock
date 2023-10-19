@@ -1949,6 +1949,9 @@ dependencies = [
 [[package]]
 name = "revier_debug"
 version = "0.1.0"
+dependencies = [
+ "color-print",
+]
 
 [[package]]
 name = "revier_geometry"

@@ -9,7 +9,7 @@ use revier_data::{
     buffer::Buffer,
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
 };
-use revier_debug::logger::Logger;
+use revier_debug::logger::{Logger,SeverityLevel};
 use revier_geometry::{
     model::Model,
     shapes::{self},
@@ -25,6 +25,7 @@ use lazy_static::lazy_static;
 
 use sdl2::{event::Event, image::LoadSurface};
 
+
 lazy_static!(
     static ref LOGGER:Logger = Logger::new();
 );
@@ -36,12 +37,51 @@ macro_rules! add {
     }};
 }
 
-macro_rules! log {
-    () => {
-       LOGGER.log("AAAAA");
+macro_rules! trace {
+    ($message:expr) => {
+        let mut push = format!("{:?}",$message);
+        if push.chars().nth(0).unwrap() == '"' && push.chars().nth(push.len() - 1).unwrap() == '"'{
+            push.pop();
+            push.remove(0);
+        }
+        LOGGER.push_message(push.as_str(),SeverityLevel::TRACE,None);
     };
 }
- 
+
+macro_rules! info {
+    ($message:expr) => {
+        let mut push = format!("{:?}",$message);
+        if push.chars().nth(0).unwrap() == '"' && push.chars().nth(push.len() - 1).unwrap() == '"'{
+            push.pop();
+            push.remove(0);
+        }
+        LOGGER.push_message(push.as_str(),SeverityLevel::INFO,None);
+    };
+}
+
+macro_rules! warning {
+    ($message:expr) => {
+        let mut push = format!("{:?}",$message);
+        if push.chars().nth(0).unwrap() == '"' && push.chars().nth(push.len() - 1).unwrap() == '"'{
+            push.pop();
+            push.remove(0);
+        }
+        LOGGER.push_message(push.as_str(),SeverityLevel::WARNING,None);
+    };
+}
+
+macro_rules! error {
+    ($message:expr) => {
+        let mut push = format!("{:?}",$message);
+        if push.chars().nth(0).unwrap() == '"' && push.chars().nth(push.len() - 1).unwrap() == '"'{
+            push.pop();
+            push.remove(0);
+        }
+        LOGGER.push_message(push.as_str(),SeverityLevel::ERROR,None);
+    };
+}
+
+
 fn main() {
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
@@ -59,11 +99,9 @@ fn main() {
     let mut query = Query::new();
     let mut parser = Parser::new();
 
-
     let window_icon = sdl2::surface::Surface::from_file("icons/RevierLogoMain.png").unwrap();
 
     window._window.set_icon(window_icon);
-
 
     let shader = Rc::new(Shader::new(
         &device,
@@ -77,17 +115,12 @@ fn main() {
         "shaders/simple_shader.frag",
     );
 
-    
     let adw = shader1.change_uniform_1f("Push.test", 42.2);
 
     if adw.is_err(){
         println!("ERROR: {:?}",adw.err().unwrap())
     }
 
-
-    let logger = Logger::new();
-    logger.log("Test log #1");
-    log!();
 
     let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
@@ -131,7 +164,7 @@ fn main() {
             None,
         ),
     );
-    
+
 
     let mut global_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
 
@@ -192,6 +225,7 @@ fn main() {
 
 
     'running: loop {
+
         start_tick = Instant::now();
 
         for event in event_pump.poll_iter() {

@@ -1,11 +1,14 @@
 use std::sync::{Mutex, Arc};
 use std::thread;
+use std::time::Instant;
+use color_print::cprintln;
+
 
 static mut CURRENT_ID: u64 = 0;
 
 #[derive(Debug)]
 pub enum SeverityLevel {
-    LOG,
+    TRACE,
     INFO,
     WARNING,
     ERROR,
@@ -53,7 +56,7 @@ impl Logger{
         let buffer = log_buffer.clone();
 
         thread::spawn(move || {
-
+            let time = Instant::now();
             loop{
                 let cur_message:Option<Message> = {
                     let mut buffer = buffer.lock().unwrap();
@@ -65,12 +68,16 @@ impl Logger{
                 };
 
                 if cur_message.is_some(){
-                    match cur_message.unwrap().severity {
-                        SeverityLevel::LOG =>
-                        SeverityLevel::INFO =>
-                        SeverityLevel::WARNING =>
-                        SeverityLevel::ERROR =>
-                        SeverityLevel::CRASH => 
+                    let secs = (time.elapsed().as_secs() % 60) as u128;
+                    let mins = (time.elapsed().as_secs() / 60) as u128;
+                    let millis = time.elapsed().as_millis() % 10000 / 10; 
+                    
+                    match cur_message.as_ref().unwrap().severity {
+                        SeverityLevel::TRACE =>  cprintln!("[{}:{}:{}]<bright-cyan>[LOG] {}",mins,secs,millis,cur_message.unwrap().message),
+                        SeverityLevel::INFO => cprintln!("[{}:{}:{}]<green>[INFO] {}",mins,secs,millis,cur_message.unwrap().message),
+                        SeverityLevel::WARNING => cprintln!("[{}:{}:{}]<yellow>[WARNING] {}",mins,secs,millis,cur_message.unwrap().message),
+                        SeverityLevel::ERROR => cprintln!("[{}:{}:{}]<bright-red>[ERROR] {}",mins,secs,millis,cur_message.unwrap().message),
+                        SeverityLevel::CRASH => cprintln!("[{}:{}:{}]<red>[CRASH] {}",mins,secs,millis,cur_message.unwrap().message)
                     }   
                 }
 
