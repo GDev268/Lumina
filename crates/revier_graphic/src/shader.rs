@@ -225,25 +225,25 @@ impl Shader {
 
     fn default_value(data_type:String) -> Box<dyn Any>{
         match data_type.as_str(){
-            "int" => return Box::new(0),
-            "uint" => return Box::new(0),
-            "float" => return Box::new(0.0),
-            "bool" => return Box::new(false),
-            "bvec2" => return Box::new(glam::BVec2::default()),
-            "bvec3" => return Box::new(glam::BVec3::default()),
-            "bvec4" => return Box::new(glam::BVec4::default()),
-            "ivec2" => return Box::new(glam::IVec2::default()),
-            "ivec3" => return Box::new(glam::IVec3::default()),
-            "ivec4" => return Box::new(glam::IVec4::default()),
-            "uvec2" => return Box::new(glam::UVec2::default()),
-            "uvec3" => return Box::new(glam::UVec3::default()),
-            "uvec4" => return Box::new(glam::UVec4::default()),
-            "vec2" => return Box::new(glam::Vec2::default()),
-            "vec3" => return Box::new(glam::Vec3::default()),
-            "vec4" => return Box::new(glam::Vec4::default()),
-            "mat2" => return Box::new(glam::Mat2::default()),
-            "mat3" => return Box::new(glam::Mat3::default()),
-            "mat4" => return Box::new(glam::Mat4::default()),
+            "int" => return Box::new(()),
+            "uint" => return Box::new(()),
+            "float" => return Box::new(()),
+            "bool" => return Box::new(()),
+            "bvec2" => return Box::new(()),
+            "bvec3" => return Box::new(()),
+            "bvec4" => return Box::new(()),
+            "ivec2" => return Box::new(()),
+            "ivec3" => return Box::new(()),
+            "ivec4" => return Box::new(()),
+            "uvec2" => return Box::new(()),
+            "uvec3" => return Box::new(()),
+            "uvec4" => return Box::new(()),
+            "vec2" => return Box::new(()),
+            "vec3" => return Box::new(()),
+            "vec4" => return Box::new(()),
+            "mat2" => return Box::new(()),
+            "mat3" => return Box::new(()),
+            "mat4" => return Box::new(()),
             _ => return Box::new(()) 
              
         }
@@ -273,7 +273,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec2" {
-                        field.value = Box::new(nalgebra::Vector2::new(v1, v2));
+                        field.value = Box::new(glam::Vec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -606,6 +606,7 @@ impl Shader {
         return Err("Failed to get the value!");
     }
 
+
     pub fn change_uniform_1u(&mut self,location:&str,v1:u32) -> Result<(),&str> {
         let parts:Vec<&str> = location.splitn(2, ".").collect();
     
@@ -629,7 +630,7 @@ impl Shader {
         for (name,fields) in self.push_values.iter_mut(){
             if name == parts[0] {
                 for field in fields {
-                    if field.name == parts[1] && field.data_type == "bvec2" {
+                    if field.name == parts[1] && field.data_type == "uvec2" {
                         field.value = Box::new(glam::UVec2::new(v1, v2));
                         return Ok(());
                     }
@@ -646,7 +647,7 @@ impl Shader {
         for (name,fields) in self.push_values.iter_mut(){
             if name == parts[0] {
                 for field in fields {
-                    if field.name == parts[1] && field.data_type == "bvec3" {
+                    if field.name == parts[1] && field.data_type == "uvec3" {
                         field.value = Box::new(glam::UVec3::new(v1, v2, v3));
                         return Ok(());
                     }
@@ -663,8 +664,110 @@ impl Shader {
         for (name,fields) in self.push_values.iter_mut(){
             if name == parts[0] {
                 for field in fields {
-                    if field.name == parts[1] && field.data_type == "bvec4" {
+                    if field.name == parts[1] && field.data_type == "uvec4" {
                         field.value = Box::new(glam::UVec4::new(v1, v2, v3, v4));
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_uvec2(&mut self,location:&str,v1:glam::UVec2) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "uvec2" {
+                        field.value = Box::new(v1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_uvec3(&mut self,location:&str,v1:glam::UVec3) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "uvec3" {
+                        field.value = Box::new(v1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_uvec4(&mut self,location:&str,v1:glam::UVec4) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "uvec4" {
+                        field.value = Box::new(v1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_mat2(&mut self,location:&str,v1:glam::Mat2) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "mat2" {
+                        field.value = Box::new(v1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_mat3(&mut self,location:&str,v1:glam::Mat3) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "mat3" {
+                        field.value = Box::new(v1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        return Err("Failed to get the value!");
+    }
+
+    pub fn change_uniform_mat4(&mut self,location:&str,v1:glam::Mat4) -> Result<(),&str> {
+        let parts:Vec<&str> = location.splitn(2, ".").collect();
+    
+        for (name,fields) in self.push_values.iter_mut(){
+            if name == parts[0] {
+                for field in fields {
+                    if field.name == parts[1] && field.data_type == "mat4" {
+                        field.value = Box::new(v1);
                         return Ok(());
                     }
                 }
