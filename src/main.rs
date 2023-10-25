@@ -101,7 +101,14 @@ fn main() {
 
     let window_icon = sdl2::surface::Surface::from_file("icons/RevierLogoMain.png").unwrap();
 
+
     window._window.set_icon(window_icon);
+
+
+    let mut parser = Parser::new(); 
+
+    parser.parse_shader("shaders/simple_shader.vert","shaders/simple_shader.frag");
+
 
     let shader = Rc::new(Shader::new(
         &device,
@@ -215,7 +222,6 @@ fn main() {
     fps._fps = 300;
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
-    let benchmark_time = Instant::now();
 
     let mut light_pos = glam::vec3(0.0,3.0,4.0);
     

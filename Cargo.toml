@@ -45,6 +45,7 @@ gilrs = "0.10.2"
 rand = "0.6.5"
 shaderc = "0.8.2"
 glam = "0.24.1"
+criterion = "0.5.1"
 
 [dependencies.sdl2]
 default-features = false

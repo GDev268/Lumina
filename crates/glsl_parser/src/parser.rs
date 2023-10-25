@@ -168,7 +168,21 @@ impl Parser{
 
     }
 
+    fn verify_push_constants(&mut self){
+            let remove_names:Vec<String> = 
+            self.frag_push_constants
+            .keys()
+            .filter(|name| !self.vert_push_constants.contains_key(name.as_str()))
+            .cloned()
+            .collect();        
+        
+        for name in remove_names {
+            self.frag_push_constants.remove(&name);
+        }
+    }
+
     pub fn parse_shader(&mut self,vert_path:&str,frag_path:&str){
+
         let mut inside_struct = false;
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
@@ -400,9 +414,9 @@ impl Parser{
         self.vert_push_constants = self.decompose_structs(&self.vert_push_constants,&self.vert_structs);
         self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);
         self.frag_descriptors = self.decompose_structs(&self.frag_descriptors,&self.frag_structs);
+        self.verify_push_constants();
 
     }
 }
-
 
 

@@ -7,6 +7,28 @@ use glsl_parser::parser::Parser;
 use revier_data::descriptor::DescriptorSetLayout;
 use revier_object::game_object::Component;
 
+pub enum ConvertType{
+    INT(i32),
+    UINT(u32),
+    FLOAT(f32),
+    BOOL(bool),
+    BVEC2(glam::BVec2),
+    BVEC3(glam::BVec3),
+    BVEC4(glam::BVec4),
+    IVEC2(glam::IVec2),
+    IVEC3(glam::IVec3),
+    IVEC4(glam::IVec4),
+    UVEC2(glam::UVec2),
+    UVEC3(glam::UVec3),
+    UVEC4(glam::UVec4),
+    VEC2(glam::Vec2),
+    VEC3(glam::Vec3),
+    VEC4(glam::Vec4),
+    MAT2(glam::Mat2),
+    MAT3(glam::Mat3),
+    MAT4(glam::Mat4),
+}
+
 #[derive(Debug)]
 pub struct FieldData{
     name:String,
@@ -23,7 +45,7 @@ pub struct Shader {
     pub push_values:HashMap<String,Vec<FieldData>>,
     pub descriptor_values:HashMap<String,Vec<FieldData>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
-    pub descriptor_fields:HashMap<String,DescriptorSetLayout>
+    pub descriptor_fields:HashMap<String,DescriptorSetLayout>,
 }
 
 impl Shader {
@@ -246,6 +268,146 @@ impl Shader {
             "mat4" => return Box::new(()),
             _ => return Box::new(()) 
              
+        }
+    }
+
+    pub fn get_field_value<T:'static>(field_data:&FieldData) -> Option<ConvertType>{
+        match field_data.data_type.as_str(){
+            "int" => 
+                if let Some(value) = field_data.value.downcast_ref::<i32>(){
+                    return Some(ConvertType::INT(*value));
+                }
+                else{
+                    return Some(ConvertType::INT(0));
+                },
+            "uint" => 
+                if let Some(value) = field_data.value.downcast_ref::<u32>(){
+                    return Some(ConvertType::UINT(*value));
+                }
+                else{
+                    return Some(ConvertType::UINT(0));
+                },
+            "float" => 
+                if let Some(value) = field_data.value.downcast_ref::<f32>(){
+                    return Some(ConvertType::FLOAT(*value));
+                }
+                else{
+
+                    return Some(ConvertType::FLOAT(0.0));
+                },
+            "bool" => 
+                if let Some(value) = field_data.value.downcast_ref::<bool>(){
+                    return Some(ConvertType::BOOL(*value));
+                }
+                else{
+                    return Some(ConvertType::BOOL(false));
+                },
+            "bvec2" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::BVec2>(){
+                    return Some(ConvertType::BVEC2(*value));
+                }
+                else{
+                    return Some(ConvertType::BVEC2(glam::BVec2::default()));
+                },
+            "bvec3" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::BVec3>(){
+                    return Some(ConvertType::BVEC3(*value));
+                }
+                else{
+                    return Some(ConvertType::BVEC3(glam::BVec3::default()));
+                },
+            "bvec4" =>
+                if let Some(value) = field_data.value.downcast_ref::<glam::BVec4>(){
+                    return Some(ConvertType::BVEC4(*value));
+                }
+                else{
+                    return Some(ConvertType::BVEC4(glam::BVec4::default()));
+                },        
+            "ivec2" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::IVec2>(){
+                    return Some(ConvertType::IVEC2(*value));
+                }
+                else{
+                    return Some(ConvertType::IVEC2(glam::IVec2::default()));
+                },
+            "ivec3" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::IVec3>(){
+                    return Some(ConvertType::IVEC3(*value));
+                }
+                else{
+                    return Some(ConvertType::IVEC3(glam::IVec3::default()));
+                },
+            "ivec4" =>
+                if let Some(value) = field_data.value.downcast_ref::<glam::IVec4>(){
+                    return Some(ConvertType::IVEC4(*value));
+                }
+                else{
+                    return Some(ConvertType::IVEC4(glam::IVec4::default()));
+                },
+            "uvec2" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::UVec2>(){
+                    return Some(ConvertType::UVEC2(*value));
+                }
+                else{
+                    return Some(ConvertType::UVEC2(glam::UVec2::default()));
+                },
+            "uvec3" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::UVec3>(){
+                    return Some(ConvertType::UVEC3(*value));
+                }
+                else{
+                    return Some(ConvertType::UVEC3(glam::UVec3::default()));
+                },
+            "uvec4" =>
+                if let Some(value) = field_data.value.downcast_ref::<glam::UVec4>(){
+                    return Some(ConvertType::UVEC4(*value));
+                }
+                else{
+                    return Some(ConvertType::UVEC4(glam::UVec4::default()));
+                },    
+            "vec2" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::Vec2>(){
+                    return Some(ConvertType::VEC2(*value));
+                }
+                else{
+                    return Some(ConvertType::VEC2(glam::Vec2::default()));
+                },
+            "vec3" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::Vec3>(){
+                    return Some(ConvertType::VEC3(*value));
+                }
+                else{
+                    return Some(ConvertType::VEC3(glam::Vec3::default()));
+                },
+            "vec4" =>
+                if let Some(value) = field_data.value.downcast_ref::<glam::Vec4>(){
+                    return Some(ConvertType::VEC4(*value));
+                }
+                else{
+                    return Some(ConvertType::VEC4(glam::Vec4::default()));
+                }, 
+            "mat2" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::Mat2>(){
+                    return Some(ConvertType::MAT2(*value));
+                }
+                else{
+                    return Some(ConvertType::MAT2(glam::Mat2::default()));
+                }, 
+            "mat3" =>
+                if let Some(value) = field_data.value.downcast_ref::<glam::Mat3>(){
+                    return Some(ConvertType::MAT3(*value));
+                }
+                else{
+                    return Some(ConvertType::MAT3(glam::Mat3::default()));
+                }, 
+            "mat4" => 
+                if let Some(value) = field_data.value.downcast_ref::<glam::Mat4>(){
+                    return Some(ConvertType::MAT4(*value));
+                }
+                else{
+                    return Some(ConvertType::MAT4(glam::Mat4::default()));
+                }, 
+            _ => None,
         }
     }
     
@@ -776,6 +938,7 @@ impl Shader {
 
         return Err("Failed to get the value!");
     }
+
 }
 
 impl Component for Shader {}
