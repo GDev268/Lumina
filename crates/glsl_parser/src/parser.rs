@@ -169,14 +169,18 @@ impl Parser{
     }
 
     fn verify_push_constants(&mut self){
-            let remove_names:Vec<String> = 
+        let remove_names:Vec<String> = if self.vert_push_constants.len() > 0{
             self.frag_push_constants
             .keys()
             .filter(|name| !self.vert_push_constants.contains_key(name.as_str()))
             .cloned()
-            .collect();        
+            .collect()    
+        }else{
+            Vec::new()
+        };
         
         for name in remove_names {
+            println!("Removed: {:?}",name);
             self.frag_push_constants.remove(&name);
         }
     }
@@ -348,12 +352,11 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                            if self.frag_push_constants.len() < 1{
-                                cur_type = INSERT_TYPE::PUSH;
-                                cur_value = String::from(words[uniform_pos + 1]);
-                                self.frag_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                                inside_struct = true
-                            }
+                            cur_type = INSERT_TYPE::PUSH;
+                            cur_value = String::from(words[uniform_pos + 1]);
+                            self.frag_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            inside_struct = true
+                            
                         }
                         else{
                             cur_type = INSERT_TYPE::DESCRIPTOR;
@@ -365,9 +368,7 @@ impl Parser{
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            if self.frag_push_constants.len() < 1{
-                                self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
-                            }
+                            self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                         else{
                             self.frag_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);

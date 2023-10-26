@@ -46,6 +46,7 @@ pub struct Shader {
     pub descriptor_values:HashMap<String,Vec<FieldData>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
     pub descriptor_fields:HashMap<String,DescriptorSetLayout>,
+    pub value_sizes:HashMap<String,u8>,   
 }
 
 impl Shader {
@@ -54,10 +55,12 @@ impl Shader {
         let mut descriptor_returns:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut push_fields:HashMap<String,vk::PushConstantRange> = HashMap::new();
         let mut descriptor_fields:HashMap<String,DescriptorSetLayout> = HashMap::new();
+        let mut value_sizes:HashMap<String,u8> = HashMap::new();
 
         let mut parser = Parser::new(); 
 
         parser.parse_shader(vert_file_path,frag_file_path);
+        println!("{:?}",parser.frag_push_constants);
 
         for (name,values) in parser.vert_push_constants.iter(){
             push_returns.insert(name.to_owned(), values.clone());
@@ -65,6 +68,7 @@ impl Shader {
 
             for value in values{
                 max_value += parser.convert_to_size(&value.0);
+                value_sizes.insert("PUSH-".to_string() + name, max_value);                
             }
             
             push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::VERTEX, offset: 0, size: max_value as u32 });
@@ -74,12 +78,6 @@ impl Shader {
         for (name,values) in parser.vert_descriptors.iter(){
             descriptor_returns.insert(name.to_owned(), values.clone());
 
-            let mut max_value = 0;
-
-            for value in values{
-                max_value += parser.convert_to_size(&value.0);
-            }
-           
             if !values.iter().any(|string| string.0.contains("sampler")) {
                 let set_layout = DescriptorSetLayout::build(
                     device,
@@ -92,9 +90,23 @@ impl Shader {
                     )
                 );
                 descriptor_fields.insert(name.to_owned(),set_layout);
+
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                }                
             }
             else{
-                 let set_layout =  DescriptorSetLayout::build(
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                }
+
+                let set_layout =  DescriptorSetLayout::build(
                     device,
                     DescriptorSetLayout::add_binding(
                         0,
@@ -109,7 +121,13 @@ impl Shader {
 
         for (name,values) in &parser.frag_push_constants{
             if push_returns.contains_key(name) && &values == &push_returns.get(name).unwrap(){
-                push_fields.get_mut(name).unwrap().stage_flags = vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT; 
+                push_fields.get_mut(name).unwrap().stage_flags = vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT;
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("PUSH-".to_string() + name, max_value);
+                }
             }
             else{
                 push_returns.insert(name.to_owned(), values.clone());
@@ -117,6 +135,7 @@ impl Shader {
 
                 for value in values{
                     max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("PUSH-".to_string() + name, max_value);
                 }
             
                 push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::FRAGMENT, offset: 0, size: max_value as u32 });
@@ -126,6 +145,13 @@ impl Shader {
         for (name,values) in parser.frag_descriptors.iter(){
             if descriptor_returns.contains_key(name) && &values == &descriptor_returns.get(name).unwrap(){
                 let set_layout = if !values.iter().any(|string| string.0.contains("sampler")) {
+                    let mut max_value = 0;
+
+                    for value in values{
+                        max_value += parser.convert_to_size(&value.0);
+                        value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                    }
+
                     DescriptorSetLayout::build(
                         device,
                         DescriptorSetLayout::add_binding(
@@ -138,6 +164,13 @@ impl Shader {
                     )
                 }
                 else{
+                    let mut max_value = 0;
+
+                    for value in values{
+                        max_value += parser.convert_to_size(&value.0);
+                        value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                    }
+
                     DescriptorSetLayout::build(
                         device,
                         DescriptorSetLayout::add_binding(
@@ -153,6 +186,13 @@ impl Shader {
                 descriptor_fields.insert(name.to_owned(),set_layout);
             }
             else{
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                }
+
                 descriptor_returns.insert(name.to_owned(), values.clone());
 
                 if !values.iter().any(|string| string.0.contains("sampler")) {
@@ -169,6 +209,13 @@ impl Shader {
                     descriptor_fields.insert(name.to_owned(),set_layout);
                 }
                 else{
+                    let mut max_value = 0;
+
+                    for value in values{
+                        max_value += parser.convert_to_size(&value.0);
+                        value_sizes.insert("DESCRIPTOR-".to_string() + name, max_value);
+                    }
+
                     let set_layout =  DescriptorSetLayout::build(
                         device,
                         DescriptorSetLayout::add_binding(
@@ -209,6 +256,7 @@ impl Shader {
         println!("{:?}",descriptor_values);
         println!("{:?}",push_fields);
         println!("{:?}",descriptor_fields);*/
+        println!("{:?}",value_sizes);
 
         return Self {
             vert_module: Shader::create_shader_module(Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())), device),
@@ -217,8 +265,9 @@ impl Shader {
             frag_path: String::from(frag_file_path),
             push_values,
             descriptor_values,
-            push_fields: HashMap::new(),
-            descriptor_fields: HashMap::new()
+            push_fields,
+            descriptor_fields,
+            value_sizes
         };
     }
 

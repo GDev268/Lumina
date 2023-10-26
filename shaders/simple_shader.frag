@@ -14,6 +14,7 @@ layout(push_constant) uniform Push {
   mat4 normalMatrix;
 } push;
 
+
 void main() {
   outColor = vec4(fragColor, 1.0);
 }

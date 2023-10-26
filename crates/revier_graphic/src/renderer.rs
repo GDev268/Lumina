@@ -273,7 +273,7 @@ impl PhysicalRenderer {
             .as_ref()
             .unwrap()
             .bind(device, frame_info.command_buffer);
-
+        
         unsafe {
             device.device().cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
