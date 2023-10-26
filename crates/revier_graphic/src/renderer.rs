@@ -273,7 +273,7 @@ impl PhysicalRenderer {
             .as_ref()
             .unwrap()
             .bind(device, frame_info.command_buffer);
-        
+
         unsafe {
             device.device().cmd_bind_descriptor_sets(
                 frame_info.command_buffer,
@@ -286,6 +286,7 @@ impl PhysicalRenderer {
         }
 
         for (id, entity) in scene.entities.iter_mut() {
+            
             let push: PushConstantData = if entity.has_component::<Transform>() {
                 PushConstantData {
                     model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),

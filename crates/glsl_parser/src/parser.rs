@@ -172,7 +172,7 @@ impl Parser{
         let remove_names:Vec<String> = if self.vert_push_constants.len() > 0{
             self.frag_push_constants
             .keys()
-            .filter(|name| !self.vert_push_constants.contains_key(name.as_str()))
+            .filter(|name| self.vert_push_constants.contains_key(name.as_str()) && self.vert_push_constants.get(name.as_str()).unwrap() != self.frag_push_constants.get(name.as_str()).unwrap())
             .cloned()
             .collect()    
         }else{
