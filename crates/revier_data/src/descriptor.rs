@@ -10,6 +10,10 @@ pub struct DescriptorSetLayout {
 }
 
 impl DescriptorSetLayout {
+    pub fn default() -> Self{
+        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
+    }
+
     pub fn add_binding(
         binding: u32,
         descriptor_type: vk::DescriptorType,

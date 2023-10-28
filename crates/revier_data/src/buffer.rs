@@ -3,7 +3,7 @@ use revier_core::device::Device;
 use ash::vk;
 use std::ffi::c_void;
 
-#[derive(Debug)]
+#[derive(Debug,Clone, Copy)]
 pub struct Buffer {
     pub buffer: vk::Buffer,
     pub memory: vk::DeviceMemory,
@@ -30,6 +30,10 @@ impl Buffer {
             mapped: std::ptr::null_mut(),
             buffer_size: buffer_size,
         }
+    }
+
+    pub fn default() -> Self{
+        return Self { buffer: vk::Buffer::null(), memory: vk::DeviceMemory::null(), mapped: std::ptr::null_mut(), buffer_size: 0 };
     }
 
     fn get_alignment(

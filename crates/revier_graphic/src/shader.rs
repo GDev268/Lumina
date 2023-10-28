@@ -2,9 +2,9 @@ use std::{fs::File, io::Read, collections::HashMap, ops::Deref, any::Any};
 
 use ash::vk;
 
-use revier_core::device::Device;
+use revier_core::{device::Device, swapchain::MAX_FRAMES_IN_FLIGHT};
 use glsl_parser::parser::Parser;
-use revier_data::{descriptor::DescriptorSetLayout, buffer::Buffer};
+use revier_data::{descriptor::{DescriptorSetLayout, DescriptorWriter, DescriptorPool, PoolConfig}, buffer::Buffer};
 use revier_object::game_object::Component;
 
 pub enum ConvertType{
@@ -38,8 +38,9 @@ pub struct FieldData{
 
 #[derive(Debug)]
 pub struct DescriptorComponents{
-    buffers:[Buffer;2],
-    descriptor_sets:[vk::DescriptorSet;2]
+    buffers:[Buffer;MAX_FRAMES_IN_FLIGHT],
+    descriptor_sets:[vk::DescriptorSet;MAX_FRAMES_IN_FLIGHT],
+    descriptor_set_layout:DescriptorSetLayout
 }
 
 
@@ -51,19 +52,21 @@ pub struct Shader {
     pub push_values:HashMap<String,Vec<FieldData>>,
     pub descriptor_values:HashMap<String,Vec<FieldData>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
-    pub descriptor_fields:HashMap<String,DescriptorSetLayout>,
+    pub descriptor_fields:HashMap<String,DescriptorComponents>,
     pub value_sizes:HashMap<String,(u8,u16)>,  
-    pub descriptor_utilities:HashMap<String,DescriptorComponents>
+    pool:DescriptorPool
 }
 
 impl Shader {
-    pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str) -> Self {
+    pub fn new(device: &Device, vert_file_path: &str, frag_file_path: &str,pool_config:PoolConfig) -> Self {
         let mut push_returns:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut descriptor_returns:HashMap<String,Vec<(String,String)>> = HashMap::new();
         let mut push_fields:HashMap<String,vk::PushConstantRange> = HashMap::new();
-        let mut descriptor_fields:HashMap<String,DescriptorSetLayout> = HashMap::new();
+        let mut descriptor_fields:HashMap<String,DescriptorComponents> = HashMap::new();
         let mut value_sizes:HashMap<String,(u8,u16)> = HashMap::new();
         let mut cur_offset:u16 = 0;
+
+        let pool = pool_config.build(device);
 
         let mut parser = Parser::new(); 
 
@@ -92,6 +95,32 @@ impl Shader {
             descriptor_returns.insert(name.to_owned(), values.clone());
 
             if !values.iter().any(|string| string.0.contains("sampler")) {
+                let mut components:DescriptorComponents = DescriptorComponents { 
+                    buffers: [Buffer::default();MAX_FRAMES_IN_FLIGHT], 
+                    descriptor_sets: [vk::DescriptorSet::null();MAX_FRAMES_IN_FLIGHT],
+                    descriptor_set_layout: DescriptorSetLayout::default()
+                }; 
+                
+                let mut max_value = 0;
+
+                for value in values{
+                    max_value += parser.convert_to_size(&value.0);
+                    value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value,0));
+                }
+
+                for i in 0..MAX_FRAMES_IN_FLIGHT{
+                     let mut buffer = Buffer::new(
+                        device, 
+                        value_sizes.get(&("DESCRIPTOR-".to_string() + name)).expect("Failed to get: {:?}").0 as u64, 
+                        1, 
+                        vk::BufferUsageFlags::UNIFORM_BUFFER,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE
+                    );
+                    buffer.map(&device, None, None);
+                
+                    components.buffers[i] = buffer;
+                }
+
                 let set_layout = DescriptorSetLayout::build(
                     device,
                     DescriptorSetLayout::add_binding(
@@ -102,14 +131,23 @@ impl Shader {
                         None 
                     )
                 );
-                descriptor_fields.insert(name.to_owned(),set_layout);
 
-                let mut max_value = 0;
+                components.descriptor_set_layout = set_layout;
 
-                for value in values{
-                    max_value += parser.convert_to_size(&value.0);
-                    value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value,0));
-                }                
+                for i in 0..MAX_FRAMES_IN_FLIGHT{
+                    let buffer_info = components.buffers[i].descriptor_info(None, None);
+                    let mut descriptor_writer = DescriptorWriter::new();
+                    descriptor_writer.write_buffer(0, buffer_info, &components.descriptor_set_layout);
+                    components.descriptor_sets[i] = descriptor_writer.build(
+                        device,
+                        components.descriptor_set_layout.get_descriptor_set_layout(), 
+                        &pool
+                    );
+                } 
+
+                descriptor_fields.insert(name.to_owned(),components);
+        
+                println!("{:?} finished!",name);
             }
             else{
                 let mut max_value = 0;
@@ -119,7 +157,26 @@ impl Shader {
                     value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value,0));
                 }
 
-                let set_layout =  DescriptorSetLayout::build(
+                let mut components:DescriptorComponents = DescriptorComponents { 
+                    buffers: [Buffer::default();MAX_FRAMES_IN_FLIGHT], 
+                    descriptor_sets: [vk::DescriptorSet::null();MAX_FRAMES_IN_FLIGHT],
+                    descriptor_set_layout: DescriptorSetLayout::default()
+                }; 
+
+                for i in 0..MAX_FRAMES_IN_FLIGHT{
+                    let mut buffer = Buffer::new(
+                        device, 
+                        value_sizes.get(name).unwrap().0 as u64, 
+                        1, 
+                        vk::BufferUsageFlags::UNIFORM_BUFFER,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE
+                    );
+                    buffer.map(&device, None, None);
+                
+                    components.buffers[i] = buffer;
+                }
+
+                let set_layout = DescriptorSetLayout::build(
                     device,
                     DescriptorSetLayout::add_binding(
                         0,
@@ -128,7 +185,21 @@ impl Shader {
                         Some(1),
                         None 
                     )
-                ); 
+                );
+
+                for i in 0..MAX_FRAMES_IN_FLIGHT{
+                    let buffer_info = components.buffers[i].descriptor_info(None, None);
+                    let mut descriptor_writer = DescriptorWriter::new();
+                    descriptor_writer.write_buffer(0, buffer_info, &components.descriptor_set_layout);
+                    components.descriptor_sets[i] = descriptor_writer.build(
+                        device,
+                        components.descriptor_set_layout.get_descriptor_set_layout(), 
+                        &pool
+                    );
+                } 
+
+                descriptor_fields.insert(name.to_owned(),components);
+
             }
         }
 
@@ -191,7 +262,7 @@ impl Shader {
                     )
                 };
 
-                descriptor_fields.insert(name.to_owned(),set_layout);
+                descriptor_fields.get_mut(name).unwrap().descriptor_set_layout = set_layout;
             }
             else{
                 let mut max_value = 0;
@@ -204,17 +275,49 @@ impl Shader {
                 descriptor_returns.insert(name.to_owned(), values.clone());
 
                 if !values.iter().any(|string| string.0.contains("sampler")) {
+                    let mut components:DescriptorComponents = DescriptorComponents { 
+                        buffers: [Buffer::default();MAX_FRAMES_IN_FLIGHT], 
+                        descriptor_sets: [vk::DescriptorSet::null();MAX_FRAMES_IN_FLIGHT],
+                        descriptor_set_layout: DescriptorSetLayout::default()
+                    }; 
+
+                    for i in 0..MAX_FRAMES_IN_FLIGHT{
+                        let mut buffer = Buffer::new(
+                            device, 
+                            value_sizes.get(name).unwrap().0 as u64, 
+                            1, 
+                            vk::BufferUsageFlags::UNIFORM_BUFFER,
+                            vk::MemoryPropertyFlags::HOST_VISIBLE
+                        );
+                        buffer.map(&device, None, None);
+                
+                        components.buffers[i] = buffer;
+                    }
+
                     let set_layout = DescriptorSetLayout::build(
                         device,
                         DescriptorSetLayout::add_binding(
                             0,
                             vk::DescriptorType::UNIFORM_BUFFER,
-                            vk::ShaderStageFlags::VERTEX,
+                            vk::ShaderStageFlags::FRAGMENT,
                             Some(1),
                             None 
                         )
                     );
-                    descriptor_fields.insert(name.to_owned(),set_layout);
+
+                    for i in 0..MAX_FRAMES_IN_FLIGHT{
+                        let buffer_info = components.buffers[i].descriptor_info(None, None);
+                        let mut descriptor_writer = DescriptorWriter::new();
+                        descriptor_writer.write_buffer(0, buffer_info, &components.descriptor_set_layout);
+                        components.descriptor_sets[i] = descriptor_writer.build(
+                            device,
+                            components.descriptor_set_layout.get_descriptor_set_layout(), 
+                            &pool
+                        );
+                    } 
+
+                    descriptor_fields.insert(name.to_owned(),components);
+
                 }
                 else{
                     let mut max_value = 0;
@@ -224,16 +327,49 @@ impl Shader {
                         value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value,0));
                     }
 
-                    let set_layout =  DescriptorSetLayout::build(
+                    let mut components:DescriptorComponents = DescriptorComponents { 
+                        buffers: [Buffer::default();MAX_FRAMES_IN_FLIGHT], 
+                        descriptor_sets: [vk::DescriptorSet::null();MAX_FRAMES_IN_FLIGHT],
+                        descriptor_set_layout: DescriptorSetLayout::default()
+                    }; 
+
+                    for i in 0..MAX_FRAMES_IN_FLIGHT{
+                        let mut buffer = Buffer::new(
+                            device, 
+                            value_sizes.get(name).unwrap().0 as u64, 
+                            1, 
+                            vk::BufferUsageFlags::UNIFORM_BUFFER,
+                            vk::MemoryPropertyFlags::HOST_VISIBLE
+                        );
+                        buffer.map(&device, None, None);
+                
+                        components.buffers[i] = buffer;
+                    }
+
+                    let set_layout = DescriptorSetLayout::build(
                         device,
                         DescriptorSetLayout::add_binding(
                             0,
                             vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                            vk::ShaderStageFlags::VERTEX,
+                            vk::ShaderStageFlags::FRAGMENT,
                             Some(1),
                             None 
                         )
-                    ); 
+                    );
+
+                    for i in 0..MAX_FRAMES_IN_FLIGHT{
+                        let buffer_info = components.buffers[i].descriptor_info(None, None);
+                        let mut descriptor_writer = DescriptorWriter::new();
+                        descriptor_writer.write_buffer(0, buffer_info, &components.descriptor_set_layout);
+                        components.descriptor_sets[i] = descriptor_writer.build(
+                            device,
+                            components.descriptor_set_layout.get_descriptor_set_layout(), 
+                            &pool
+                        );
+                    } 
+
+                    descriptor_fields.insert(name.to_owned(),components);
+
                 }
             }
         }
@@ -260,6 +396,10 @@ impl Shader {
             descriptor_values.insert(name.deref().to_string(), result_values);
         }
 
+        /*for (name,values) in descriptor_values.iter(){
+
+        }*/
+
         /*println!("{:?}",push_values);
         println!("{:?}",descriptor_values);
         println!("{:?}",descriptor_fields);*/
@@ -276,8 +416,11 @@ impl Shader {
             push_fields,
             descriptor_fields,
             value_sizes,
-            descriptor_utilities: HashMap::new(),
+            pool
         };
+    
+
+
     }
 
     pub fn read_file(file_path: String) -> Vec<u8> {

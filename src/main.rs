@@ -101,9 +101,14 @@ fn main() {
 
     let window_icon = sdl2::surface::Surface::from_file("icons/RevierLogoMain.png").unwrap();
 
+    let mut pool_config = PoolConfig::new();
+    pool_config.set_max_sets(revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+    pool_config.add_pool_size(
+        vk::DescriptorType::UNIFORM_BUFFER,
+        revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+    );
 
     window._window.set_icon(window_icon);
-
 
     let mut parser = Parser::new(); 
 
@@ -114,22 +119,8 @@ fn main() {
         &device,
         "shaders/simple_shader.vert",
         "shaders/simple_shader.frag",
+         pool_config
     ));
-
-    let mut shader1 = Shader::new(
-        &device,
-        "shaders/simple_shader.vert",
-        "shaders/simple_shader.frag",
-    );
-
-    let adw = shader1.change_uniform_1f("Push.test", 42.2);
-
-    if adw.is_err(){
-        println!("ERROR: {:?}",adw.err().unwrap())
-    }
-
-
-    let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
     let mut pool_config = PoolConfig::new();
     pool_config.set_max_sets(revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
@@ -138,7 +129,20 @@ fn main() {
         revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-    let global_pool: DescriptorPool = pool_config.build(&device);
+    let mut shader1 = Shader::new(
+        &device,
+        "shaders/simple_shader.vert",
+        "shaders/simple_shader.frag",
+        pool_config
+    );
+
+    let adw = shader1.change_uniform_1f("Push.test", 42.2);
+
+    if adw.is_err(){
+        println!("ERROR: {:?}",adw.err().unwrap())
+    }
+
+    /*let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
@@ -158,7 +162,6 @@ fn main() {
 
         ubo_buffers.push(buffer);
     }
-
 
 
     let global_set_layout = DescriptorSetLayout::build(
@@ -195,7 +198,7 @@ fn main() {
     let mut cube2 = shapes::cube(&mut query, &device);
 
     if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-        transform.translation = glam::vec3(1.0, 0.0, 5.0);
+        transform.translation = glam::vec3(1.0, 0.0, 5.0); 
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
@@ -331,7 +334,7 @@ fn main() {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }
         fps.update();
-    }
+    }*/
 
 }
 
