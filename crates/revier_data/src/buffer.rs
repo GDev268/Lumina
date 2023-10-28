@@ -3,6 +3,7 @@ use revier_core::device::Device;
 use ash::vk;
 use std::ffi::c_void;
 
+#[derive(Debug)]
 pub struct Buffer {
     pub buffer: vk::Buffer,
     pub memory: vk::DeviceMemory,

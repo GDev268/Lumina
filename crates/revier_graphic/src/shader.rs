@@ -4,7 +4,7 @@ use ash::vk;
 
 use revier_core::device::Device;
 use glsl_parser::parser::Parser;
-use revier_data::descriptor::DescriptorSetLayout;
+use revier_data::{descriptor::DescriptorSetLayout, buffer::Buffer};
 use revier_object::game_object::Component;
 
 pub enum ConvertType{
@@ -36,6 +36,12 @@ pub struct FieldData{
     value:Box<dyn Any> 
 }
 
+#[derive(Debug)]
+pub struct DescriptorComponents{
+    buffers:[Buffer;2],
+    descriptor_sets:[vk::DescriptorSet;2]
+}
+
 
 pub struct Shader {
     pub vert_module: vk::ShaderModule,
@@ -46,7 +52,8 @@ pub struct Shader {
     pub descriptor_values:HashMap<String,Vec<FieldData>>,
     pub push_fields:HashMap<String,vk::PushConstantRange>,
     pub descriptor_fields:HashMap<String,DescriptorSetLayout>,
-    pub value_sizes:HashMap<String,(u8,u16)>,   
+    pub value_sizes:HashMap<String,(u8,u16)>,  
+    pub descriptor_utilities:HashMap<String,DescriptorComponents>
 }
 
 impl Shader {
@@ -56,12 +63,12 @@ impl Shader {
         let mut push_fields:HashMap<String,vk::PushConstantRange> = HashMap::new();
         let mut descriptor_fields:HashMap<String,DescriptorSetLayout> = HashMap::new();
         let mut value_sizes:HashMap<String,(u8,u16)> = HashMap::new();
-        let mut cur_offset = 0;
+        let mut cur_offset:u16 = 0;
 
         let mut parser = Parser::new(); 
 
         parser.parse_shader(vert_file_path,frag_file_path);
-        println!("{:?}",parser.vert_push_constants);
+        println!("VERT PUSH: {:?}",parser.vert_push_constants);
 
         for (name,values) in parser.vert_push_constants.iter(){
             push_returns.insert(name.to_owned(), values.clone());
@@ -71,10 +78,13 @@ impl Shader {
                 max_value += parser.convert_to_size(&value.0);
             }
 
-            value_sizes.insert("PUSH-".to_string() + name, (max_value,cur_offset));
+            push_fields.insert(name.to_owned(), vk::PushConstantRange { 
+                stage_flags: vk::ShaderStageFlags::VERTEX, 
+                offset: cur_offset as u32, 
+                size: max_value as u32 });
+            
             cur_offset += max_value as u16;
 
-            push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::VERTEX, offset: 0, size: max_value as u32 });
         }
 
 
@@ -135,7 +145,8 @@ impl Shader {
                     value_sizes.insert("PUSH-".to_string() + name, (max_value,cur_offset));
                 }
             
-                push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::FRAGMENT, offset: 0, size: max_value as u32 });
+                push_fields.insert(name.to_owned(), vk::PushConstantRange { stage_flags: vk::ShaderStageFlags::FRAGMENT, offset: cur_offset as u32, size: max_value as u32 });
+                cur_offset += max_value as u16;
             }
         }
 
@@ -251,8 +262,8 @@ impl Shader {
 
         /*println!("{:?}",push_values);
         println!("{:?}",descriptor_values);
-        println!("{:?}",push_fields);
         println!("{:?}",descriptor_fields);*/
+        println!("{:?}",push_fields);
         println!("{:?}",value_sizes);
 
         return Self {
@@ -264,7 +275,8 @@ impl Shader {
             descriptor_values,
             push_fields,
             descriptor_fields,
-            value_sizes
+            value_sizes,
+            descriptor_utilities: HashMap::new(),
         };
     }
 

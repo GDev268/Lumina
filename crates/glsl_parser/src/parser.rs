@@ -213,6 +213,7 @@ impl Parser{
                 }
 
                 if inside_struct{
+
                     let words:Vec<&str> = line.split_whitespace().collect();
                     match cur_type{
                         INSERT_TYPE::PUSH => self.vert_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
@@ -241,12 +242,10 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                            if self.vert_push_constants.len() < 1{
                                 cur_type = INSERT_TYPE::PUSH;
                                 cur_value = String::from(words[uniform_pos + 1]);
                                 self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                                inside_struct = true
-                            }
+                                inside_struct = true 
                         }
                         else{
                             cur_type = INSERT_TYPE::DESCRIPTOR;
@@ -258,9 +257,7 @@ impl Parser{
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            if self.vert_push_constants.len() < 1{
-                                self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
-                            }
+                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]); 
                         }
                         else{
                             self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);

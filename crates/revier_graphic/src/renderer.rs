@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc,collections::HashMap};
 
 use revier_core::{
     device::Device,
@@ -228,14 +228,19 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device,global_set_layout:vk::DescriptorSetLayout) {
-        let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
-            stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-            offset: 0,
-            size: std::mem::size_of::<PushConstantData>() as u32,
-        };
+    pub fn create_pipeline_layout(&mut self, device: &Device,push_fields:HashMap<String,vk::PushConstantRange>,descriptor_fields:HashMap<String,vk::DescriptorSetLayout>) {
+        let mut push_constant_ranges:Vec<vk::PushConstantRange> = Vec::new();
 
-        let descriptor_set_layouts = vec![global_set_layout];
+        for (_,range) in push_fields {
+            push_constant_ranges.push(range);
+        }
+    
+        let mut descriptor_set_layouts:Vec<vk::DescriptorSetLayout> = Vec::new();
+
+        for (_,layout) in descriptor_fields {
+            descriptor_set_layouts.push(layout);
+        }
+
 
         let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
@@ -243,8 +248,8 @@ impl PhysicalRenderer {
             flags: vk::PipelineLayoutCreateFlags::empty(),
             set_layout_count: descriptor_set_layouts.len() as u32,
             p_set_layouts: descriptor_set_layouts.as_ptr(),
-            push_constant_range_count: 1,
-            p_push_constant_ranges: &push_constant_range,
+            push_constant_range_count: push_constant_ranges.len() as u32,
+            p_push_constant_ranges: push_constant_ranges.as_ptr(),
         };
 
         unsafe {
@@ -287,6 +292,7 @@ impl PhysicalRenderer {
 
         for (id, entity) in scene.entities.iter_mut() {
             
+
             let push: PushConstantData = if entity.has_component::<Transform>() {
                 PushConstantData {
                     model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),
@@ -388,9 +394,7 @@ impl PhysicalRenderer {
 
     pub fn cleanup(&mut self, device: &Device) {
         unsafe {
-            device
-                .device()
-                .free_command_buffers(device.get_command_pool(), &self.command_buffers);
+            self.free_command_buffers(device); 
             self.command_buffers.clear();
             self.swapchain.cleanup(device);
         }

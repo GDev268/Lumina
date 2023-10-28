@@ -173,7 +173,6 @@ fn main() {
     );
 
 
-
     let mut global_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
 
     for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
@@ -299,7 +298,24 @@ fn main() {
                 light_direction: light_pos,
             };
 
-            ubo_buffers[frame_index].write_to_buffer(&[ubo],None,None);
+           
+            let mut vec: Vec<u8> = Vec::new();
+
+            let mut mat4_slice: [f32; 16] = [0.0; 16];
+            (camera.get_projection() * camera.get_view()).write_cols_to_slice(&mut mat4_slice);
+
+            for f32_data in mat4_slice {
+                vec.extend_from_slice(&f32_data.to_ne_bytes());
+            }
+
+            let mut vec3_slice: [f32; 3] = [0.0; 3];
+            light_pos.write_to_slice(&mut vec3_slice);
+
+            for f32_data in vec3_slice {
+                vec.extend_from_slice(&f32_data.to_ne_bytes());
+            }
+
+            ubo_buffers[frame_index].write_to_buffer(&vec, None, None);
             ubo_buffers[frame_index].flush(None, None, &device);
 
             renderer.render_game_objects(&device, &frame_info, &mut query);
