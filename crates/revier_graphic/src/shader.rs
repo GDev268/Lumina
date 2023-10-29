@@ -7,6 +7,7 @@ use glsl_parser::parser::Parser;
 use revier_data::{descriptor::{DescriptorSetLayout, DescriptorWriter, DescriptorPool, PoolConfig}, buffer::Buffer};
 use revier_object::game_object::Component;
 
+#[derive(Debug)]
 pub enum ConvertType{
     INT(i32),
     UINT(u32),
@@ -29,12 +30,14 @@ pub enum ConvertType{
     MAT4(glam::Mat4),
 }
 
+
 #[derive(Debug)]
 pub struct FieldData{
-    name:String,
-    data_type:String,
-    value:Box<dyn Any> 
+    pub name:String,
+    pub data_type:String,
+    pub value:ConvertType
 }
+
 
 #[derive(Debug)]
 pub struct DescriptorComponents{
@@ -446,13 +449,13 @@ impl Shader {
         }
     }
 
-    fn default_value(data_type:String) -> Box<dyn Any>{
+    fn default_value(data_type:String) -> ConvertType{
         match data_type.as_str(){
-            "int" => return Box::new(()),
-            "uint" => return Box::new(()),
-            "float" => return Box::new(()),
-            "bool" => return Box::new(()),
-            "bvec2" => return Box::new(()),
+            "int" => return ConvertType::INT(0),
+            "uint" => return ConvertType::UINT(0),
+            "float" => return ConvertType::FLOAT(0.0),
+            "bool" => return ConvertType::BOOL(false),
+            "bvec2" => return ConvertType::BVEC2(glam::BVec2::FALSE),
             "bvec3" => return Box::new(()),
             "bvec4" => return Box::new(()),
             "ivec2" => return Box::new(()),
@@ -471,146 +474,6 @@ impl Shader {
              
         }
     }
-
-    pub fn get_field_value<T:'static>(field_data:&FieldData) -> Option<ConvertType>{
-        match field_data.data_type.as_str(){
-            "int" => 
-                if let Some(value) = field_data.value.downcast_ref::<i32>(){
-                    return Some(ConvertType::INT(*value));
-                }
-                else{
-                    return Some(ConvertType::INT(0));
-                },
-            "uint" => 
-                if let Some(value) = field_data.value.downcast_ref::<u32>(){
-                    return Some(ConvertType::UINT(*value));
-                }
-                else{
-                    return Some(ConvertType::UINT(0));
-                },
-            "float" => 
-                if let Some(value) = field_data.value.downcast_ref::<f32>(){
-                    return Some(ConvertType::FLOAT(*value));
-                }
-                else{
-
-                    return Some(ConvertType::FLOAT(0.0));
-                },
-            "bool" => 
-                if let Some(value) = field_data.value.downcast_ref::<bool>(){
-                    return Some(ConvertType::BOOL(*value));
-                }
-                else{
-                    return Some(ConvertType::BOOL(false));
-                },
-            "bvec2" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::BVec2>(){
-                    return Some(ConvertType::BVEC2(*value));
-                }
-                else{
-                    return Some(ConvertType::BVEC2(glam::BVec2::default()));
-                },
-            "bvec3" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::BVec3>(){
-                    return Some(ConvertType::BVEC3(*value));
-                }
-                else{
-                    return Some(ConvertType::BVEC3(glam::BVec3::default()));
-                },
-            "bvec4" =>
-                if let Some(value) = field_data.value.downcast_ref::<glam::BVec4>(){
-                    return Some(ConvertType::BVEC4(*value));
-                }
-                else{
-                    return Some(ConvertType::BVEC4(glam::BVec4::default()));
-                },        
-            "ivec2" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::IVec2>(){
-                    return Some(ConvertType::IVEC2(*value));
-                }
-                else{
-                    return Some(ConvertType::IVEC2(glam::IVec2::default()));
-                },
-            "ivec3" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::IVec3>(){
-                    return Some(ConvertType::IVEC3(*value));
-                }
-                else{
-                    return Some(ConvertType::IVEC3(glam::IVec3::default()));
-                },
-            "ivec4" =>
-                if let Some(value) = field_data.value.downcast_ref::<glam::IVec4>(){
-                    return Some(ConvertType::IVEC4(*value));
-                }
-                else{
-                    return Some(ConvertType::IVEC4(glam::IVec4::default()));
-                },
-            "uvec2" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::UVec2>(){
-                    return Some(ConvertType::UVEC2(*value));
-                }
-                else{
-                    return Some(ConvertType::UVEC2(glam::UVec2::default()));
-                },
-            "uvec3" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::UVec3>(){
-                    return Some(ConvertType::UVEC3(*value));
-                }
-                else{
-                    return Some(ConvertType::UVEC3(glam::UVec3::default()));
-                },
-            "uvec4" =>
-                if let Some(value) = field_data.value.downcast_ref::<glam::UVec4>(){
-                    return Some(ConvertType::UVEC4(*value));
-                }
-                else{
-                    return Some(ConvertType::UVEC4(glam::UVec4::default()));
-                },    
-            "vec2" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::Vec2>(){
-                    return Some(ConvertType::VEC2(*value));
-                }
-                else{
-                    return Some(ConvertType::VEC2(glam::Vec2::default()));
-                },
-            "vec3" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::Vec3>(){
-                    return Some(ConvertType::VEC3(*value));
-                }
-                else{
-                    return Some(ConvertType::VEC3(glam::Vec3::default()));
-                },
-            "vec4" =>
-                if let Some(value) = field_data.value.downcast_ref::<glam::Vec4>(){
-                    return Some(ConvertType::VEC4(*value));
-                }
-                else{
-                    return Some(ConvertType::VEC4(glam::Vec4::default()));
-                }, 
-            "mat2" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::Mat2>(){
-                    return Some(ConvertType::MAT2(*value));
-                }
-                else{
-                    return Some(ConvertType::MAT2(glam::Mat2::default()));
-                }, 
-            "mat3" =>
-                if let Some(value) = field_data.value.downcast_ref::<glam::Mat3>(){
-                    return Some(ConvertType::MAT3(*value));
-                }
-                else{
-                    return Some(ConvertType::MAT3(glam::Mat3::default()));
-                }, 
-            "mat4" => 
-                if let Some(value) = field_data.value.downcast_ref::<glam::Mat4>(){
-                    return Some(ConvertType::MAT4(*value));
-                }
-                else{
-                    return Some(ConvertType::MAT4(glam::Mat4::default()));
-                }, 
-            _ => None,
-        }
-    }
     
     pub fn change_uniform_1f(&mut self,location:&str,v1:f32) -> Result<(),&str> {
         let parts:Vec<&str> = location.splitn(2, ".").collect();
@@ -619,7 +482,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "float" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::FLOAT(v1);
                         return Ok(());
                     }
                 }
@@ -636,7 +499,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec2" {
-                        field.value = Box::new(glam::Vec2::new(v1, v2));
+                        field.value = ConvertType::VEC2(glam::Vec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -653,7 +516,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec3" {
-                        field.value = Box::new(glam::Vec3::new(v1, v2, v3));
+                        field.value = ConvertType::VEC3(glam::Vec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -670,7 +533,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec4" {
-                        field.value = Box::new(glam::Vec4::new(v1, v2, v3, v4));
+                        field.value = ConvertType::VEC4(glam::Vec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -687,7 +550,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec2" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::VEC2(v1);
                         return Ok(());
                     }
                 }
@@ -704,7 +567,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec3" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::VEC3(v1);
                         return Ok(());
                     }
                 }
@@ -721,7 +584,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec4" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::VEC4(v1);
                         return Ok(());
                     }
                 }
@@ -738,7 +601,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "int" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::INT(v1);
                         return Ok(());
                     }
                 }
@@ -755,7 +618,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec2" {
-                        field.value = Box::new(glam::IVec2::new(v1, v2));
+                        field.value = ConvertType::IVEC2(glam::IVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -772,7 +635,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec3" {
-                        field.value = Box::new(glam::IVec3::new(v1, v2, v3));
+                        field.value = ConvertType::IVEC3(glam::IVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -789,7 +652,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec4" {
-                        field.value = Box::new(glam::IVec4::new(v1, v2, v3, v4));
+                        field.value = ConvertType::IVEC4(glam::IVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -806,7 +669,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec2" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::IVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -823,7 +686,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec3" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::IVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -840,7 +703,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec4" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::IVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -857,7 +720,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bool" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::BOOL(v1);
                         return Ok(());
                     }
                 }
@@ -874,7 +737,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec2" {
-                        field.value = Box::new(glam::BVec2::new(v1, v2));
+                        field.value = ConvertType::BVEC2(glam::BVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -891,7 +754,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec3" {
-                        field.value = Box::new(glam::BVec3::new(v1, v2, v3));
+                        field.value = ConvertType::BVEC3(glam::BVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -908,7 +771,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec4" {
-                        field.value = Box::new(glam::BVec4::new(v1, v2, v3, v4));
+                        field.value = ConvertType::BVEC4(glam::BVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -925,7 +788,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec2" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::BVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -942,7 +805,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec3" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::BVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -959,7 +822,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec4" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::BVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -977,7 +840,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uint" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::UINT(v1);
                         return Ok(());
                     }
                 }
@@ -994,7 +857,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec2" {
-                        field.value = Box::new(glam::UVec2::new(v1, v2));
+                        field.value = ConvertType::UVEC2(glam::UVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -1011,7 +874,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec3" {
-                        field.value = Box::new(glam::UVec3::new(v1, v2, v3));
+                        field.value = ConvertType::UVEC3(glam::UVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -1028,7 +891,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec4" {
-                        field.value = Box::new(glam::UVec4::new(v1, v2, v3, v4));
+                        field.value = ConvertType::UVEC4(glam::UVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -1045,7 +908,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec2" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::UVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -1062,7 +925,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec3" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::UVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -1079,7 +942,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec4" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::UVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -1096,7 +959,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat2" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::MAT2(v1);
                         return Ok(());
                     }
                 }
@@ -1113,7 +976,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat3" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::MAT3(v1);
                         return Ok(());
                     }
                 }
@@ -1130,7 +993,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat4" {
-                        field.value = Box::new(v1);
+                        field.value = ConvertType::MAT4(v1);
                         return Ok(());
                     }
                 }

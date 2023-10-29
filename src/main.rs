@@ -142,7 +142,7 @@ fn main() {
         println!("ERROR: {:?}",adw.err().unwrap())
     }
 
-    /*let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
+    let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
@@ -334,7 +334,7 @@ fn main() {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }
         fps.update();
-    }*/
+    }
 
 }
 

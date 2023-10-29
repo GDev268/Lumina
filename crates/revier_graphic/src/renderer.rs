@@ -12,6 +12,8 @@ use revier_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 
+use crate::shader::FieldData;
+
 use super::{
     pipeline::{Pipeline, PipelineConfiguration},
     shader::Shader,
@@ -397,6 +399,14 @@ impl PhysicalRenderer {
             self.free_command_buffers(device); 
             self.command_buffers.clear();
             self.swapchain.cleanup(device);
+        }
+    }
+
+    pub fn write_to_buffer(&self,buffer:&mut Vec<u8>,field_data:FieldData){
+        match field_data.data_type{
+            "int" => {
+               buffer.extend_from_slice((field_data.get_field_value().unwrap() as u32));
+            }
         }
     }
 }
