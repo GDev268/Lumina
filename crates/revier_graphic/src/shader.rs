@@ -8,30 +8,6 @@ use revier_data::{descriptor::{DescriptorSetLayout, DescriptorWriter, Descriptor
 use revier_object::game_object::Component;
 
 #[derive(Debug)]
-pub enum ConvertType{
-    INT(i32),
-    UINT(u32),
-    FLOAT(f32),
-    BOOL(bool),
-    BVEC2(glam::BVec2),
-    BVEC3(glam::BVec3),
-    BVEC4(glam::BVec4),
-    IVEC2(glam::IVec2),
-    IVEC3(glam::IVec3),
-    IVEC4(glam::IVec4),
-    UVEC2(glam::UVec2),
-    UVEC3(glam::UVec3),
-    UVEC4(glam::UVec4),
-    VEC2(glam::Vec2),
-    VEC3(glam::Vec3),
-    VEC4(glam::Vec4),
-    MAT2(glam::Mat2),
-    MAT3(glam::Mat3),
-    MAT4(glam::Mat4),
-}
-
-
-#[derive(Debug)]
 pub struct FieldData{
     pub name:String,
     pub data_type:String,
@@ -399,9 +375,6 @@ impl Shader {
             descriptor_values.insert(name.deref().to_string(), result_values);
         }
 
-        /*for (name,values) in descriptor_values.iter(){
-
-        }*/
 
         /*println!("{:?}",push_values);
         println!("{:?}",descriptor_values);
@@ -456,22 +429,20 @@ impl Shader {
             "float" => return ConvertType::FLOAT(0.0),
             "bool" => return ConvertType::BOOL(false),
             "bvec2" => return ConvertType::BVEC2(glam::BVec2::FALSE),
-            "bvec3" => return Box::new(()),
-            "bvec4" => return Box::new(()),
-            "ivec2" => return Box::new(()),
-            "ivec3" => return Box::new(()),
-            "ivec4" => return Box::new(()),
-            "uvec2" => return Box::new(()),
-            "uvec3" => return Box::new(()),
-            "uvec4" => return Box::new(()),
-            "vec2" => return Box::new(()),
-            "vec3" => return Box::new(()),
-            "vec4" => return Box::new(()),
-            "mat2" => return Box::new(()),
-            "mat3" => return Box::new(()),
-            "mat4" => return Box::new(()),
-            _ => return Box::new(()) 
-             
+            "bvec3" => return ConvertType::BVEC3(glam::BVec3::FALSE),
+            "bvec4" => return ConvertType::BVEC4(glam::BVec4::FALSE),
+            "ivec2" => return ConvertType::IVEC2(glam::IVec2::ZERO),
+            "ivec3" => return ConvertType::IVEC3(glam::IVec3::ZERO),
+            "ivec4" => return ConvertType::IVEC4(glam::IVec4::ZERO),
+            "uvec2" => return ConvertType::UVEC2(glam::UVec2::ZERO),
+            "uvec3" => return ConvertType::UVEC3(glam::UVec3::ZERO),
+            "uvec4" => return ConvertType::UVEC4(glam::UVec4::ZERO),
+            "vec2" => return ConvertType::VEC2(glam::Vec2::ZERO),
+            "vec3" => return ConvertType::VEC3(glam::Vec3::ZERO),
+            "vec4" => return ConvertType::VEC4(glam::Vec4::ZERO),
+            "mat2" => return ConvertType::MAT2(glam::Mat2::ZERO),
+            "mat3" => return ConvertType::MAT3(glam::Mat3::ZERO),
+            "mat4" => return ConvertType::MAT4(glam::Mat4::ZERO), 
         }
     }
     
@@ -1003,6 +974,52 @@ impl Shader {
         return Err("Failed to get the value!");
     }
 
+}
+
+#[derive(Debug)]
+pub enum ConvertType{
+    INT(i32),
+    UINT(u32),
+    FLOAT(f32),
+    BOOL(bool),
+    BVEC2(glam::BVec2),
+    BVEC3(glam::BVec3),
+    BVEC4(glam::BVec4),
+    IVEC2(glam::IVec2),
+    IVEC3(glam::IVec3),
+    IVEC4(glam::IVec4),
+    UVEC2(glam::UVec2),
+    UVEC3(glam::UVec3),
+    UVEC4(glam::UVec4),
+    VEC2(glam::Vec2),
+    VEC3(glam::Vec3),
+    VEC4(glam::Vec4),
+    MAT2(glam::Mat2),
+    MAT3(glam::Mat3),
+    MAT4(glam::Mat4),
+}
+
+trait ConvertType2{
+    fn to_primitive_value(value:ConvertType) -> Self;
+    fn to_ne_bytes(value:ConvertType,buffer:&mut Vec<u8>);
+}
+
+impl ConvertType2 for i32 {
+    fn to_primitive_value(value:ConvertType) -> Self {
+        if let ConvertType::INT(v) = value {
+            v
+        }else{
+            panic!("Error: Failed to get the value")
+        }
+    }
+
+    fn to_ne_bytes(value:ConvertType,buffer:&mut Vec<u8>){
+        if let ConvertType::INT(v) = value {
+            buffer.extend_from_slice(&v.to_ne_bytes())
+        }else{
+            panic!("Error: Failed to get the value")
+        }
+    }
 }
 
 impl Component for Shader {}
