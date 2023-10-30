@@ -7,11 +7,13 @@ use glsl_parser::parser::Parser;
 use revier_data::{descriptor::{DescriptorSetLayout, DescriptorWriter, DescriptorPool, PoolConfig}, buffer::Buffer};
 use revier_object::game_object::Component;
 
+use crate::types::RevierShaderType;
+
 #[derive(Debug)]
 pub struct FieldData{
     pub name:String,
     pub data_type:String,
-    pub value:ConvertType
+    pub value:RevierShaderType
 }
 
 
@@ -422,27 +424,27 @@ impl Shader {
         }
     }
 
-    fn default_value(data_type:String) -> ConvertType{
+    fn default_value(data_type:String) -> RevierShaderType{
         match data_type.as_str(){
-            "int" => return ConvertType::INT(0),
-            "uint" => return ConvertType::UINT(0),
-            "float" => return ConvertType::FLOAT(0.0),
-            "bool" => return ConvertType::BOOL(false),
-            "bvec2" => return ConvertType::BVEC2(glam::BVec2::FALSE),
-            "bvec3" => return ConvertType::BVEC3(glam::BVec3::FALSE),
-            "bvec4" => return ConvertType::BVEC4(glam::BVec4::FALSE),
-            "ivec2" => return ConvertType::IVEC2(glam::IVec2::ZERO),
-            "ivec3" => return ConvertType::IVEC3(glam::IVec3::ZERO),
-            "ivec4" => return ConvertType::IVEC4(glam::IVec4::ZERO),
-            "uvec2" => return ConvertType::UVEC2(glam::UVec2::ZERO),
-            "uvec3" => return ConvertType::UVEC3(glam::UVec3::ZERO),
-            "uvec4" => return ConvertType::UVEC4(glam::UVec4::ZERO),
-            "vec2" => return ConvertType::VEC2(glam::Vec2::ZERO),
-            "vec3" => return ConvertType::VEC3(glam::Vec3::ZERO),
-            "vec4" => return ConvertType::VEC4(glam::Vec4::ZERO),
-            "mat2" => return ConvertType::MAT2(glam::Mat2::ZERO),
-            "mat3" => return ConvertType::MAT3(glam::Mat3::ZERO),
-            "mat4" => return ConvertType::MAT4(glam::Mat4::ZERO), 
+            "int" => return RevierShaderType::INT(0),
+            "uint" => return RevierShaderType::UINT(0),
+            "float" => return RevierShaderType::FLOAT(0.0),
+            "bool" => return RevierShaderType::BOOL(false),
+            "bvec2" => return RevierShaderType::BVEC2(glam::BVec2::FALSE),
+            "bvec3" => return RevierShaderType::BVEC3(glam::BVec3::FALSE),
+            "bvec4" => return RevierShaderType::BVEC4(glam::BVec4::FALSE),
+            "ivec2" => return RevierShaderType::IVEC2(glam::IVec2::ZERO),
+            "ivec3" => return RevierShaderType::IVEC3(glam::IVec3::ZERO),
+            "ivec4" => return RevierShaderType::IVEC4(glam::IVec4::ZERO),
+            "uvec2" => return RevierShaderType::UVEC2(glam::UVec2::ZERO),
+            "uvec3" => return RevierShaderType::UVEC3(glam::UVec3::ZERO),
+            "uvec4" => return RevierShaderType::UVEC4(glam::UVec4::ZERO),
+            "vec2" => return RevierShaderType::VEC2(glam::Vec2::ZERO),
+            "vec3" => return RevierShaderType::VEC3(glam::Vec3::ZERO),
+            "vec4" => return RevierShaderType::VEC4(glam::Vec4::ZERO),
+            "mat2" => return RevierShaderType::MAT2(glam::Mat2::ZERO),
+            "mat3" => return RevierShaderType::MAT3(glam::Mat3::ZERO),
+            "mat4" => return RevierShaderType::MAT4(glam::Mat4::ZERO), 
         }
     }
     
@@ -453,7 +455,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "float" {
-                        field.value = ConvertType::FLOAT(v1);
+                        field.value = RevierShaderType::FLOAT(v1);
                         return Ok(());
                     }
                 }
@@ -470,7 +472,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec2" {
-                        field.value = ConvertType::VEC2(glam::Vec2::new(v1, v2));
+                        field.value = RevierShaderType::VEC2(glam::Vec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -487,7 +489,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec3" {
-                        field.value = ConvertType::VEC3(glam::Vec3::new(v1, v2, v3));
+                        field.value = RevierShaderType::VEC3(glam::Vec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -504,7 +506,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec4" {
-                        field.value = ConvertType::VEC4(glam::Vec4::new(v1, v2, v3, v4));
+                        field.value = RevierShaderType::VEC4(glam::Vec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -521,7 +523,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec2" {
-                        field.value = ConvertType::VEC2(v1);
+                        field.value = RevierShaderType::VEC2(v1);
                         return Ok(());
                     }
                 }
@@ -538,7 +540,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec3" {
-                        field.value = ConvertType::VEC3(v1);
+                        field.value = RevierShaderType::VEC3(v1);
                         return Ok(());
                     }
                 }
@@ -555,7 +557,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "vec4" {
-                        field.value = ConvertType::VEC4(v1);
+                        field.value = RevierShaderType::VEC4(v1);
                         return Ok(());
                     }
                 }
@@ -572,7 +574,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "int" {
-                        field.value = ConvertType::INT(v1);
+                        field.value = RevierShaderType::INT(v1);
                         return Ok(());
                     }
                 }
@@ -589,7 +591,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec2" {
-                        field.value = ConvertType::IVEC2(glam::IVec2::new(v1, v2));
+                        field.value = RevierShaderType::IVEC2(glam::IVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -606,7 +608,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec3" {
-                        field.value = ConvertType::IVEC3(glam::IVec3::new(v1, v2, v3));
+                        field.value = RevierShaderType::IVEC3(glam::IVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -623,7 +625,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec4" {
-                        field.value = ConvertType::IVEC4(glam::IVec4::new(v1, v2, v3, v4));
+                        field.value = RevierShaderType::IVEC4(glam::IVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -640,7 +642,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec2" {
-                        field.value = ConvertType::IVEC2(v1);
+                        field.value = RevierShaderType::IVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -657,7 +659,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec3" {
-                        field.value = ConvertType::IVEC3(v1);
+                        field.value = RevierShaderType::IVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -674,7 +676,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "ivec4" {
-                        field.value = ConvertType::IVEC4(v1);
+                        field.value = RevierShaderType::IVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -691,7 +693,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bool" {
-                        field.value = ConvertType::BOOL(v1);
+                        field.value = RevierShaderType::BOOL(v1);
                         return Ok(());
                     }
                 }
@@ -708,7 +710,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec2" {
-                        field.value = ConvertType::BVEC2(glam::BVec2::new(v1, v2));
+                        field.value = RevierShaderType::BVEC2(glam::BVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -725,7 +727,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec3" {
-                        field.value = ConvertType::BVEC3(glam::BVec3::new(v1, v2, v3));
+                        field.value = RevierShaderType::BVEC3(glam::BVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -742,7 +744,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec4" {
-                        field.value = ConvertType::BVEC4(glam::BVec4::new(v1, v2, v3, v4));
+                        field.value = RevierShaderType::BVEC4(glam::BVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -759,7 +761,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec2" {
-                        field.value = ConvertType::BVEC2(v1);
+                        field.value = RevierShaderType::BVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -776,7 +778,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec3" {
-                        field.value = ConvertType::BVEC3(v1);
+                        field.value = RevierShaderType::BVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -793,7 +795,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "bvec4" {
-                        field.value = ConvertType::BVEC4(v1);
+                        field.value = RevierShaderType::BVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -811,7 +813,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uint" {
-                        field.value = ConvertType::UINT(v1);
+                        field.value = RevierShaderType::UINT(v1);
                         return Ok(());
                     }
                 }
@@ -828,7 +830,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec2" {
-                        field.value = ConvertType::UVEC2(glam::UVec2::new(v1, v2));
+                        field.value = RevierShaderType::UVEC2(glam::UVec2::new(v1, v2));
                         return Ok(());
                     }
                 }
@@ -845,7 +847,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec3" {
-                        field.value = ConvertType::UVEC3(glam::UVec3::new(v1, v2, v3));
+                        field.value = RevierShaderType::UVEC3(glam::UVec3::new(v1, v2, v3));
                         return Ok(());
                     }
                 }
@@ -862,7 +864,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec4" {
-                        field.value = ConvertType::UVEC4(glam::UVec4::new(v1, v2, v3, v4));
+                        field.value = RevierShaderType::UVEC4(glam::UVec4::new(v1, v2, v3, v4));
                         return Ok(());
                     }
                 }
@@ -879,7 +881,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec2" {
-                        field.value = ConvertType::UVEC2(v1);
+                        field.value = RevierShaderType::UVEC2(v1);
                         return Ok(());
                     }
                 }
@@ -896,7 +898,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec3" {
-                        field.value = ConvertType::UVEC3(v1);
+                        field.value = RevierShaderType::UVEC3(v1);
                         return Ok(());
                     }
                 }
@@ -913,7 +915,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "uvec4" {
-                        field.value = ConvertType::UVEC4(v1);
+                        field.value = RevierShaderType::UVEC4(v1);
                         return Ok(());
                     }
                 }
@@ -930,7 +932,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat2" {
-                        field.value = ConvertType::MAT2(v1);
+                        field.value = RevierShaderType::MAT2(v1);
                         return Ok(());
                     }
                 }
@@ -947,7 +949,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat3" {
-                        field.value = ConvertType::MAT3(v1);
+                        field.value = RevierShaderType::MAT3(v1);
                         return Ok(());
                     }
                 }
@@ -964,7 +966,7 @@ impl Shader {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "mat4" {
-                        field.value = ConvertType::MAT4(v1);
+                        field.value = RevierShaderType::MAT4(v1);
                         return Ok(());
                     }
                 }
@@ -974,52 +976,6 @@ impl Shader {
         return Err("Failed to get the value!");
     }
 
-}
-
-#[derive(Debug)]
-pub enum ConvertType{
-    INT(i32),
-    UINT(u32),
-    FLOAT(f32),
-    BOOL(bool),
-    BVEC2(glam::BVec2),
-    BVEC3(glam::BVec3),
-    BVEC4(glam::BVec4),
-    IVEC2(glam::IVec2),
-    IVEC3(glam::IVec3),
-    IVEC4(glam::IVec4),
-    UVEC2(glam::UVec2),
-    UVEC3(glam::UVec3),
-    UVEC4(glam::UVec4),
-    VEC2(glam::Vec2),
-    VEC3(glam::Vec3),
-    VEC4(glam::Vec4),
-    MAT2(glam::Mat2),
-    MAT3(glam::Mat3),
-    MAT4(glam::Mat4),
-}
-
-trait ConvertType2{
-    fn to_primitive_value(value:ConvertType) -> Self;
-    fn to_ne_bytes(value:ConvertType,buffer:&mut Vec<u8>);
-}
-
-impl ConvertType2 for i32 {
-    fn to_primitive_value(value:ConvertType) -> Self {
-        if let ConvertType::INT(v) = value {
-            v
-        }else{
-            panic!("Error: Failed to get the value")
-        }
-    }
-
-    fn to_ne_bytes(value:ConvertType,buffer:&mut Vec<u8>){
-        if let ConvertType::INT(v) = value {
-            buffer.extend_from_slice(&v.to_ne_bytes())
-        }else{
-            panic!("Error: Failed to get the value")
-        }
-    }
 }
 
 impl Component for Shader {}
