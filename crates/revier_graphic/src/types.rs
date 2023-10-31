@@ -21,12 +21,12 @@ pub enum RevierShaderType{
     MAT4(glam::Mat4),
 }
 
-trait TypeToPrimitive{
+pub trait RevierShaderTypeConverter{
     fn to_primitive_value(value:RevierShaderType) -> Self;
     fn to_ne_bytes(value:RevierShaderType,buffer:&mut Vec<u8>);
 }
 
-impl TypeToPrimitive for i32 {
+impl RevierShaderTypeConverter for i32 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::INT(v) = value {
             v
@@ -44,7 +44,7 @@ impl TypeToPrimitive for i32 {
     }
 }
 
-impl TypeToPrimitive for glam::IVec2 {
+impl RevierShaderTypeConverter for glam::IVec2 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::IVEC2(v) = value {
             v
@@ -63,7 +63,7 @@ impl TypeToPrimitive for glam::IVec2 {
     }
 }
 
-impl TypeToPrimitive for glam::IVec3 {
+impl RevierShaderTypeConverter for glam::IVec3 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::IVEC3(v) = value {
             v
@@ -83,7 +83,7 @@ impl TypeToPrimitive for glam::IVec3 {
     }
 }
 
-impl TypeToPrimitive for glam::IVec4 {
+impl RevierShaderTypeConverter for glam::IVec4 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::IVEC4(v) = value {
             v
@@ -104,7 +104,7 @@ impl TypeToPrimitive for glam::IVec4 {
     }
 }
 
-impl TypeToPrimitive for u32 {
+impl RevierShaderTypeConverter for u32 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::UINT(v) = value {
             v
@@ -122,7 +122,7 @@ impl TypeToPrimitive for u32 {
     }
 }
 
-impl TypeToPrimitive for glam::UVec2 {
+impl RevierShaderTypeConverter for glam::UVec2 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::UVEC2(v) = value {
             v
@@ -141,7 +141,7 @@ impl TypeToPrimitive for glam::UVec2 {
     }
 }
 
-impl TypeToPrimitive for glam::UVec3 {
+impl RevierShaderTypeConverter for glam::UVec3 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::UVEC3(v) = value {
             v
@@ -161,7 +161,7 @@ impl TypeToPrimitive for glam::UVec3 {
     }
 }
 
-impl TypeToPrimitive for glam::UVec4 {
+impl RevierShaderTypeConverter for glam::UVec4 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::UVEC4(v) = value {
             v
@@ -182,7 +182,7 @@ impl TypeToPrimitive for glam::UVec4 {
     }
 }
 
-impl TypeToPrimitive for f32 {
+impl RevierShaderTypeConverter for f32 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::FLOAT(v) = value {
             v
@@ -200,7 +200,7 @@ impl TypeToPrimitive for f32 {
     }
 }
 
-impl TypeToPrimitive for glam::Vec2 {
+impl RevierShaderTypeConverter for glam::Vec2 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::VEC2(v) = value {
             v
@@ -219,7 +219,7 @@ impl TypeToPrimitive for glam::Vec2 {
     }
 }
 
-impl TypeToPrimitive for glam::Vec3 {
+impl RevierShaderTypeConverter for glam::Vec3 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::VEC3(v) = value {
             v
@@ -239,7 +239,7 @@ impl TypeToPrimitive for glam::Vec3 {
     }
 }
 
-impl TypeToPrimitive for glam::Vec4 {
+impl RevierShaderTypeConverter for glam::Vec4 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::VEC4(v) = value {
             v
@@ -262,7 +262,7 @@ impl TypeToPrimitive for glam::Vec4 {
 
 
 
-impl TypeToPrimitive for bool {
+impl RevierShaderTypeConverter for bool {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::BOOL(v) = value {
             v
@@ -281,7 +281,7 @@ impl TypeToPrimitive for bool {
     }
 }
 
-impl TypeToPrimitive for glam::BVec2 {
+impl RevierShaderTypeConverter for glam::BVec2 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::BVEC2(v) = value {
             v
@@ -300,7 +300,7 @@ impl TypeToPrimitive for glam::BVec2 {
     }
 }
 
-impl TypeToPrimitive for glam::BVec3 {
+impl RevierShaderTypeConverter for glam::BVec3 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::BVEC3(v) = value {
             v
@@ -320,7 +320,7 @@ impl TypeToPrimitive for glam::BVec3 {
     }
 }
 
-impl TypeToPrimitive for glam::BVec4 {
+impl RevierShaderTypeConverter for glam::BVec4 {
     fn to_primitive_value(value:RevierShaderType) -> Self {
         if let RevierShaderType::BVEC4(v) = value {
             v

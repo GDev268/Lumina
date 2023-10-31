@@ -17,6 +17,7 @@ use crate::shader::FieldData;
 use super::{
     pipeline::{Pipeline, PipelineConfiguration},
     shader::Shader,
+    types::{RevierShaderType,RevierShaderTypeConverter},
 };
 
 pub struct PhysicalRenderer {
@@ -294,6 +295,12 @@ impl PhysicalRenderer {
 
         for (id, entity) in scene.entities.iter_mut() {
             
+            let mut buffer:Vec<u8> = Vec::new();
+            let shader = entity.get_component::<Shader>().unwrap();
+            
+            for (name,values) in shader.push_values.iter(){
+                //for value in values.iter() {
+            }
 
             let push: PushConstantData = if entity.has_component::<Transform>() {
                 PushConstantData {
@@ -402,11 +409,5 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn write_to_buffer(&self,buffer:&mut Vec<u8>,field_data:FieldData){
-        match field_data.data_type{
-            "int" => {
-               buffer.extend_from_slice((field_data.get_field_value().unwrap() as u32));
-            }
-        }
-    }
+
 }

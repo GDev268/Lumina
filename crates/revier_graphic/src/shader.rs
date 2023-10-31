@@ -444,7 +444,8 @@ impl Shader {
             "vec4" => return RevierShaderType::VEC4(glam::Vec4::ZERO),
             "mat2" => return RevierShaderType::MAT2(glam::Mat2::ZERO),
             "mat3" => return RevierShaderType::MAT3(glam::Mat3::ZERO),
-            "mat4" => return RevierShaderType::MAT4(glam::Mat4::ZERO), 
+            "mat4" => return RevierShaderType::MAT4(glam::Mat4::ZERO),
+            _ => panic!("ERROR: Failed to set an default value!")
         }
     }
     
