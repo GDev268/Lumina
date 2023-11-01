@@ -12,7 +12,7 @@ use revier_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 
-use crate::shader::FieldData;
+use crate::shader::{FieldData, DescriptorComponents};
 
 use super::{
     pipeline::{Pipeline, PipelineConfiguration},
@@ -231,17 +231,17 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device,push_fields:HashMap<String,vk::PushConstantRange>,descriptor_fields:HashMap<String,vk::DescriptorSetLayout>) {
+    pub fn create_pipeline_layout(&mut self, device: &Device,push_fields:&HashMap<String,vk::PushConstantRange>,descriptor_fields:&HashMap<String,DescriptorComponents>) {
         let mut push_constant_ranges:Vec<vk::PushConstantRange> = Vec::new();
 
         for (_,range) in push_fields {
-            push_constant_ranges.push(range);
+            push_constant_ranges.push(*range);
         }
     
         let mut descriptor_set_layouts:Vec<vk::DescriptorSetLayout> = Vec::new();
 
-        for (_,layout) in descriptor_fields {
-            descriptor_set_layouts.push(layout);
+        for (_,components) in descriptor_fields {
+            descriptor_set_layouts.push(components.descriptor_set_layout.get_descriptor_set_layout());
         }
 
 
@@ -276,61 +276,48 @@ impl PhysicalRenderer {
         ));
     }
 
-    pub fn render_game_objects(&self, device: &Device, frame_info: &FrameInfo, scene: &mut Query) {
-        self.pipeline
-            .as_ref()
-            .unwrap()
-            .bind(device, frame_info.command_buffer);
-
-        unsafe {
-            device.device().cmd_bind_descriptor_sets(
-                frame_info.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_layout,
-                0,
-                &[frame_info.global_descriptor_set],
-                &[],
-            );
-        }
-
+    pub fn render_game_objects(&mut self, device: &Device, frame_info: &FrameInfo, scene: &mut Query) {
         for (id, entity) in scene.entities.iter_mut() {
-            
-            let mut buffer:Vec<u8> = Vec::new();
             let shader = entity.get_component::<Shader>().unwrap();
+
+            self.create_pipeline_layout(&device,
+                &shader.push_fields,&shader.descriptor_fields);
+            self.create_pipeline(self.get_swapchain_renderpass(), &device);
+
+            self.pipeline
+                .as_ref()
+                .unwrap()
+                .bind(device, frame_info.command_buffer);
+
+            /*unsafe {
+                device.device().cmd_bind_descriptor_sets(
+                    frame_info.command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    self.pipeline_layout,
+                    0,
+                    &[frame_info.global_descriptor_set],
+                    &[],
+                );
+            }*/
+
             
             for (name,values) in shader.push_values.iter(){
-                //for value in values.iter() {
+                let mut push_bytes:Vec<u8> = Vec::new();
+                for value in values.iter() {
+                    value.value.to_ne_bytes(&mut push_bytes);
+                }
+
+                unsafe {
+                    device.device().cmd_push_constants(
+                        frame_info.command_buffer,
+                        self.pipeline_layout,
+                        shader.push_fields.get(name).unwrap().stage_flags,
+                        shader.value_sizes.get(&("PUSH-".to_string() + name)).unwrap().1 as u32,
+                        push_bytes.as_ref(),
+                    )
+                };
+                
             }
-
-            let push: PushConstantData = if entity.has_component::<Transform>() {
-                PushConstantData {
-                    model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),
-                    normal_matrix: entity
-                        .get_mut_component::<Transform>()
-                        .unwrap()
-                        .get_normal_matrix(),
-                }
-            } else {
-                PushConstantData {
-                    model_matrix: glam::Mat4::default(),
-                    normal_matrix: glam::Mat4::default(),
-                }
-            };
-
-            let push_bytes: &[u8] = unsafe {
-                let struct_ptr = &push as *const _ as *const u8;
-                std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
-            };
-
-            unsafe {
-                device.device().cmd_push_constants(
-                    frame_info.command_buffer,
-                    self.pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                    0,
-                    push_bytes,
-                )
-            };
 
             if entity.has_component::<Model>() {
                 entity
@@ -408,6 +395,5 @@ impl PhysicalRenderer {
             self.swapchain.cleanup(device);
         }
     }
-
 
 }

@@ -19,9 +19,9 @@ pub struct FieldData{
 
 #[derive(Debug)]
 pub struct DescriptorComponents{
-    buffers:[Buffer;MAX_FRAMES_IN_FLIGHT],
-    descriptor_sets:[vk::DescriptorSet;MAX_FRAMES_IN_FLIGHT],
-    descriptor_set_layout:DescriptorSetLayout
+    pub buffers:[Buffer;MAX_FRAMES_IN_FLIGHT],
+    pub descriptor_sets:[vk::DescriptorSet;MAX_FRAMES_IN_FLIGHT],
+    pub descriptor_set_layout:DescriptorSetLayout
 }
 
 
