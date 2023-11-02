@@ -14,7 +14,7 @@ use revier_geometry::{
     model::Model,
     shapes::{self},
 };
-use revier_graphic::{renderer::PhysicalRenderer, shader::Shader};
+use revier_graphic::{physical_renderer::PhysicalRenderer, shader::Shader};
 use revier_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
 use revier_object::{game_object::GameObject, transform::Transform};
 use revier_render::camera::Camera;

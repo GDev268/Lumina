@@ -1,7 +1,8 @@
 pub mod pipeline;
-pub mod renderer;
+pub mod physical_renderer;
 pub mod shader;
 pub mod types;
+pub mod renderer;
 
 #[macro_export]
 macro_rules! offset_of {
