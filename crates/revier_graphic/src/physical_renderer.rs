@@ -20,7 +20,7 @@ use super::{
     types::{RevierShaderType,RevierShaderTypeConverter},
 };
 
-pub struct PhysicalRenderer {
+pub struct PhysicalRenderer<'a> {
     swapchain: Swapchain,
     command_buffers: Vec<vk::CommandBuffer>,
     current_image_index: u32,
@@ -28,17 +28,16 @@ pub struct PhysicalRenderer {
     is_frame_started: bool,
     pipeline: Option<Pipeline>,
     pipeline_layout: vk::PipelineLayout,
-    cur_shader: Option<Rc<Shader>>,
+    cur_shader: Option<&'a Shader>,
     cur_cmd:vk::CommandBuffer,
 }
 
-impl PhysicalRenderer {
+impl<'a> PhysicalRenderer<'a> {
     pub fn new(
         window: &Window,
         device: &Device,
-        swapchain: Option<&Swapchain>
     ) -> Self {
-        let swapchain = PhysicalRenderer::create_swapchain(window, device, swapchain);
+        let swapchain = PhysicalRenderer::create_swapchain(window, device, None);
         let command_buffers = PhysicalRenderer::create_command_buffers(device);
 
         return Self {
@@ -54,7 +53,7 @@ impl PhysicalRenderer {
         };
     }
 
-    pub fn get_swapchain_renderpass(&self) -> vk::RenderPass {
+    fn get_swapchain_renderpass(&self) -> vk::RenderPass {
         return self.swapchain.get_renderpass();
     }
 
@@ -62,11 +61,11 @@ impl PhysicalRenderer {
         return self.swapchain.extent_aspect_ratio();
     }
 
-    pub fn is_frame_in_progress(&self) -> bool {
+    fn is_frame_in_progress(&self) -> bool {
         return self.is_frame_started;
     }
 
-    pub fn get_current_command_buffer(&self) -> vk::CommandBuffer {
+    fn get_current_command_buffer(&self) -> vk::CommandBuffer {
         assert!(
             self.is_frame_started,
             "Cannot get command buffer when frame not in progress"
@@ -84,7 +83,14 @@ impl PhysicalRenderer {
         return self.current_frame_index;
     }
 
-    pub fn begin_frame(&mut self, device: &Device, window: &Window) -> Option<vk::CommandBuffer> {
+    pub fn activate_shader(&mut self,device:&Device,shader:&'a Shader){
+        self.cur_shader = Some(shader);
+        self.create_pipeline_layout(device,&self.cur_shader.unwrap().push_fields,&self.cur_shader.unwrap().descriptor_fields);
+        self.create_pipeline(device,self.get_swapchain_renderpass()); 
+    }
+
+
+    pub fn begin_frame(&mut self, device: &Device, window: &Window) {
         assert!(
             !self.is_frame_started,
             "Can't begin frame while it is already in progress"
@@ -93,7 +99,6 @@ impl PhysicalRenderer {
         let result = self.swapchain.acquire_next_image(device);
         if result.is_err() {
             self.recreate_swapchain(device, window);
-            return None;
         };
 
         self.current_image_index = result.unwrap().0;
@@ -114,7 +119,6 @@ impl PhysicalRenderer {
                 .expect("Failed to begin recording command buffer");
         }
 
-        return Some(command_buffer);
     }
 
     pub fn end_frame(&mut self, device: &Device, window: &mut Window) {
@@ -264,7 +268,7 @@ impl PhysicalRenderer {
         }
     }
 
-    pub fn create_pipeline(&mut self, render_pass: vk::RenderPass, device: &Device) {
+    pub fn create_pipeline(&mut self, device: &Device,render_pass: vk::RenderPass) {
         let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = Some(self.pipeline_layout);
@@ -281,9 +285,6 @@ impl PhysicalRenderer {
         for (id, entity) in scene.entities.iter_mut() {
             let shader = entity.get_component::<Shader>().unwrap();
 
-            self.create_pipeline_layout(&device,
-                &shader.push_fields,&shader.descriptor_fields);
-            self.create_pipeline(self.get_swapchain_renderpass(), &device);
 
             self.pipeline
                 .as_ref()

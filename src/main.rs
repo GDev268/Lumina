@@ -150,7 +150,7 @@ fn main() {
 
     let mut mouse_pool = Mouse::new();
 
-    /*for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+    for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
         let mut buffer = Buffer::new(
             &device,
             std::mem::size_of::<GlobalUBO>() as u64,
@@ -334,7 +334,7 @@ fn main() {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }
         fps.update();
-    }*/
+    }
 
 }
 
