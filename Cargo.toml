@@ -1,5 +1,5 @@
 [package]
-name = "Revier"
+name = "Lumina"
 version = "0.1.0"
 edition = "2021"
 authors = ["G..."]
@@ -12,20 +12,20 @@ license = "MIT OR Apache-2.0"
 
 
 [features]
-default = ["revier_core", "revier_data", "revier_render", "revier_graphic", "revier_geometry", "revier_object", "revier_scene", "revier_debug", "revier_input", "glsl_parser"]
+default = ["lumina_core", "lumina_data", "lumina_render", "lumina_graphic", "lumina_geometry", "lumina_object", "lumina_scene", "lumina_debug", "lumina_input", "glsl_parser"]
 optional = []
 
 [dependencies]
-#Revier
-revier_core = { path = "crates/revier_core", version = "0.1.0", optional = true }
-revier_data = { path = "crates/revier_data", version = "0.1.0", optional = true }
-revier_render = { path = "crates/revier_render", version = "0.1.0", optional = true }
-revier_graphic = { path = "crates/revier_graphic", version = "0.1.0", optional = true }
-revier_geometry = { path = "crates/revier_geometry", version = "0.1.0", optional = true }
-revier_object = { path = "crates/revier_object", version = "0.1.0", optional = true }
-revier_scene = { path = "crates/revier_scene", version = "0.1.0", optional = true }
-revier_debug = { path = "crates/revier_debug", version = "0.1.0", optional = true }
-revier_input = { path = "crates/revier_input", version = "0.1.0", optional = true }
+#Lumina
+lumina_core = { path = "crates/lumina_core", version = "0.1.0", optional = true }
+lumina_data = { path = "crates/lumina_data", version = "0.1.0", optional = true }
+lumina_render = { path = "crates/lumina_render", version = "0.1.0", optional = true }
+lumina_graphic = { path = "crates/lumina_graphic", version = "0.1.0", optional = true }
+lumina_geometry = { path = "crates/lumina_geometry", version = "0.1.0", optional = true }
+lumina_object = { path = "crates/lumina_object", version = "0.1.0", optional = true }
+lumina_scene = { path = "crates/lumina_scene", version = "0.1.0", optional = true }
+lumina_debug = { path = "crates/lumina_debug", version = "0.1.0", optional = true }
+lumina_input = { path = "crates/lumina_input", version = "0.1.0", optional = true }
 glsl_parser = { path = "crates/glsl_parser", version = "0.1.0", optional = true } 
 
 #Other

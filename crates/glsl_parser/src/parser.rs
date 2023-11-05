@@ -90,8 +90,7 @@ impl Parser{
             }
             INSERT_TYPE::STRUCT => {
                 if is_vertex {
-                    println!("{:?}\n{:?}",self.vert_structs,value);
-                    self.vert_structs.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
+                        self.vert_structs.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }else{
                     self.frag_structs.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
                 }
@@ -180,7 +179,6 @@ impl Parser{
         };
         
         for name in remove_names {
-            println!("Removed: {:?}",name);
             self.frag_push_constants.remove(&name);
         }
     }

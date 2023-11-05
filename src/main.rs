@@ -3,22 +3,22 @@ use std::{any::TypeId, fs::File, io::Write, rc::Rc, time::{Instant, Duration},th
 use ash::vk::{self};
 use rand::Rng;
 
-use revier_core::{device::Device, swapchain::Swapchain, window::Window, fps_manager::FPS};
+use lumina_core::{device::Device, swapchain::Swapchain, window::Window, fps_manager::FPS};
 
-use revier_data::{
+use lumina_data::{
     buffer::Buffer,
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
 };
-use revier_debug::logger::{Logger,SeverityLevel};
-use revier_geometry::{
+use lumina_debug::logger::{Logger,SeverityLevel};
+use lumina_geometry::{
     model::Model,
     shapes::{self},
 };
-use revier_graphic::{physical_renderer::PhysicalRenderer, shader::Shader};
-use revier_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
-use revier_object::{game_object::GameObject, transform::Transform};
-use revier_render::camera::Camera;
-use revier_scene::{query::Query, FrameInfo, GlobalUBO};
+use lumina_graphic::{renderer::PhysicalRenderer, shader::Shader};
+use lumina_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
+use lumina_object::{game_object::GameObject, transform::Transform};
+use lumina_render::camera::Camera;
+use lumina_scene::{query::Query, FrameInfo, GlobalUBO};
 use glsl_parser::parser::Parser;
 
 use lazy_static::lazy_static;
@@ -91,7 +91,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "Revier", 800, 640);
+    let mut window = Window::new(&sdl_context, "lumina", 800, 640);
     let device = Device::new(&window);
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
@@ -99,13 +99,13 @@ fn main() {
     let mut query = Query::new();
     let mut parser = Parser::new();
 
-    let window_icon = sdl2::surface::Surface::from_file("icons/RevierLogoMain.png").unwrap();
+    let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
 
     let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+    pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
     pool_config.add_pool_size(
         vk::DescriptorType::UNIFORM_BUFFER,
-        revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
     window._window.set_icon(window_icon);
@@ -115,34 +115,31 @@ fn main() {
     parser.parse_shader("shaders/simple_shader.vert","shaders/simple_shader.frag");
 
 
-    let shader = Rc::new(Shader::new(
+    let shader = Shader::new(
         &device,
         "shaders/simple_shader.vert",
         "shaders/simple_shader.frag",
          pool_config
-    ));
+    );
 
     let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+    pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
     pool_config.add_pool_size(
         vk::DescriptorType::UNIFORM_BUFFER,
-        revier_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-    let mut shader1 = Shader::new(
-        &device,
-        "shaders/simple_shader.vert",
-        "shaders/simple_shader.frag",
-        pool_config
-    );
+    /*println!("{:?}\n{:?}",shader1.push_values,shader1.descriptor_values);
 
     let adw = shader1.change_uniform_1f("Push.test", 42.2);
 
     if adw.is_err(){
         println!("ERROR: {:?}",adw.err().unwrap())
-    }
+    }*/
 
-    let mut renderer = PhysicalRenderer::new(&window, &device, Rc::clone(&shader), None);
+    let mut renderer = PhysicalRenderer::new(&window, &device);
+
+    //renderer.activate_shader(&device, &shader);
 
     let mut ubo_buffers: Vec<Buffer> = Vec::new();
 
@@ -150,7 +147,7 @@ fn main() {
 
     let mut mouse_pool = Mouse::new();
 
-    for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+    /*for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
         let mut buffer = Buffer::new(
             &device,
             std::mem::size_of::<GlobalUBO>() as u64,
@@ -178,14 +175,14 @@ fn main() {
 
     let mut global_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
 
-    for i in 0..revier_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
         let buffer_info = ubo_buffers[i].descriptor_info(None, None);
         let mut descriptor_writer = DescriptorWriter::new();
         descriptor_writer.write_buffer(0, buffer_info, &global_set_layout);
         let descriptor_set = descriptor_writer.build(&device, global_set_layout.get_descriptor_set_layout(), &global_pool);
 
         global_descriptor_sets.push(descriptor_set);
-    }
+    }*/
 
     let mut cube = shapes::cube(&mut query, &device);
 
@@ -194,6 +191,7 @@ fn main() {
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
+    query.push(&cube,shader);
 
     let mut cube2 = shapes::cube(&mut query, &device);
 
@@ -201,11 +199,6 @@ fn main() {
         transform.translation = glam::vec3(1.0, 0.0, 5.0); 
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
-
-
-
-    renderer.create_pipeline_layout(&device,global_set_layout.get_descriptor_set_layout());
-    renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
 
     let mut camera = Camera::new();
 
@@ -282,8 +275,10 @@ fn main() {
             view.translation.y += 10.0 * delta_time;
         }
 
-
-        if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
+        renderer.begin_frame(&device, &window);
+        
+        renderer.render_object(&device, &mut query,&cube);
+        /*if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
 
             let frame_info: FrameInfo<'_> = FrameInfo {
@@ -325,7 +320,7 @@ fn main() {
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
             camera.set_view_yxz(view.translation, view.rotation);
-        }
+        }*/
         
         renderer.end_frame(&device, &mut window);
        

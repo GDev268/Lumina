@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "Revier"
+name = "Lumina"
 version = "0.1.0"
 dependencies = [
  "ash",
@@ -16,18 +16,18 @@ dependencies = [
  "glam",
  "glsl_parser",
  "lazy_static",
+ "lumina_core",
+ "lumina_data",
+ "lumina_debug",
+ "lumina_geometry",
+ "lumina_graphic",
+ "lumina_input",
+ "lumina_object",
+ "lumina_render",
+ "lumina_scene",
  "num",
  "rand",
  "raw-window-handle 0.5.2",
- "revier_core",
- "revier_data",
- "revier_debug",
- "revier_geometry",
- "revier_graphic",
- "revier_input",
- "revier_object",
- "revier_render",
- "revier_scene",
  "sdl2",
  "shaderc",
  "simple_logger",
@@ -1430,6 +1430,100 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "lumina_core"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "ash-window",
+ "cgmath",
+ "color-print",
+ "glam",
+ "num",
+ "raw-window-handle 0.5.2",
+ "sdl2",
+ "sprintf",
+ "winit 0.28.6",
+]
+
+[[package]]
+name = "lumina_data"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "lumina_core",
+]
+
+[[package]]
+name = "lumina_debug"
+version = "0.1.0"
+dependencies = [
+ "color-print",
+]
+
+[[package]]
+name = "lumina_geometry"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "glam",
+ "lumina_core",
+ "lumina_object",
+ "lumina_render",
+ "lumina_scene",
+]
+
+[[package]]
+name = "lumina_graphic"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "glam",
+ "glsl_parser",
+ "lumina_core",
+ "lumina_data",
+ "lumina_geometry",
+ "lumina_object",
+ "lumina_render",
+ "lumina_scene",
+]
+
+[[package]]
+name = "lumina_input"
+version = "0.1.0"
+dependencies = [
+ "winit 0.28.6",
+]
+
+[[package]]
+name = "lumina_object"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "glam",
+ "lumina_core",
+]
+
+[[package]]
+name = "lumina_render"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "glam",
+ "lumina_core",
+ "lumina_data",
+]
+
+[[package]]
+name = "lumina_scene"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "glam",
+ "lumina_object",
+ "lumina_render",
+]
+
+[[package]]
 name = "mach2"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2183,100 +2277,6 @@ name = "regex-syntax"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
-
-[[package]]
-name = "revier_core"
-version = "0.1.0"
-dependencies = [
- "ash",
- "ash-window",
- "cgmath",
- "color-print",
- "glam",
- "num",
- "raw-window-handle 0.5.2",
- "sdl2",
- "sprintf",
- "winit 0.28.6",
-]
-
-[[package]]
-name = "revier_data"
-version = "0.1.0"
-dependencies = [
- "ash",
- "revier_core",
-]
-
-[[package]]
-name = "revier_debug"
-version = "0.1.0"
-dependencies = [
- "color-print",
-]
-
-[[package]]
-name = "revier_geometry"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "revier_core",
- "revier_object",
- "revier_render",
- "revier_scene",
-]
-
-[[package]]
-name = "revier_graphic"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "glsl_parser",
- "revier_core",
- "revier_data",
- "revier_geometry",
- "revier_object",
- "revier_render",
- "revier_scene",
-]
-
-[[package]]
-name = "revier_input"
-version = "0.1.0"
-dependencies = [
- "winit 0.28.6",
-]
-
-[[package]]
-name = "revier_object"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "revier_core",
-]
-
-[[package]]
-name = "revier_render"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "revier_core",
- "revier_data",
-]
-
-[[package]]
-name = "revier_scene"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "revier_object",
- "revier_render",
-]
 
 [[package]]
 name = "roxmltree"
