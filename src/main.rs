@@ -276,8 +276,18 @@ fn main() {
         }
 
         renderer.begin_frame(&device, &window);
-        
+       
         renderer.render_object(&device, &mut query,&cube);
+
+        let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4(); 
+        let new_normal = query.query_mut::<Transform>(&cube).unwrap().get_normal_matrix(); 
+
+        if let Some(shader) = query.query_mut::<Shader>(&cube) {
+            shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view());
+            shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos);
+            shader.change_uniform_mat4("Push.modelMatrix",new_mat4);
+            shader.change_uniform_mat4("Push.normalMatrix", new_normal);
+        }
         /*if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
 

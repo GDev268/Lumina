@@ -249,8 +249,7 @@ impl<'a> PhysicalRenderer<'a> {
         for (_,components) in descriptor_fields {
             descriptor_set_layouts.push(components.descriptor_set_layout.get_descriptor_set_layout());
         }
-
-
+        
         let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: std::ptr::null(),
@@ -286,7 +285,7 @@ impl<'a> PhysicalRenderer<'a> {
         for (id,entity) in scene.entities.iter_mut(){
             if id == &gameobject_id.get_id(){
 
-            let shader = entity.get_component::<Shader>().unwrap();
+            let shader = entity.get_mut_component::<Shader>().unwrap();
 
             self.create_pipeline_layout(device,&shader.push_fields,&shader.descriptor_fields);
             self.create_pipeline(device,self.get_swapchain_renderpass(),shader); 
@@ -296,14 +295,22 @@ impl<'a> PhysicalRenderer<'a> {
                 .unwrap()
                 .bind(device, self.cur_cmd);
 
-            for (name,values) in shader.descriptor_fields.iter(){
+            for (name,components) in shader.descriptor_fields.iter_mut(){
+                let mut descriptor_bytes:Vec<u8> = Vec::new();
+
+                for value in shader.descriptor_values.get(name).unwrap().iter() {
+                    value.value.to_ne_bytes(&mut descriptor_bytes);
+                }
+
+                components.buffers[self.get_frame_index() as usize].write_to_buffer(&descriptor_bytes, None, None);
+                components.buffers[self.get_frame_index() as usize].flush(None, None, device);
                 unsafe {
                     device.device().cmd_bind_descriptor_sets(
                         self.cur_cmd,
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout,
                         0,
-                        &values.descriptor_sets,
+                        &[components.descriptor_sets[self.get_frame_index() as usize]],
                         &[],
                     );
                 }

@@ -49,6 +49,16 @@ impl DescriptorSetLayout {
         return DescriptorSetLayout::new(device, bindings);
     }
 
+    pub fn print_stage_flags(&self) {
+        for (_,binding) in &self.bindings {
+            println!("Binding: {}", binding.binding);
+            println!("Descriptor Type: {:?}", binding.descriptor_type);
+            println!("Shader Stage Flags: {:?}", binding.stage_flags);
+            println!("Descriptor Count: {}", binding.descriptor_count);
+            println!();
+        }
+    }
+
     pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
         let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
             bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
