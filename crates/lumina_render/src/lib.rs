@@ -1,5 +1,6 @@
 pub mod camera;
 pub mod mesh;
+pub mod material;
 
 #[macro_export]
 macro_rules! offset_of {

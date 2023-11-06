@@ -14,7 +14,7 @@ use lumina_geometry::{
     model::Model,
     shapes::{self},
 };
-use lumina_graphic::{renderer::PhysicalRenderer, shader::Shader};
+use lumina_graphic::{renderer::Renderer, shader::Shader};
 use lumina_input::{keyboard::{Keyboard, Keycode}, mouse::{Mouse, MouseButton}};
 use lumina_object::{game_object::GameObject, transform::Transform};
 use lumina_render::camera::Camera;
@@ -109,8 +109,8 @@ fn main() {
 
     let shader = Shader::new(
         &device,
-        "shaders/simple_shader.vert",
-        "shaders/simple_shader.frag",
+        "shaders/default_shader.vert",
+        "shaders/default_shader.frag",
          pool_config
     );
 
@@ -121,7 +121,7 @@ fn main() {
         lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-    let mut renderer = PhysicalRenderer::new(&window, &device);
+    let mut renderer = Renderer::new(&window, &device);
 
     //renderer.activate_shader(&device, &shader);
 
@@ -133,8 +133,8 @@ fn main() {
 
     let mut game_objects: Vec<GameObject> = Vec::new();
     
-    for i in 0..10 {
-        for j in 0..75 {
+    for i in 0..2 {
+        for j in 0..1 {
             let mut pool_config = PoolConfig::new();
                 pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
                 pool_config.add_pool_size(
@@ -144,12 +144,12 @@ fn main() {
 
             let shader = Shader::new(
                 &device,
-                "shaders/simple_shader.vert",
-                "shaders/simple_shader.frag",
+                "shaders/default_shader.vert",
+                "shaders/default_shader.frag",
                 pool_config
             );
 
-            let mut cube = shapes::cube(&mut query, &device);
+            let cube = shapes::cube(&mut query, &device);
             if let Some(transform) = query.query_mut::<Transform>(&cube) {
                 transform.translation =
                     glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
@@ -161,6 +161,30 @@ fn main() {
         }
     }
 
+    let mut pool_config = PoolConfig::new();
+        pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+        pool_config.add_pool_size(
+        vk::DescriptorType::UNIFORM_BUFFER,
+        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+    );
+
+    let shader = Shader::new(
+        &device,
+        "shaders/light_cube_shader.vert",
+        "shaders/light_cube_shader.frag",
+        pool_config
+    );
+
+    let cube = shapes::cube(&mut query, &device);
+    if let Some(transform) = query.query_mut::<Transform>(&cube) {
+        transform.translation =
+            glam::vec3(-29.0 + 1.0, 3.0, 50.0 + 1.0);
+        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    }
+
+    query.push(&cube, shader);
+
+
     let mut camera = Camera::new();
 
     let mut view = Transform::default();
@@ -170,7 +194,6 @@ fn main() {
     let aspect = renderer.get_aspect_ratio();
     camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
     
-
     let mut time: f32 = 0.0;
 
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -180,7 +203,7 @@ fn main() {
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
 
-    let mut light_pos = glam::vec3(0.0,3.0,4.0);
+    let mut light_pos = glam::vec3(1.0, -1.0, -1.0);
     
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
@@ -215,45 +238,80 @@ fn main() {
             break 'running;
         }
         
-        if keyboard_pool.get_key(Keycode::Up){
-            view.translation.z += 10.0 * delta_time;
-        }
-        if keyboard_pool.get_key(Keycode::Down){
-            view.translation.z -= 10.0 * delta_time;
-        }
-        if keyboard_pool.get_key(Keycode::Right){
-            view.translation.x += 10.0 * delta_time;
-        } 
-        if keyboard_pool.get_key(Keycode::Left){
-            view.translation.x -= 10.0 * delta_time;
-        }
-        if keyboard_pool.get_key(Keycode::Space){
-            view.translation.y -= 10.0 * delta_time;
-        }       
-        if keyboard_pool.get_key(Keycode::LCtrl){
-            view.translation.y += 10.0 * delta_time;
+        if !keyboard_pool.get_key(Keycode::LShift){
+            if keyboard_pool.get_key(Keycode::Up){
+                view.translation.z += 10.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Down){
+                view.translation.z -= 10.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Right){
+                view.translation.x += 10.0 * delta_time;
+            } 
+            if keyboard_pool.get_key(Keycode::Left){
+                view.translation.x -= 10.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Space){
+                view.translation.y -= 10.0 * delta_time;
+            }       
+            if keyboard_pool.get_key(Keycode::LCtrl){
+                view.translation.y += 10.0 * delta_time;
+            }
+        }else{
+            if keyboard_pool.get_key(Keycode::Up){
+                view.translation.z += 50.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Down){
+                view.translation.z -= 50.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Right){
+                view.translation.x += 50.0 * delta_time;
+            } 
+            if keyboard_pool.get_key(Keycode::Left){
+                view.translation.x -= 50.0 * delta_time;
+            }
+            if keyboard_pool.get_key(Keycode::Space){
+                view.translation.y -= 50.0 * delta_time;
+            }       
+            if keyboard_pool.get_key(Keycode::LCtrl){
+                view.translation.y += 50.0 * delta_time;
+            }
         }
 
         renderer.begin_frame(&device, &window);
        
 
-        for game_object in game_objects {
-            let new_mat4 = query.query_mut::<Transform>(&game_object).unwrap(); 
-            let wave = (std::f32::consts::PI / 30.0) * (new_mat4.translation.x - (10.0 * time));
+        for game_object in game_objects.iter() {
+            let game_transform = query.query_mut::<Transform>(game_object).unwrap(); 
+            let wave = (std::f32::consts::PI / 30.0) * (game_transform.translation.x - (10.0 * time));
+            game_transform.translation.y = 10.0 * wave.cos();
 
-            new_mat4.translation.y = 10.0 * wave.cos();
-            let new_normal = query.query_mut::<Transform>(&game_object).unwrap().get_normal_matrix(); 
+            let new_mat4 = game_transform.get_mat4();
+            drop(game_transform);
+            let new_normal = query.query_mut::<Transform>(game_object).unwrap().get_normal_matrix(); 
 
-            if let Some(shader) = query.query_mut::<Shader>(&game_object) {
+            if let Some(shader) = query.query_mut::<Shader>(game_object) {
                 shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view()).unwrap();
                 shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos).unwrap();
-                shader.change_uniform_mat4("Push.modelMatrix",new_mat4.get_mat4()).unwrap();
+                shader.change_uniform_mat4("Push.modelMatrix",new_mat4).unwrap();
                 shader.change_uniform_mat4("Push.normalMatrix", new_normal).unwrap();
             }
 
             renderer.render_object(&device, &mut query,&game_object);
         }
-               
+
+        let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4();
+
+        if let Some(shader) = query.query_mut::<Shader>(&cube) {
+            shader.change_uniform_mat4("Push_Vertex.modelMatrix",new_mat4).unwrap();
+            shader.change_uniform_mat4("Push_Vertex.viewMatrix",camera.get_view()).unwrap();
+            shader.change_uniform_mat4("Push_Vertex.projectionMatrix",camera.get_projection()).unwrap();
+
+        }
+
+        renderer.render_object(&device, &mut query,&cube);
+
+
         camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
        
@@ -261,6 +319,7 @@ fn main() {
         if start_tick.elapsed() < fps.fps_limit {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }
+        time += 5.0 * delta_time;
         fps.update();
     }
 

@@ -20,7 +20,7 @@ use super::{
     types::{LuminaShaderType,LuminaShaderTypeConverter},
 };
 
-pub struct PhysicalRenderer<'a> {
+pub struct Renderer<'a> {
     swapchain: Swapchain,
     command_buffers: Vec<vk::CommandBuffer>,
     current_image_index: u32,
@@ -32,13 +32,13 @@ pub struct PhysicalRenderer<'a> {
     cur_cmd:vk::CommandBuffer,
 }
 
-impl<'a> PhysicalRenderer<'a> {
+impl<'a> Renderer<'a> {
     pub fn new(
         window: &Window,
         device: &Device,
     ) -> Self {
-        let swapchain = PhysicalRenderer::create_swapchain(window, device, None);
-        let command_buffers = PhysicalRenderer::create_command_buffers(device);
+        let swapchain = Renderer::create_swapchain(window, device, None);
+        let command_buffers = Renderer::create_command_buffers(device);
 
         return Self {
             swapchain,
@@ -401,8 +401,8 @@ impl<'a> PhysicalRenderer<'a> {
         }
 
         self.cleanup(device);
-        self.swapchain = PhysicalRenderer::create_swapchain(window, device, None);
-        self.command_buffers = PhysicalRenderer::create_command_buffers(device);
+        self.swapchain = Renderer::create_swapchain(window, device, None);
+        self.command_buffers = Renderer::create_command_buffers(device);
     }
 
     pub fn cleanup(&mut self, device: &Device) {
