@@ -87,8 +87,6 @@ fn main() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
     }
 
-    //let event_loop = EventLoop::new();
-
     let sdl_context = sdl2::init().unwrap();
 
     let mut window = Window::new(&sdl_context, "lumina", 800, 640);
@@ -97,7 +95,6 @@ fn main() {
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
     let mut query = Query::new();
-    let mut parser = Parser::new();
 
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
 
@@ -109,11 +106,6 @@ fn main() {
     );
 
     window._window.set_icon(window_icon);
-
-    let mut parser = Parser::new(); 
-
-    parser.parse_shader("shaders/simple_shader.vert","shaders/simple_shader.frag");
-
 
     let shader = Shader::new(
         &device,
@@ -129,75 +121,44 @@ fn main() {
         lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-    /*println!("{:?}\n{:?}",shader1.push_values,shader1.descriptor_values);
-
-    let adw = shader1.change_uniform_1f("Push.test", 42.2);
-
-    if adw.is_err(){
-        println!("ERROR: {:?}",adw.err().unwrap())
-    }*/
-
     let mut renderer = PhysicalRenderer::new(&window, &device);
 
     //renderer.activate_shader(&device, &shader);
 
-    let mut ubo_buffers: Vec<Buffer> = Vec::new();
+    let ubo_buffers: Vec<Buffer> = Vec::new();
 
     let mut keyboard_pool = Keyboard::new();
 
     let mut mouse_pool = Mouse::new();
 
-    /*for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let mut buffer = Buffer::new(
-            &device,
-            std::mem::size_of::<GlobalUBO>() as u64,
-            1,
-            vk::BufferUsageFlags::UNIFORM_BUFFER,
-            vk::MemoryPropertyFlags::HOST_VISIBLE,
-        );
-        buffer.map(&device, None, None);
+    let mut game_objects: Vec<GameObject> = Vec::new();
+    
+    for i in 0..10 {
+        for j in 0..75 {
+            let mut pool_config = PoolConfig::new();
+                pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+                pool_config.add_pool_size(
+                vk::DescriptorType::UNIFORM_BUFFER,
+                lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+            );
 
-        ubo_buffers.push(buffer);
-    }
+            let shader = Shader::new(
+                &device,
+                "shaders/simple_shader.vert",
+                "shaders/simple_shader.frag",
+                pool_config
+            );
 
+            let mut cube = shapes::cube(&mut query, &device);
+            if let Some(transform) = query.query_mut::<Transform>(&cube) {
+                transform.translation =
+                    glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
+                transform.scale = glam::vec3(1.0, 1.0, 1.0);
+            }
 
-    let global_set_layout = DescriptorSetLayout::build(
-        &device,
-        DescriptorSetLayout::add_binding(
-            0,
-            vk::DescriptorType::UNIFORM_BUFFER,
-            vk::ShaderStageFlags::VERTEX,
-            Some(1),
-            None,
-        ),
-    );
-
-
-    let mut global_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
-
-    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let buffer_info = ubo_buffers[i].descriptor_info(None, None);
-        let mut descriptor_writer = DescriptorWriter::new();
-        descriptor_writer.write_buffer(0, buffer_info, &global_set_layout);
-        let descriptor_set = descriptor_writer.build(&device, global_set_layout.get_descriptor_set_layout(), &global_pool);
-
-        global_descriptor_sets.push(descriptor_set);
-    }*/
-
-    let mut cube = shapes::cube(&mut query, &device);
-
-    if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation = glam::vec3(0.0, 0.0, 2.5);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
-    }
-
-    query.push(&cube,shader);
-
-    let mut cube2 = shapes::cube(&mut query, &device);
-
-    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-        transform.translation = glam::vec3(1.0, 0.0, 5.0); 
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+            query.push(&cube, shader);
+            game_objects.push(cube);
+        }
     }
 
     let mut camera = Camera::new();
@@ -223,8 +184,6 @@ fn main() {
     
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
-    println!("{:?}",fps.fps_limit);
-
 
     'running: loop {
 
@@ -277,61 +236,25 @@ fn main() {
 
         renderer.begin_frame(&device, &window);
        
-        renderer.render_object(&device, &mut query,&cube);
 
-        let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4(); 
-        let new_normal = query.query_mut::<Transform>(&cube).unwrap().get_normal_matrix(); 
+        for game_object in game_objects {
+            let new_mat4 = query.query_mut::<Transform>(&game_object).unwrap(); 
+            let wave = (std::f32::consts::PI / 30.0) * (new_mat4.translation.x - (10.0 * time));
 
-        if let Some(shader) = query.query_mut::<Shader>(&cube) {
-            shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view());
-            shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos);
-            shader.change_uniform_mat4("Push.modelMatrix",new_mat4);
-            shader.change_uniform_mat4("Push.normalMatrix", new_normal);
+            new_mat4.translation.y = 10.0 * wave.cos();
+            let new_normal = query.query_mut::<Transform>(&game_object).unwrap().get_normal_matrix(); 
+
+            if let Some(shader) = query.query_mut::<Shader>(&game_object) {
+                shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view()).unwrap();
+                shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos).unwrap();
+                shader.change_uniform_mat4("Push.modelMatrix",new_mat4.get_mat4()).unwrap();
+                shader.change_uniform_mat4("Push.normalMatrix", new_normal).unwrap();
+            }
+
+            renderer.render_object(&device, &mut query,&game_object);
         }
-        /*if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
-            let frame_index = renderer.get_frame_index() as usize;
-
-            let frame_info: FrameInfo<'_> = FrameInfo {
-                frame_time: 0.0,
-                command_buffer,
-                camera: &camera,
-                global_descriptor_set: global_descriptor_sets[frame_index],
-            };
-
-            renderer.begin_swapchain_renderpass(command_buffer, &device);
-   
-          
-            let ubo: GlobalUBO = GlobalUBO {
-                projection: camera.get_projection() * camera.get_view(),
-                light_direction: light_pos,
-            };
-
-           
-            let mut vec: Vec<u8> = Vec::new();
-
-            let mut mat4_slice: [f32; 16] = [0.0; 16];
-            (camera.get_projection() * camera.get_view()).write_cols_to_slice(&mut mat4_slice);
-
-            for f32_data in mat4_slice {
-                vec.extend_from_slice(&f32_data.to_ne_bytes());
-            }
-
-            let mut vec3_slice: [f32; 3] = [0.0; 3];
-            light_pos.write_to_slice(&mut vec3_slice);
-
-            for f32_data in vec3_slice {
-                vec.extend_from_slice(&f32_data.to_ne_bytes());
-            }
-
-            ubo_buffers[frame_index].write_to_buffer(&vec, None, None);
-            ubo_buffers[frame_index].flush(None, None, &device);
-
-            renderer.render_game_objects(&device, &frame_info, &mut query);
-
-            renderer.end_swapchain_renderpass(command_buffer, &device);
-            camera.set_view_yxz(view.translation, view.rotation);
-        }*/
-        
+               
+        camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
        
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
