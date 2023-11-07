@@ -243,6 +243,7 @@ impl<'a> Renderer<'a> {
         for (_,range) in push_fields {
             push_constant_ranges.push(*range);
         }
+
     
         let mut descriptor_set_layouts:Vec<vk::DescriptorSetLayout> = Vec::new();
 

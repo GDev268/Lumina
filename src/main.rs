@@ -161,7 +161,7 @@ fn main() {
         }
     }
 
-    let mut pool_config = PoolConfig::new();
+    /*let mut pool_config = PoolConfig::new();
         pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
         pool_config.add_pool_size(
         vk::DescriptorType::UNIFORM_BUFFER,
@@ -182,7 +182,7 @@ fn main() {
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
-    query.push(&cube, shader);
+    query.push(&cube, shader);*/
 
 
     let mut camera = Camera::new();
@@ -300,7 +300,7 @@ fn main() {
             renderer.render_object(&device, &mut query,&game_object);
         }
 
-        let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4();
+        /*let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4();
 
         if let Some(shader) = query.query_mut::<Shader>(&cube) {
             shader.change_uniform_mat4("Push_Vertex.modelMatrix",new_mat4).unwrap();
@@ -309,7 +309,7 @@ fn main() {
 
         }
 
-        renderer.render_object(&device, &mut query,&cube);
+        renderer.render_object(&device, &mut query,&cube);*/
 
 
         camera.set_view_yxz(view.translation, view.rotation);
