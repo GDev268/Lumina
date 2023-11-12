@@ -14,39 +14,38 @@ pub enum INSERT_TYPE{
 
 
 pub struct Parser{
-    types:HashMap<String,u8>,
+    types:HashMap<String,usize>,
     pub vert_structs:HashMap<String,Vec<(String,String)>>,
-    pub vert_push_constants:HashMap<String,Vec<(String,String)>>,
-    pub vert_descriptors:HashMap<String,Vec<(String,String)>>,
     pub frag_structs:HashMap<String,Vec<(String,String)>>,
-    pub frag_push_constants:HashMap<String,Vec<(String,String)>>,
-    pub frag_descriptors:HashMap<String,Vec<(String,String)>>
+    pub glsl_push_constants:HashMap<String,Vec<(String,String)>>,
+    pub glsl_descriptors:HashMap<String,Vec<(String,String)>>,
+    pub descriptor_data:HashMap<String,(u32,Option<u32>)>,
+    pub value_sizes:HashMap<String,(usize,Option<u16>)>
 }
 
 impl Parser{
     pub fn new() -> Self{
-        let mut types:HashMap<String,u8> = HashMap::new();
+        let mut types:HashMap<String,usize> = HashMap::new();
 
-
-        types.insert(String::from("int"),4);
-        types.insert(String::from("uint"),4);
-        types.insert(String::from("float"),4);
-        types.insert(String::from("bool"),1);
-        types.insert(String::from("bvec2"),2);
-        types.insert(String::from("bvec3"),3);
-        types.insert(String::from("bvec4"),4);
-        types.insert(String::from("ivec2"),8);
-        types.insert(String::from("ivec3"),12);
-        types.insert(String::from("ivec4"),16);
-        types.insert(String::from("uvec2"),8);
-        types.insert(String::from("uvec3"),12);
-        types.insert(String::from("uvec4"),16);
-        types.insert(String::from("vec2"),8);
-        types.insert(String::from("vec3"),12);
-        types.insert(String::from("vec4"),16);
-        types.insert(String::from("mat2"),32);
-        types.insert(String::from("mat3"),48);
-        types.insert(String::from("mat4"),64);
+        types.insert(String::from("int"),std::mem::size_of::<i32>());
+        types.insert(String::from("uint"),std::mem::size_of::<u32>());
+        types.insert(String::from("float"),std::mem::size_of::<f32>());
+        types.insert(String::from("bool"),std::mem::size_of::<bool>());
+        types.insert(String::from("bvec2"),std::mem::size_of::<glam::BVec2>());
+        types.insert(String::from("bvec3"),std::mem::size_of::<glam::BVec3>());
+        types.insert(String::from("bvec4"),std::mem::size_of::<glam::BVec4>());
+        types.insert(String::from("ivec2"),std::mem::size_of::<glam::IVec2>());
+        types.insert(String::from("ivec3"),std::mem::size_of::<glam::IVec3>());
+        types.insert(String::from("ivec4"),std::mem::size_of::<glam::BVec4>());
+        types.insert(String::from("uvec2"),std::mem::size_of::<glam::UVec2>());
+        types.insert(String::from("uvec3"),std::mem::size_of::<glam::UVec3>());
+        types.insert(String::from("uvec4"),std::mem::size_of::<glam::UVec4>());
+        types.insert(String::from("vec2"),std::mem::size_of::<glam::Vec2>());
+        types.insert(String::from("vec3"),std::mem::size_of::<glam::Vec3>());
+        types.insert(String::from("vec4"),std::mem::size_of::<glam::Vec4>());
+        types.insert(String::from("mat2"),std::mem::size_of::<glam::Mat2>());
+        types.insert(String::from("mat3"),std::mem::size_of::<glam::Mat3>());
+        types.insert(String::from("mat4"),std::mem::size_of::<glam::Mat4>());
         types.insert(String::from("sampler1D"),0);
         types.insert(String::from("sampler2D"),0);
         types.insert(String::from("sampler3D"),0);
@@ -59,34 +58,26 @@ impl Parser{
         return Self{
             types,
             vert_structs: HashMap::new(),
-            vert_push_constants: HashMap::new(),
-            vert_descriptors: HashMap::new(),
             frag_structs: HashMap::new(),
-            frag_push_constants: HashMap::new(),
-            frag_descriptors: HashMap::new(),
+            glsl_descriptors:HashMap::new(),
+            glsl_push_constants:HashMap::new(),
+            descriptor_data:HashMap::new(),
+            value_sizes:HashMap::new() 
         };
     }
 
-    pub fn convert_to_size(&self,field_types:&String) -> u8{
-        return *self.types.get(field_types).unwrap_or(&(0 as u8));
+    pub fn convert_to_size(&self,field_types:&String) -> usize{
+        return *self.types.get(field_types).unwrap_or(&(0 as usize));
     }
 
     pub fn verify_parse(&self,cur_type:INSERT_TYPE,value:String,is_vertex:bool) -> bool{
         let mut value_pool:Vec<&str> = Vec::new();
         match(cur_type){
             INSERT_TYPE::PUSH => {
-                if is_vertex {
-                    self.vert_push_constants.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
-                }else{
-                    self.frag_push_constants.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
-                }
+                self.glsl_push_constants.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));  
             }
             INSERT_TYPE::DESCRIPTOR => {
-                if is_vertex {
-                    self.vert_descriptors.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
-                }else{
-                    self.frag_descriptors.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
-                }
+                self.glsl_descriptors.get(&value).unwrap().iter().for_each(|(value,_)| value_pool.push(value.deref()));
             }
             INSERT_TYPE::STRUCT => {
                 if is_vertex {
@@ -167,24 +158,28 @@ impl Parser{
 
     }
 
-    fn verify_push_constants(&mut self){
-        let remove_names:Vec<String> = if self.vert_push_constants.len() > 0{
-            self.frag_push_constants
-            .keys()
-            .filter(|name| self.vert_push_constants.contains_key(name.as_str()) && self.vert_push_constants.get(name.as_str()).unwrap() != self.frag_push_constants.get(name.as_str()).unwrap())
-            .cloned()
-            .collect()    
-        }else{
-            Vec::new()
-        };
-        
-        for name in remove_names {
-            self.frag_push_constants.remove(&name);
+
+    fn get_descriptor_data(vector:&Vec<&str>) -> (u32,Option<u32>) {
+        let line = vector.join(" ");
+
+        let start_index = line.find("(");
+
+        let end_index = line.find(")");
+
+        let content:Vec<Vec<&str>> = line[line.find("(").unwrap() + 1..line.find(")").unwrap()].split(',')
+        .map(|item| item.split_whitespace().collect())
+        .collect();
+                 
+        if content.len() > 1 {
+            return (content[0][2].parse::<u32>().unwrap(),Some(content[1][2].parse::<u32>().unwrap()));
         }
-    }
+        else{
+            return (content[0][2].parse::<u32>().unwrap(),None);
+        }
+
+    } 
 
     pub fn parse_shader(&mut self,vert_path:&str,frag_path:&str){
-
         let mut inside_struct = false;
         let mut cur_value = String::new();
         let mut cur_type:INSERT_TYPE = INSERT_TYPE::EMPTY;
@@ -211,11 +206,10 @@ impl Parser{
                 }
 
                 if inside_struct{
-
                     let words:Vec<&str> = line.split_whitespace().collect();
                     match cur_type{
-                        INSERT_TYPE::PUSH => self.vert_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
-                        INSERT_TYPE::DESCRIPTOR => self.vert_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::PUSH => self.glsl_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::DESCRIPTOR => self.glsl_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         INSERT_TYPE::STRUCT => self.vert_structs.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         _ => println!("ERROR: Invalid Type!")
                     };  
@@ -240,25 +234,28 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                                cur_type = INSERT_TYPE::PUSH;
-                                cur_value = String::from(words[uniform_pos + 1]);
-                                self.vert_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                                inside_struct = true 
+                            cur_type = INSERT_TYPE::PUSH;
+                            cur_value = String::from(words[uniform_pos + 1]);
+                            self.glsl_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                            inside_struct = true;    
                         }
                         else{
+                            println!("{:?}",words);
                             cur_type = INSERT_TYPE::DESCRIPTOR;
                             cur_value = String::from(words[uniform_pos + 1]);
-                            self.vert_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+ 
+                            self.descriptor_data.insert("VERT-".to_string() + words[uniform_pos + 1], Parser::get_descriptor_data(&words));
+                            self.glsl_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
                             inside_struct = true;
                         }                       
 
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.vert_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]); 
+                            self.glsl_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]); 
                         }
                         else{
-                            self.vert_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            self.glsl_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                     }
                 }
@@ -276,7 +273,7 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed! 1")}
 
-        for (value,_) in self.vert_push_constants.iter(){
+        for (value,_) in self.glsl_push_constants.iter(){
             if !self.verify_parse(INSERT_TYPE::PUSH, value.to_owned(), true){
                 finished = false;
                 println!("AAAAA2")
@@ -286,15 +283,16 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed! 2")}
 
-        for (value,_) in self.vert_descriptors.iter(){
+        for (value,_) in self.glsl_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), true){
                 finished = false;
                 println!("AAAAA3")
             }
         }
-
+ 
         if !finished{panic!("Shader parser failed! 3")}
-
+        self.glsl_descriptors = self.decompose_structs(&self.glsl_descriptors,&self.vert_structs);
+        self.glsl_push_constants = self.decompose_structs(&self.glsl_push_constants,&self.vert_structs);
 
         //FRAG SHADER
 
@@ -320,8 +318,8 @@ impl Parser{
                 if inside_struct{
                     let words:Vec<&str> = line.split_whitespace().collect();
                     match cur_type{
-                        INSERT_TYPE::PUSH => self.frag_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
-                        INSERT_TYPE::DESCRIPTOR => self.frag_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::PUSH => self.glsl_push_constants.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
+                        INSERT_TYPE::DESCRIPTOR => self.glsl_descriptors.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         INSERT_TYPE::STRUCT => self.frag_structs.get_mut(&cur_value).unwrap().push((String::from(words[0]),String::from(words[1]))),
                         _ => println!("ERROR: Invalid Type!")
                     };  
@@ -347,26 +345,35 @@ impl Parser{
 
                     if line.contains("{"){
                         if line.contains("(push_constant)"){
-                            cur_type = INSERT_TYPE::PUSH;
-                            cur_value = String::from(words[uniform_pos + 1]);
-                            self.frag_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                            inside_struct = true
-                            
+                            if !self.glsl_push_constants.contains_key(words[uniform_pos + 1]) || !self.glsl_push_constants.len() > 1 {
+                                cur_type = INSERT_TYPE::PUSH;
+                                cur_value = String::from(words[uniform_pos + 1]);
+                                self.glsl_push_constants.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                                inside_struct = true
+                            }
                         }
                         else{
-                            cur_type = INSERT_TYPE::DESCRIPTOR;
-                            cur_value = String::from(words[uniform_pos + 1]);
-                            self.frag_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
-                            inside_struct = true;
+                            if !self.glsl_descriptors.contains_key(words[uniform_pos + 1]) {
+                                cur_type = INSERT_TYPE::DESCRIPTOR;
+                                cur_value = String::from(words[uniform_pos + 1]);
+
+                                self.descriptor_data.insert("FRAGMENT-".to_string() + words[uniform_pos + 1], Parser::get_descriptor_data(&words));
+                                self.glsl_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
+                                inside_struct = true;
+                            }
                         }                       
 
                     }
                     else{
                         if line.contains("(push_constant)"){
-                            self.frag_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            if !self.glsl_push_constants.contains_key(words[uniform_pos + 1]) || !self.glsl_push_constants.len() > 1 {
+                                self.glsl_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            }
                         }
                         else{
-                            self.frag_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            if !self.glsl_descriptors.contains_key(words[uniform_pos + 1]) {
+                                self.glsl_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
+                            }
                         }
                     }
                 }
@@ -375,7 +382,8 @@ impl Parser{
                 }
             }
         }
-     
+
+
         let mut finished = true;
         for (value,_) in self.frag_structs.iter(){
             if !self.verify_parse(INSERT_TYPE::STRUCT, value.to_owned(), false){
@@ -387,7 +395,7 @@ impl Parser{
         if !finished{panic!("Shader parser failed! 1")}
 
 
-        for (value,_) in self.frag_push_constants.iter(){
+        for (value,_) in self.glsl_push_constants.iter(){
             if !self.verify_parse(INSERT_TYPE::PUSH, value.to_owned(), false){
                 finished = false;
                 println!("AAAAA2")
@@ -397,7 +405,7 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed! 2")}
 
-        for (value,_) in self.frag_descriptors.iter(){
+        for (value,_) in self.glsl_descriptors.iter(){
             if !self.verify_parse(INSERT_TYPE::DESCRIPTOR, value.to_owned(), false){
                 finished = false;
                 println!("AAAAA3")
@@ -406,12 +414,8 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed! 3")}
 
-        self.vert_descriptors = self.decompose_structs(&self.vert_descriptors,&self.vert_structs);
-        self.vert_push_constants = self.decompose_structs(&self.vert_push_constants,&self.vert_structs);
-        self.frag_push_constants = self.decompose_structs(&self.frag_push_constants,&self.frag_structs);
-        self.frag_descriptors = self.decompose_structs(&self.frag_descriptors,&self.frag_structs);
-        self.verify_push_constants();
-
+        self.glsl_descriptors = self.decompose_structs(&self.glsl_descriptors,&self.frag_structs);
+        self.glsl_push_constants = self.decompose_structs(&self.glsl_push_constants,&self.frag_structs);
     }
 }
 

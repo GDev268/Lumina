@@ -8,7 +8,12 @@ layout(location = 3) in vec2 uv;
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 Normal;
 
-layout(binding = 0) uniform GlobalUBO {
+layout(binding = 0) uniform TestUBO {
+  mat4 projectionViewMatrix;
+  vec3 directionToLight;
+} uabo;
+
+layout(binding = 1) uniform GlobalUBO {
   mat4 projectionViewMatrix;
   vec3 directionToLight;
 } ubo;
@@ -17,8 +22,6 @@ layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
 } push;
-
-
 
 
 const float AMBIENT = 0.00000000000000000000001;

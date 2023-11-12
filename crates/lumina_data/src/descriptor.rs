@@ -7,11 +7,12 @@ use std::collections::HashMap;
 pub struct DescriptorSetLayout {
     descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
+    cur_binding:Option<u32>
 }
 
 impl DescriptorSetLayout {
     pub fn default() -> Self{
-        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
+        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new(),cur_binding:None };
     }
 
     pub fn add_binding(
@@ -42,24 +43,16 @@ impl DescriptorSetLayout {
         return hashmap;
     }
 
+
     pub fn build(
         device: &Device,
         bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
+        cur_binding:u32
     ) -> DescriptorSetLayout {
-        return DescriptorSetLayout::new(device, bindings);
+        return DescriptorSetLayout::new(device, bindings,cur_binding);
     }
 
-    pub fn print_stage_flags(&self) {
-        for (_,binding) in &self.bindings {
-            println!("Binding: {}", binding.binding);
-            println!("Descriptor Type: {:?}", binding.descriptor_type);
-            println!("Shader Stage Flags: {:?}", binding.stage_flags);
-            println!("Descriptor Count: {}", binding.descriptor_count);
-            println!();
-        }
-    }
-
-    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
+    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,cur_binding:u32) -> Self {
         let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
             bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
 
@@ -81,11 +74,16 @@ impl DescriptorSetLayout {
         return Self {
             descriptor_set_layout: descriptor_set_layout,
             bindings: bindings,
+            cur_binding: Some(cur_binding)
         };
     }
 
     pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         return self.descriptor_set_layout;
+    }
+
+    pub fn get_main_binding(&self) -> u32 {
+        return self.cur_binding.unwrap();
     }
 }
 

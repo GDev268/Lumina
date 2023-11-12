@@ -8,7 +8,7 @@ use lumina_core::{
 
 use lumina_geometry::model::{Model, PushConstantData};
 use lumina_object::{transform::Transform, game_object::GameObject};
-use lumina_scene::{query::Query, FrameInfo};
+use lumina_scene::{query::Query, FrameInfo, GlobalUBO};
 
 use ash::vk;
 
@@ -297,23 +297,25 @@ impl<'a> Renderer<'a> {
                 .bind(device, self.cur_cmd);
 
             for (name,components) in shader.descriptor_fields.iter_mut(){
-                let mut descriptor_bytes:Vec<u8> = Vec::new();
+                /*let mut descriptor_bytes:Vec<u8> = Vec::new();
 
                 for value in shader.descriptor_values.get(name).unwrap().iter() {
                     value.value.to_ne_bytes(&mut descriptor_bytes);
-                }
+                }*/
 
-                components.buffers[self.get_frame_index() as usize].write_to_buffer(&descriptor_bytes, None, None);
+                let ubo:GlobalUBO = GlobalUBO { projection: glam::Mat4::default(), light_direction: glam::Vec3::default() };
+
+                components.buffers[self.get_frame_index() as usize].write_to_buffer(&[ubo], None, None);
                 components.buffers[self.get_frame_index() as usize].flush(None, None, device);
                 unsafe {
-                    device.device().cmd_bind_descriptor_sets(
+                        device.device().cmd_bind_descriptor_sets(
                         self.cur_cmd,
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout,
                         0,
                         &[components.descriptor_sets[self.get_frame_index() as usize]],
                         &[],
-                    );
+                    )
                 }
             }
 
@@ -413,5 +415,5 @@ impl<'a> Renderer<'a> {
             self.swapchain.cleanup(device);
         }
     }
-  
 }
+

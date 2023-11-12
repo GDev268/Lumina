@@ -6,8 +6,7 @@ use rand::Rng;
 use lumina_core::{device::Device, swapchain::Swapchain, window::Window, fps_manager::FPS};
 
 use lumina_data::{
-    buffer::Buffer,
-    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
+    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig}, buffer::Buffer,
 };
 use lumina_debug::logger::{Logger,SeverityLevel};
 use lumina_geometry::{
@@ -87,103 +86,166 @@ fn main() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
     }
 
+    //let event_loop = EventLoop::new();
+
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "lumina", 800, 640);
+    let mut window = Window::new(&sdl_context, "Lumina", 800, 640);
     let device = Device::new(&window);
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
     let mut query = Query::new();
+    let mut parser = Parser::new();
 
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
 
+    window._window.set_icon(window_icon);
+
+    let mut parser = Parser::new(); 
+
+    parser.parse_shader("shaders/default_shader.vert","shaders/default_shader.frag");
+
+    println!("{:?}",parser.glsl_descriptors);
+
     let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+    pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
     pool_config.add_pool_size(
         vk::DescriptorType::UNIFORM_BUFFER,
-        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
-
-    window._window.set_icon(window_icon);
 
     let shader = Shader::new(
         &device,
         "shaders/default_shader.vert",
         "shaders/default_shader.frag",
-         pool_config
+        pool_config
     );
 
     let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+    pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
     pool_config.add_pool_size(
         vk::DescriptorType::UNIFORM_BUFFER,
-        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
+        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
+    let global_pool = pool_config.build(&device);
+
     let mut renderer = Renderer::new(&window, &device);
-
-    //renderer.activate_shader(&device, &shader);
-
-    let ubo_buffers: Vec<Buffer> = Vec::new();
 
     let mut keyboard_pool = Keyboard::new();
 
     let mut mouse_pool = Mouse::new();
 
-    let mut game_objects: Vec<GameObject> = Vec::new();
-    
-    for i in 0..2 {
-        for j in 0..1 {
-            let mut pool_config = PoolConfig::new();
-                pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
-                pool_config.add_pool_size(
-                vk::DescriptorType::UNIFORM_BUFFER,
-                lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
-            );
+    let mut ubo_buffers_1: Vec<Buffer> = Vec::new();
 
-            let shader = Shader::new(
-                &device,
-                "shaders/default_shader.vert",
-                "shaders/default_shader.frag",
-                pool_config
-            );
+    /*for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+        let mut buffer = Buffer::new(
+            &device,
+            80,
+            1,
+            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
+            device
+                .physical_device_properties.unwrap()
+                .limits
+                .min_uniform_buffer_offset_alignment,
+        );
+        buffer.map(&device,None, None) ;
 
-            let cube = shapes::cube(&mut query, &device);
-            if let Some(transform) = query.query_mut::<Transform>(&cube) {
-                transform.translation =
-                    glam::vec3(-29.0 + 1.0 * (j as f32), 3.0, 50.0 + 1.0 * (i as f32));
-                transform.scale = glam::vec3(1.0, 1.0, 1.0);
-            }
-
-            query.push(&cube, shader);
-            game_objects.push(cube);
-        }
+        ubo_buffers_1.push(buffer);
     }
 
-    /*let mut pool_config = PoolConfig::new();
-        pool_config.set_max_sets(lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
-        pool_config.add_pool_size(
-        vk::DescriptorType::UNIFORM_BUFFER,
-        lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
-    );
 
-    let shader = Shader::new(
+    let global_set_layout_1 = DescriptorSetLayout::build(
         &device,
-        "shaders/light_cube_shader.vert",
-        "shaders/light_cube_shader.frag",
-        pool_config
+        DescriptorSetLayout::add_binding(
+            1,
+            vk::DescriptorType::UNIFORM_BUFFER,
+            vk::ShaderStageFlags::ALL_GRAPHICS,
+            Some(1),
+            None,
+        ),
+        1
     );
 
-    let cube = shapes::cube(&mut query, &device);
+
+
+    let mut global_descriptor_sets_1: Vec<vk::DescriptorSet> = Vec::new();
+
+    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+        let buffer_info = ubo_buffers_1[i].descriptor_info(None, None);
+        let mut descriptor_writer = DescriptorWriter::new();
+        descriptor_writer.write_buffer(1, buffer_info, &global_set_layout_1);
+        let descriptor_set = descriptor_writer.build(&device, global_set_layout_1.get_descriptor_set_layout(), &global_pool);
+
+        global_descriptor_sets_1.push(descriptor_set);
+    }
+
+    let mut ubo_buffers_2: Vec<Buffer> = Vec::new();
+
+    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+        let mut buffer = Buffer::new(
+            &device,
+            80,
+            1,
+            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
+            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
+            device
+                .physical_device_properties.unwrap()
+                .limits
+                .min_uniform_buffer_offset_alignment,
+        );
+        unsafe { buffer.map(&device,None, None) };
+
+        ubo_buffers_2.push(buffer);
+    }
+
+
+    let global_set_layout_2 = DescriptorSetLayout::build(
+        &device,
+        DescriptorSetLayout::add_binding(
+            0,
+            vk::DescriptorType::UNIFORM_BUFFER,
+            vk::ShaderStageFlags::ALL_GRAPHICS,
+            Some(1),
+            None,
+        ),
+        0
+    );
+
+
+
+    let mut global_descriptor_sets_2: Vec<vk::DescriptorSet> = Vec::new();
+
+    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+        let buffer_info = ubo_buffers_2[i].descriptor_info(None, None);
+        let mut descriptor_writer = DescriptorWriter::new();
+        descriptor_writer.write_buffer(0, buffer_info, &global_set_layout_2);
+        let descriptor_set = descriptor_writer.build(&device, global_set_layout_2.get_descriptor_set_layout(), &global_pool);
+
+        global_descriptor_sets_2.push(descriptor_set);
+    }*/
+
+
+
+
+    let mut cube = shapes::cube(&mut query, &device);
+
     if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation =
-            glam::vec3(-29.0 + 1.0, 3.0, 50.0 + 1.0);
+        transform.translation = glam::vec3(0.0, 0.0, 2.5);
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
-    query.push(&cube, shader);*/
+    query.push(&cube, shader);
 
+
+    let mut cube2 = shapes::cube(&mut query, &device);
+
+    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
+        transform.translation = glam::vec3(1.0, 0.0, 5.0);
+        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    }
 
     let mut camera = Camera::new();
 
@@ -194,6 +256,7 @@ fn main() {
     let aspect = renderer.get_aspect_ratio();
     camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
     
+
     let mut time: f32 = 0.0;
 
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -203,10 +266,12 @@ fn main() {
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
 
-    let mut light_pos = glam::vec3(1.0, -1.0, -1.0);
+    let mut light_pos = glam::vec3(0.0,3.0,4.0);
     
     fps.fps_limit =  Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
+    println!("{:?}",fps.fps_limit);
+
 
     'running: loop {
 
@@ -238,90 +303,37 @@ fn main() {
             break 'running;
         }
         
-        if !keyboard_pool.get_key(Keycode::LShift){
-            if keyboard_pool.get_key(Keycode::Up){
-                view.translation.z += 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Down){
-                view.translation.z -= 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Right){
-                view.translation.x += 10.0 * delta_time;
-            } 
-            if keyboard_pool.get_key(Keycode::Left){
-                view.translation.x -= 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Space){
-                view.translation.y -= 10.0 * delta_time;
-            }       
-            if keyboard_pool.get_key(Keycode::LCtrl){
-                view.translation.y += 10.0 * delta_time;
-            }
-        }else{
-            if keyboard_pool.get_key(Keycode::Up){
-                view.translation.z += 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Down){
-                view.translation.z -= 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Right){
-                view.translation.x += 50.0 * delta_time;
-            } 
-            if keyboard_pool.get_key(Keycode::Left){
-                view.translation.x -= 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Space){
-                view.translation.y -= 50.0 * delta_time;
-            }       
-            if keyboard_pool.get_key(Keycode::LCtrl){
-                view.translation.y += 50.0 * delta_time;
-            }
+        if keyboard_pool.get_key(Keycode::Up){
+            view.translation.z += 10.0 * delta_time;
+        }
+        if keyboard_pool.get_key(Keycode::Down){
+            view.translation.z -= 10.0 * delta_time;
+        }
+        if keyboard_pool.get_key(Keycode::Right){
+            view.translation.x += 10.0 * delta_time;
+        } 
+        if keyboard_pool.get_key(Keycode::Left){
+            view.translation.x -= 10.0 * delta_time;
+        }
+        if keyboard_pool.get_key(Keycode::Space){
+            view.translation.y -= 10.0 * delta_time;
+        }       
+        if keyboard_pool.get_key(Keycode::LCtrl){
+            view.translation.y += 10.0 * delta_time;
         }
 
-        renderer.begin_frame(&device, &window);
-       
 
-        for game_object in game_objects.iter() {
-            let game_transform = query.query_mut::<Transform>(game_object).unwrap(); 
-            let wave = (std::f32::consts::PI / 30.0) * (game_transform.translation.x - (10.0 * time));
-            game_transform.translation.y = 10.0 * wave.cos();
+        renderer.begin_frame(&device, &window); 
+        
+        renderer.render_object(&device, &mut query, &cube);
 
-            let new_mat4 = game_transform.get_mat4();
-            drop(game_transform);
-            let new_normal = query.query_mut::<Transform>(game_object).unwrap().get_normal_matrix(); 
-
-            if let Some(shader) = query.query_mut::<Shader>(game_object) {
-                shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view()).unwrap();
-                shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos).unwrap();
-                shader.change_uniform_mat4("Push.modelMatrix",new_mat4).unwrap();
-                shader.change_uniform_mat4("Push.normalMatrix", new_normal).unwrap();
-            }
-
-            renderer.render_object(&device, &mut query,&game_object);
-        }
-
-        /*let new_mat4 = query.query_mut::<Transform>(&cube).unwrap().get_mat4();
-
-        if let Some(shader) = query.query_mut::<Shader>(&cube) {
-            shader.change_uniform_mat4("Push_Vertex.modelMatrix",new_mat4).unwrap();
-            shader.change_uniform_mat4("Push_Vertex.viewMatrix",camera.get_view()).unwrap();
-            shader.change_uniform_mat4("Push_Vertex.projectionMatrix",camera.get_projection()).unwrap();
-
-        }
-
-        renderer.render_object(&device, &mut query,&cube);*/
-
-
-        camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
        
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
         if start_tick.elapsed() < fps.fps_limit {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }
-        time += 5.0 * delta_time;
         fps.update();
     }
 
 }
-

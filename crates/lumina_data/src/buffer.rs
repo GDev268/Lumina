@@ -3,12 +3,23 @@ use lumina_core::device::Device;
 use ash::vk;
 use std::ffi::c_void;
 
-#[derive(Debug,Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Buffer {
     pub buffer: vk::Buffer,
     pub memory: vk::DeviceMemory,
     pub mapped: *mut c_void,
     pub buffer_size: u64,
+}
+
+impl Default for Buffer {
+    fn default() -> Self {
+        Self {
+            buffer: vk::Buffer::null(), 
+            memory: vk::DeviceMemory::null(), 
+            mapped: std::ptr::null_mut(), 
+            buffer_size: 0
+        }
+    }
 }
 
 impl Buffer {
@@ -18,12 +29,13 @@ impl Buffer {
         instance_count: u64,
         usage: vk::BufferUsageFlags,
         properties: vk::MemoryPropertyFlags,
+        min_offset_alignment: vk::DeviceSize,
     ) -> Self {
-        let buffer_size = instance_size * instance_count;
+        let alignment_size = Buffer::get_alignment(instance_size, min_offset_alignment);
+        let buffer_size = alignment_size * instance_count as u64;
 
         let (vertex_buffer, vertex_buffer_memory) =
             device.create_buffer(buffer_size, usage, properties);
-
         Self {
             buffer: vertex_buffer,
             memory: vertex_buffer_memory,
@@ -32,20 +44,15 @@ impl Buffer {
         }
     }
 
-    pub fn default() -> Self{
-        return Self { buffer: vk::Buffer::null(), memory: vk::DeviceMemory::null(), mapped: std::ptr::null_mut(), buffer_size: 0 };
-    }
-
     fn get_alignment(
         instance_size: vk::DeviceSize,
         min_offset_alignment: vk::DeviceSize,
     ) -> vk::DeviceSize {
-        vk::DeviceSize::default();
         if min_offset_alignment > 0 {
             return (instance_size + min_offset_alignment - 1) & !(min_offset_alignment - 1);
         }
 
-        return instance_size;
+        instance_size
     }
 
     pub fn map(
@@ -68,11 +75,17 @@ impl Buffer {
                     new_size,
                     vk::MemoryMapFlags::empty(),
                 )
-                .expect("Failed to map memory on the buffer!");
+                .unwrap();
         }
     }
 
-    pub fn write_to_buffer<T>(
+    pub fn unmap(&self, device: &Device) {
+        unsafe {
+            device.device().unmap_memory(self.memory);
+        }
+    }
+
+    pub fn write_to_buffer<T: Copy>(
         &mut self,
         data: &[T],
         size: Option<vk::DeviceSize>,
@@ -87,18 +100,11 @@ impl Buffer {
         let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
 
         unsafe {
-            let mem_offset = (self.mapped as *mut u8).offset(new_offset as isize);
-            std::ptr::copy_nonoverlapping(
-                data.as_ptr() as *const c_void,
-                mem_offset as *mut c_void,
-                new_size as usize,
-            );
-        }
-    }
+            let mem_offset = self.mapped.add(new_offset as usize);
 
-    pub fn unmap(&self, device: &Device) {
-        unsafe {
-            device.device().unmap_memory(self.memory);
+            let mut align =
+                ash::util::Align::new(mem_offset, std::mem::align_of::<u32>() as u64, new_size);
+            align.copy_from_slice(data);
         }
     }
 
@@ -156,3 +162,4 @@ impl Buffer {
         };
     }
 }
+

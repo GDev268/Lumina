@@ -4,8 +4,8 @@ layout (location = 0) in vec3 fragColor;
 
 layout (location = 0) out vec4 outColor;
 
-layout(binding = 0) uniform GlobalUBO {
-  mat4 projectionViewMatrix;
+layout(binding = 1) uniform GlobalUBO {
+  mat3 projectionViewMatrix;
   vec3 directionToLight;
 } ubo;
 
@@ -13,7 +13,6 @@ layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;
 } push;
-
 
 void main() {
   outColor = vec4(fragColor, 1.0);
