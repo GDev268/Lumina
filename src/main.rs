@@ -106,145 +106,38 @@ fn main() {
 
     parser.parse_shader("shaders/default_shader.vert","shaders/default_shader.frag");
 
-    println!("{:?}",parser.glsl_descriptors);
-
-    let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
-    pool_config.add_pool_size(
-        vk::DescriptorType::UNIFORM_BUFFER,
-        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
-    );
-
-    let shader = Shader::new(
-        &device,
-        "shaders/default_shader.vert",
-        "shaders/default_shader.frag",
-        pool_config
-    );
-
-    let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
-    pool_config.add_pool_size(
-        vk::DescriptorType::UNIFORM_BUFFER,
-        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
-    );
-
-    let global_pool = pool_config.build(&device);
-
     let mut renderer = Renderer::new(&window, &device);
 
     let mut keyboard_pool = Keyboard::new();
 
     let mut mouse_pool = Mouse::new();
 
-    let mut ubo_buffers_1: Vec<Buffer> = Vec::new();
-
-    /*for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let mut buffer = Buffer::new(
-            &device,
-            80,
-            1,
-            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
-            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
-            device
-                .physical_device_properties.unwrap()
-                .limits
-                .min_uniform_buffer_offset_alignment,
-        );
-        buffer.map(&device,None, None) ;
-
-        ubo_buffers_1.push(buffer);
-    }
-
-
-    let global_set_layout_1 = DescriptorSetLayout::build(
-        &device,
-        DescriptorSetLayout::add_binding(
-            1,
-            vk::DescriptorType::UNIFORM_BUFFER,
-            vk::ShaderStageFlags::ALL_GRAPHICS,
-            Some(1),
-            None,
-        ),
-        1
+    let mut game_objects: Vec<GameObject> = Vec::new();
+    
+    for i in 0..4 {
+    let mut pool_config = PoolConfig::new();
+        pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
+        pool_config.add_pool_size(
+        vk::DescriptorType::UNIFORM_BUFFER,
+        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-
-
-    let mut global_descriptor_sets_1: Vec<vk::DescriptorSet> = Vec::new();
-
-    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let buffer_info = ubo_buffers_1[i].descriptor_info(None, None);
-        let mut descriptor_writer = DescriptorWriter::new();
-        descriptor_writer.write_buffer(1, buffer_info, &global_set_layout_1);
-        let descriptor_set = descriptor_writer.build(&device, global_set_layout_1.get_descriptor_set_layout(), &global_pool);
-
-        global_descriptor_sets_1.push(descriptor_set);
-    }
-
-    let mut ubo_buffers_2: Vec<Buffer> = Vec::new();
-
-    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let mut buffer = Buffer::new(
-            &device,
-            80,
-            1,
-            ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
-            ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
-            device
-                .physical_device_properties.unwrap()
-                .limits
-                .min_uniform_buffer_offset_alignment,
-        );
-        unsafe { buffer.map(&device,None, None) };
-
-        ubo_buffers_2.push(buffer);
-    }
-
-
-    let global_set_layout_2 = DescriptorSetLayout::build(
+    let shader = Shader::new(
         &device,
-        DescriptorSetLayout::add_binding(
-            0,
-            vk::DescriptorType::UNIFORM_BUFFER,
-            vk::ShaderStageFlags::ALL_GRAPHICS,
-            Some(1),
-            None,
-        ),
-        0
+        "shaders/light_cube_shader.vert",
+        "shaders/light_cube_shader.frag",
+        pool_config
     );
 
-
-
-    let mut global_descriptor_sets_2: Vec<vk::DescriptorSet> = Vec::new();
-
-    for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-        let buffer_info = ubo_buffers_2[i].descriptor_info(None, None);
-        let mut descriptor_writer = DescriptorWriter::new();
-        descriptor_writer.write_buffer(0, buffer_info, &global_set_layout_2);
-        let descriptor_set = descriptor_writer.build(&device, global_set_layout_2.get_descriptor_set_layout(), &global_pool);
-
-        global_descriptor_sets_2.push(descriptor_set);
-    }*/
-
-
-
-
-    let mut cube = shapes::cube(&mut query, &device);
-
+    let cube = shapes::cube(&mut query, &device);
     if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation = glam::vec3(0.0, 0.0, 2.5);
+        transform.translation =
+            glam::vec3(-29.0 + 1.0, 3.0, 50.0 + 1.0);
         transform.scale = glam::vec3(1.0, 1.0, 1.0);
     }
 
     query.push(&cube, shader);
-
-
-    let mut cube2 = shapes::cube(&mut query, &device);
-
-    if let Some(transform) = query.query_mut::<Transform>(&cube2) {
-        transform.translation = glam::vec3(1.0, 0.0, 5.0);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    game_objects.push(cube);
     }
 
     let mut camera = Camera::new();
@@ -323,10 +216,48 @@ fn main() {
         }
 
 
-        renderer.begin_frame(&device, &window); 
-        
-        renderer.render_object(&device, &mut query, &cube);
+        renderer.begin_frame(&device, &window);
+       
 
+        /*for game_object in game_objects.iter() {
+            let game_transform = query.query_mut::<Transform>(game_object).unwrap(); 
+            let wave = (std::f32::consts::PI / 30.0) * (game_transform.translation.x - (10.0 * time));
+            game_transform.translation.y = 10.0 * wave.cos();
+
+            let new_mat4 = game_transform.get_mat4();
+            drop(game_transform);
+            let new_normal = query.query_mut::<Transform>(game_object).unwrap().get_normal_matrix(); 
+
+            if let Some(shader) = query.query_mut::<Shader>(game_object) {
+                shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix", camera.get_projection() * camera.get_view()).unwrap();
+                shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos).unwrap();
+                shader.change_uniform_mat4("Push.modelMatrix",new_mat4).unwrap();
+                shader.change_uniform_mat4("Push.normalMatrix", new_normal).unwrap();
+            }
+
+            renderer.render_object(&device, &mut query,&game_object);
+        }*/
+
+        for game_object in game_objects.iter(){
+        let new_mat4 = query.query_mut::<Transform>(&game_object).unwrap().get_mat4();
+
+        if let Some(shader) = query.query_mut::<Shader>(&game_object) {
+            shader.change_uniform_mat4("Push_Vertex.modelMatrix",new_mat4).unwrap();
+            shader.change_uniform_mat4("Push_Vertex.viewMatrix",camera.get_view()).unwrap();
+            shader.change_uniform_mat4("Push_Vertex.projectionMatrix",camera.get_projection()).unwrap();
+            //shader.change_uniform_mat4("GlobalUBO.projectionViewMatrix",camera.get_projection()).unwrap();
+                    
+            println!("{:?}\n{:?}",shader.descriptor_values,shader.descriptor_values.len()); 
+
+            panic!("da");
+        }
+
+        renderer.render_object(&device, &mut query,&game_object);
+        }
+
+
+
+        camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
        
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);

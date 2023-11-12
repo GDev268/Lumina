@@ -71,16 +71,17 @@ impl Shader {
             push_fields.insert(
                 name.to_owned(),
                 vk::PushConstantRange {
-                    stage_flags: vk::ShaderStageFlags::VERTEX,
-                    offset: cur_offset as u32,
+                    stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    offset: 0,
                     size: max_value as u32,
                 },
             );
 
             value_sizes.insert("PUSH-".to_string() + name, (max_value, cur_offset));
 
-            cur_offset += max_value as u16;
         }
+
+        println!("{:?}",parser.glsl_push_constants);
 
         for (name, values) in parser.glsl_descriptors.iter() {
             descriptor_returns.insert(name.to_owned(), values.clone());
@@ -99,48 +100,48 @@ impl Shader {
                     value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value, 0));
                 }
 
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
-                let mut buffer = Buffer::new(
-                        device,
-                        std::mem::size_of::<GlobalUBO>() as u64,                    
+
+                for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+                    let mut buffer = Buffer::new(
+                        &device,
+                        std::mem::size_of::<GlobalUBO>() as u64,
                         1,
-                        vk::BufferUsageFlags::UNIFORM_BUFFER,
-                        vk::MemoryPropertyFlags::HOST_VISIBLE,
+                        ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
+                        ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
                         device
-                        .physical_device_properties.unwrap()
-                        .limits
-                        .min_uniform_buffer_offset_alignment,                
+                            .physical_device_properties.unwrap()
+                            .limits
+                            .min_uniform_buffer_offset_alignment,
                     );
-
-                    buffer.map(&device, None, None);
-
+                    buffer.map(&device,None, None) ;
+            
                     components.buffers.push(buffer);
                 }
-
+            
+            
                 let set_layout = DescriptorSetLayout::build(
-                    device,
+                    &device,
                     DescriptorSetLayout::add_binding(
-                        parser.descriptor_data.get(&("VERT-".to_string() + name)).unwrap().0,
+                        parser.descriptor_data.get(name).unwrap().0,
                         vk::DescriptorType::UNIFORM_BUFFER,
-                        vk::ShaderStageFlags::VERTEX,
+                        vk::ShaderStageFlags::ALL_GRAPHICS,
                         Some(1),
                         None,
-                    ),
-                    parser.descriptor_data.get(&("VERT-".to_string() + name)).unwrap().0
+                    )
                 );
 
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
-                    let buffer_info = components.buffers[i].descriptor_info(None, None);
-                    let mut descriptor_writer = DescriptorWriter::new();
-                    descriptor_writer.write_buffer(components.descriptor_set_layout.get_main_binding(), buffer_info, &components.descriptor_set_layout);
-                    components.descriptor_sets.push(descriptor_writer.build(
-                        device,
-                        components.descriptor_set_layout.get_descriptor_set_layout(),
-                        &pool,
-                    ));
-                }
+                println!("{:?}",set_layout);
 
                 components.descriptor_set_layout = set_layout;
+                        
+                for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+                    let buffer_info = components.buffers[i].descriptor_info(None, None);
+                    let mut descriptor_writer = DescriptorWriter::new();
+                    descriptor_writer.write_buffer(parser.descriptor_data.get(name).unwrap().0, buffer_info, &components.descriptor_set_layout);
+                    let descriptor_set = descriptor_writer.build(&device, components.descriptor_set_layout.get_descriptor_set_layout(), &pool);
+            
+                    components.descriptor_sets.push(descriptor_set);
+                }
 
                 descriptor_fields.insert(name.to_owned(), components);
             } else {
@@ -178,25 +179,25 @@ impl Shader {
                 let set_layout = DescriptorSetLayout::build(
                     device,
                     DescriptorSetLayout::add_binding(
-                        parser.descriptor_data.get(&("VERT-".to_string() + name)).unwrap().0,
+                        parser.descriptor_data.get(name).unwrap().0,
                         vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
                         vk::ShaderStageFlags::VERTEX,
                         Some(1),
                         None,
                     ),
-                    parser.descriptor_data.get(&("VERT-".to_string() + name)).unwrap().0
                 );
 
                 for i in 0..MAX_FRAMES_IN_FLIGHT {
                     let buffer_info = components.buffers[i].descriptor_info(None, None);
                     let mut descriptor_writer = DescriptorWriter::new();
-                    descriptor_writer.write_buffer(components.descriptor_set_layout.get_main_binding(), buffer_info, &components.descriptor_set_layout);
+                    descriptor_writer.write_buffer(parser.descriptor_data.get(name).unwrap().0, buffer_info, &components.descriptor_set_layout);
                     components.descriptor_sets.push(descriptor_writer.build(
                         device,
                         components.descriptor_set_layout.get_descriptor_set_layout(),
                         &pool,
                     ));
                 }
+
 
                 components.descriptor_set_layout = set_layout;
 

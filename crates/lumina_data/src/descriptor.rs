@@ -7,12 +7,11 @@ use std::collections::HashMap;
 pub struct DescriptorSetLayout {
     descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
-    cur_binding:Option<u32>
 }
 
 impl DescriptorSetLayout {
     pub fn default() -> Self{
-        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new(),cur_binding:None };
+        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
     }
 
     pub fn add_binding(
@@ -47,12 +46,11 @@ impl DescriptorSetLayout {
     pub fn build(
         device: &Device,
         bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
-        cur_binding:u32
     ) -> DescriptorSetLayout {
-        return DescriptorSetLayout::new(device, bindings,cur_binding);
+        return DescriptorSetLayout::new(device, bindings);
     }
 
-    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,cur_binding:u32) -> Self {
+    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
         let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
             bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
 
@@ -72,9 +70,8 @@ impl DescriptorSetLayout {
         };
 
         return Self {
-            descriptor_set_layout: descriptor_set_layout,
-            bindings: bindings,
-            cur_binding: Some(cur_binding)
+            descriptor_set_layout,
+            bindings,
         };
     }
 
@@ -82,9 +79,6 @@ impl DescriptorSetLayout {
         return self.descriptor_set_layout;
     }
 
-    pub fn get_main_binding(&self) -> u32 {
-        return self.cur_binding.unwrap();
-    }
 }
 
 pub struct PoolConfig {

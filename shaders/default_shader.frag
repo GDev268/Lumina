@@ -9,6 +9,11 @@ layout(binding = 1) uniform GlobalUBO {
   vec3 directionToLight;
 } ubo;
 
+layout(binding = 2) uniform YuppieUBO {
+  mat4 projectionViewMatrix;
+  vec3 directionToLight;
+} yup;
+
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;

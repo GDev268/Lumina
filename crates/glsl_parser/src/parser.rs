@@ -240,11 +240,10 @@ impl Parser{
                             inside_struct = true;    
                         }
                         else{
-                            println!("{:?}",words);
                             cur_type = INSERT_TYPE::DESCRIPTOR;
                             cur_value = String::from(words[uniform_pos + 1]);
  
-                            self.descriptor_data.insert("VERT-".to_string() + words[uniform_pos + 1], Parser::get_descriptor_data(&words));
+                            self.descriptor_data.insert(words[uniform_pos + 1].to_owned(), Parser::get_descriptor_data(&words));
                             self.glsl_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
                             inside_struct = true;
                         }                       
@@ -255,6 +254,7 @@ impl Parser{
                             self.glsl_push_constants.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]); 
                         }
                         else{
+                            self.descriptor_data.insert(words[uniform_pos + 1].to_owned(), Parser::get_descriptor_data(&words));
                             self.glsl_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                         }
                     }
@@ -357,7 +357,7 @@ impl Parser{
                                 cur_type = INSERT_TYPE::DESCRIPTOR;
                                 cur_value = String::from(words[uniform_pos + 1]);
 
-                                self.descriptor_data.insert("FRAGMENT-".to_string() + words[uniform_pos + 1], Parser::get_descriptor_data(&words));
+                                self.descriptor_data.insert(words[uniform_pos + 1].to_owned(), Parser::get_descriptor_data(&words));
                                 self.glsl_descriptors.insert(String::from(words[uniform_pos + 1]), Vec::new());
                                 inside_struct = true;
                             }
@@ -372,13 +372,13 @@ impl Parser{
                         }
                         else{
                             if !self.glsl_descriptors.contains_key(words[uniform_pos + 1]) {
+                                self.descriptor_data.insert(words[uniform_pos + 1].to_owned(), Parser::get_descriptor_data(&words));
                                 self.glsl_descriptors.insert(String::from(words[uniform_pos + 2]), vec![(String::from(words[uniform_pos + 1]),String::default())]);
                             }
                         }
                     }
                 }
                 
-
                 }
             }
         }

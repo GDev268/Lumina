@@ -297,15 +297,13 @@ impl<'a> Renderer<'a> {
                 .bind(device, self.cur_cmd);
 
             for (name,components) in shader.descriptor_fields.iter_mut(){
-                /*let mut descriptor_bytes:Vec<u8> = Vec::new();
+                let mut descriptor_bytes:Vec<u8> = Vec::new();
 
                 for value in shader.descriptor_values.get(name).unwrap().iter() {
                     value.value.to_ne_bytes(&mut descriptor_bytes);
-                }*/
+                }
 
-                let ubo:GlobalUBO = GlobalUBO { projection: glam::Mat4::default(), light_direction: glam::Vec3::default() };
-
-                components.buffers[self.get_frame_index() as usize].write_to_buffer(&[ubo], None, None);
+                components.buffers[self.get_frame_index() as usize].write_to_buffer(&descriptor_bytes, None, None);
                 components.buffers[self.get_frame_index() as usize].flush(None, None, device);
                 unsafe {
                         device.device().cmd_bind_descriptor_sets(
