@@ -97,10 +97,6 @@ impl Mesh {
             vertex_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            device
-            .physical_device_properties.unwrap()
-            .limits
-            .min_uniform_buffer_offset_alignment,
 
         );
 
@@ -113,10 +109,6 @@ impl Mesh {
             vertex_count as u64,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            device
-            .physical_device_properties.unwrap()
-            .limits
-            .min_uniform_buffer_offset_alignment,
         );
 
         device.copy_buffer(
@@ -146,10 +138,6 @@ impl Mesh {
             index_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-            device
-            .physical_device_properties.unwrap()
-            .limits
-            .min_uniform_buffer_offset_alignment,
         );
 
         staging_buffer.map(device,None,None);
@@ -161,10 +149,6 @@ impl Mesh {
             index_count as u64,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
-            device
-            .physical_device_properties.unwrap()
-            .limits
-            .min_uniform_buffer_offset_alignment,
         );
 
         device.copy_buffer(

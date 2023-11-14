@@ -11,7 +11,6 @@ struct PointLight{
     color:glam::Vec4
 }
 
-#[derive(Clone, Copy)]
 pub struct GlobalUBO{
     pub projection:glam::Mat4,
     pub light_direction:glam::Vec3
@@ -21,5 +20,5 @@ pub struct FrameInfo<'a>{
     pub frame_time:f64,
     pub command_buffer:vk::CommandBuffer,
     pub camera:&'a Camera,
-    pub global_descriptor_sets:[vk::DescriptorSet;2],
+    pub global_descriptor_set:vk::DescriptorSet,
 }

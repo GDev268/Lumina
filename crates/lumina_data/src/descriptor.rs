@@ -42,12 +42,21 @@ impl DescriptorSetLayout {
         return hashmap;
     }
 
-
     pub fn build(
         device: &Device,
         bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
     ) -> DescriptorSetLayout {
         return DescriptorSetLayout::new(device, bindings);
+    }
+
+    pub fn print_stage_flags(&self) {
+        for (_,binding) in &self.bindings {
+            println!("Binding: {}", binding.binding);
+            println!("Descriptor Type: {:?}", binding.descriptor_type);
+            println!("Shader Stage Flags: {:?}", binding.stage_flags);
+            println!("Descriptor Count: {}", binding.descriptor_count);
+            println!();
+        }
     }
 
     pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
@@ -70,15 +79,14 @@ impl DescriptorSetLayout {
         };
 
         return Self {
-            descriptor_set_layout,
-            bindings,
+            descriptor_set_layout: descriptor_set_layout,
+            bindings: bindings,
         };
     }
 
     pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         return self.descriptor_set_layout;
     }
-
 }
 
 pub struct PoolConfig {

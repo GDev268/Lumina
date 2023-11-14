@@ -8,7 +8,7 @@ use lumina_core::{
 
 use lumina_geometry::model::{Model, PushConstantData};
 use lumina_object::{transform::Transform, game_object::GameObject};
-use lumina_scene::{query::Query, FrameInfo, GlobalUBO};
+use lumina_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 
@@ -243,7 +243,6 @@ impl<'a> Renderer<'a> {
         for (_,range) in push_fields {
             push_constant_ranges.push(*range);
         }
-
     
         let mut descriptor_set_layouts:Vec<vk::DescriptorSetLayout> = Vec::new();
 
@@ -306,14 +305,14 @@ impl<'a> Renderer<'a> {
                 components.buffers[self.get_frame_index() as usize].write_to_buffer(&descriptor_bytes, None, None);
                 components.buffers[self.get_frame_index() as usize].flush(None, None, device);
                 unsafe {
-                        device.device().cmd_bind_descriptor_sets(
+                    device.device().cmd_bind_descriptor_sets(
                         self.cur_cmd,
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout,
                         0,
                         &[components.descriptor_sets[self.get_frame_index() as usize]],
                         &[],
-                    )
+                    );
                 }
             }
 
@@ -413,5 +412,5 @@ impl<'a> Renderer<'a> {
             self.swapchain.cleanup(device);
         }
     }
+  
 }
-

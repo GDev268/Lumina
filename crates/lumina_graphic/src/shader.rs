@@ -81,8 +81,6 @@ impl Shader {
 
         }
 
-        println!("{:?}",parser.glsl_push_constants);
-
         for (name, values) in parser.glsl_descriptors.iter() {
             descriptor_returns.insert(name.to_owned(), values.clone());
 
@@ -108,10 +106,6 @@ impl Shader {
                         1,
                         ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
                         ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
-                        device
-                            .physical_device_properties.unwrap()
-                            .limits
-                            .min_uniform_buffer_offset_alignment,
                     );
                     buffer.map(&device,None, None) ;
             
@@ -129,8 +123,6 @@ impl Shader {
                         None,
                     )
                 );
-
-                println!("{:?}",set_layout);
 
                 components.descriptor_set_layout = set_layout;
                         
@@ -164,11 +156,7 @@ impl Shader {
                         std::mem::size_of::<GlobalUBO>() as u64,                    
                         1,
                         vk::BufferUsageFlags::UNIFORM_BUFFER,
-                        vk::MemoryPropertyFlags::HOST_VISIBLE,
-                        device
-                        .physical_device_properties.unwrap()
-                        .limits
-                        .min_uniform_buffer_offset_alignment,                
+                        vk::MemoryPropertyFlags::HOST_VISIBLE,            
                     );
 
                     buffer.map(&device, None, None);

@@ -27,25 +27,25 @@ impl Parser{
     pub fn new() -> Self{
         let mut types:HashMap<String,usize> = HashMap::new();
 
-        types.insert(String::from("int"),std::mem::size_of::<i32>());
-        types.insert(String::from("uint"),std::mem::size_of::<u32>());
-        types.insert(String::from("float"),std::mem::size_of::<f32>());
-        types.insert(String::from("bool"),std::mem::size_of::<bool>());
-        types.insert(String::from("bvec2"),std::mem::size_of::<glam::BVec2>());
-        types.insert(String::from("bvec3"),std::mem::size_of::<glam::BVec3>());
-        types.insert(String::from("bvec4"),std::mem::size_of::<glam::BVec4>());
-        types.insert(String::from("ivec2"),std::mem::size_of::<glam::IVec2>());
-        types.insert(String::from("ivec3"),std::mem::size_of::<glam::IVec3>());
-        types.insert(String::from("ivec4"),std::mem::size_of::<glam::BVec4>());
-        types.insert(String::from("uvec2"),std::mem::size_of::<glam::UVec2>());
-        types.insert(String::from("uvec3"),std::mem::size_of::<glam::UVec3>());
-        types.insert(String::from("uvec4"),std::mem::size_of::<glam::UVec4>());
-        types.insert(String::from("vec2"),std::mem::size_of::<glam::Vec2>());
-        types.insert(String::from("vec3"),std::mem::size_of::<glam::Vec3>());
-        types.insert(String::from("vec4"),std::mem::size_of::<glam::Vec4>());
-        types.insert(String::from("mat2"),std::mem::size_of::<glam::Mat2>());
-        types.insert(String::from("mat3"),std::mem::size_of::<glam::Mat3>());
-        types.insert(String::from("mat4"),std::mem::size_of::<glam::Mat4>());
+        types.insert(String::from("int"),4);
+        types.insert(String::from("uint"),4);
+        types.insert(String::from("float"),4);
+        types.insert(String::from("bool"),1);
+        types.insert(String::from("bvec2"),2);
+        types.insert(String::from("bvec3"),3);
+        types.insert(String::from("bvec4"),4);
+        types.insert(String::from("ivec2"),8);
+        types.insert(String::from("ivec3"),12);
+        types.insert(String::from("ivec4"),16);
+        types.insert(String::from("uvec2"),8);
+        types.insert(String::from("uvec3"),12);
+        types.insert(String::from("uvec4"),16);
+        types.insert(String::from("vec2"),8);
+        types.insert(String::from("vec3"),12);
+        types.insert(String::from("vec4"),16);
+        types.insert(String::from("mat2"),32);
+        types.insert(String::from("mat3"),48);
+        types.insert(String::from("mat4"),64);
         types.insert(String::from("sampler1D"),0);
         types.insert(String::from("sampler2D"),0);
         types.insert(String::from("sampler3D"),0);
@@ -54,6 +54,7 @@ impl Parser{
         types.insert(String::from("sampler1DArray"),0);
         types.insert(String::from("sampler2DArray"),0);
         types.insert(String::from("samplerCubeArray"),0);
+
         
         return Self{
             types,
