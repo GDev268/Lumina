@@ -24,6 +24,9 @@ pub struct Parser{
 }
 
 impl Parser{
+    /**
+     * Criaçao da classe "Parser" para poder converter ficheiros de tipo shader e devolver hashmaps contendo essa mesma informaçao
+     */
     pub fn new() -> Self{
         let mut types:HashMap<String,usize> = HashMap::new();
 
@@ -67,10 +70,16 @@ impl Parser{
         };
     }
 
+    /**
+     * Conversao de uma string que contem o tipo de data para um numero que possui o tamanho da variavel
+     */
     pub fn convert_to_size(&self,field_types:&String) -> usize{
         return *self.types.get(field_types).unwrap_or(&(0 as usize));
     }
 
+    /**
+     * Verificar se a analise do ficheiro foi bem sucedida e sem falhas
+     */
     pub fn verify_parse(&self,cur_type:INSERT_TYPE,value:String,is_vertex:bool) -> bool{
         let mut value_pool:Vec<&str> = Vec::new();
         match(cur_type){
@@ -130,36 +139,42 @@ impl Parser{
         return true;
     }
 
-    fn decompose_structs(&self,fields:&HashMap<String,Vec<(String,String)>>,check_struct:&HashMap<String,Vec<(String,String)>>) -> HashMap<String,Vec<(String,String)>>{
-        let mut result: HashMap<String,Vec<(String,String)>> = fields.clone();
+    /**
+     * Decompor estruturas de dados para o mais simplificado ate as tipos de data do hashmap "types"
+     */
+    fn decompose_structs(fields: &HashMap<String, Vec<(String, String)>>, check_struct: &HashMap<String, Vec<(String, String)>>) -> HashMap<String, Vec<(String, String)>> {
+        let mut result: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    
+        for (name, fields) in fields.iter() {
+            let mut new_fields = Vec::new();
+    
+            for i in 0..fields.len() {
+                if check_struct.contains_key(&fields[i].0) {
+                    let pre_word: String = fields[i].1.to_string() + ".";
+                    if let Some(reverse_fields) = check_struct.get(&fields[i].0) {
 
-        for (_,fields) in result.iter_mut(){
-            for i in 0..fields.len(){
-               if check_struct.contains_key(&fields[i].0){
-                    let pre_word:String = fields[i].1.to_string() + ".";
-                    if let Some(reverse_fields) = check_struct.get(&fields[i].0){
-                        for field in reverse_fields.iter().rev(){
-                            if fields.len() <= i + 1{
-                                let push_field = (field.0.clone(),(pre_word.to_string() + field.1.as_str()));
-                                fields.push(push_field.to_owned());
-                            }
-                            else{
-                                let push_field = (field.0.clone(),(pre_word.to_string() + field.1.as_str()));
-                                fields.insert(i + 1, push_field.to_owned());
-                            }
+                        for field in reverse_fields.iter().rev() {
+                            let push_field = (field.0.clone(), (pre_word.to_string() + field.1.as_str()));
+                            new_fields.push(push_field.to_owned());
                         }
-
-                        fields.remove(i);
                     }
-                } 
-            }
+                }
+                else{
+                    new_fields.push(fields[i].clone());
+
+                }
+    
+           }
+    
+            result.insert(name.clone(), new_fields);
         }
 
-        return result;
-
+        result
     }
 
-
+    /**
+     * Obter as informaçoes de um "Descriptor" sendo elas o "binding" e o "set"
+     */
     fn get_descriptor_data(vector:&Vec<&str>) -> (u32,Option<u32>) {
         let line = vector.join(" ");
 
@@ -180,6 +195,9 @@ impl Parser{
 
     } 
 
+    /**
+     * Converter os ficheiros shader "Vertex" e "Fragment" a partir do caminho fornecido 
+     */
     pub fn parse_shader(&mut self,vert_path:&str,frag_path:&str){
         let mut inside_struct = false;
         let mut cur_value = String::new();
@@ -292,8 +310,8 @@ impl Parser{
         }
  
         if !finished{panic!("Shader parser failed! 3")}
-        self.glsl_descriptors = self.decompose_structs(&self.glsl_descriptors,&self.vert_structs);
-        self.glsl_push_constants = self.decompose_structs(&self.glsl_push_constants,&self.vert_structs);
+        self.glsl_descriptors = Parser::decompose_structs(&mut self.glsl_descriptors,&self.vert_structs);
+        self.glsl_push_constants = Parser::decompose_structs(&mut self.glsl_push_constants,&self.vert_structs);
 
         //FRAG SHADER
 
@@ -384,6 +402,7 @@ impl Parser{
             }
         }
 
+        println!("{:?}\n{:?}",self.glsl_descriptors,self.glsl_push_constants);
 
         let mut finished = true;
         for (value,_) in self.frag_structs.iter(){
@@ -415,8 +434,9 @@ impl Parser{
 
         if !finished{panic!("Shader parser failed! 3")}
 
-        self.glsl_descriptors = self.decompose_structs(&self.glsl_descriptors,&self.frag_structs);
-        self.glsl_push_constants = self.decompose_structs(&self.glsl_push_constants,&self.frag_structs);
+        self.glsl_descriptors = Parser::decompose_structs(&mut self.glsl_descriptors,&self.frag_structs);
+        self.glsl_push_constants = Parser::decompose_structs(&mut self.glsl_push_constants,&self.frag_structs);
+
     }
 }
 

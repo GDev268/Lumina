@@ -13,6 +13,7 @@ layout(set = 0, binding = 0) uniform GlobalUBO {
   vec3 directionToLight;
 } ubo;
 
+
 layout(push_constant) uniform Push {
   mat4 modelMatrix;
   mat4 normalMatrix;

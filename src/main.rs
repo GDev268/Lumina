@@ -98,22 +98,7 @@ fn main() {
 
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
 
-    let mut pool_config = PoolConfig::new();
-    pool_config.set_max_sets(2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
-    pool_config.add_pool_size(
-        vk::DescriptorType::UNIFORM_BUFFER,
-        2 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
-    );
-
     window._window.set_icon(window_icon);
-
-    let shader = Shader::new(
-        &device,
-        "shaders/default_shader.vert",
-        "shaders/default_shader.frag",
-         pool_config
-    );
-
 
     let mut renderer = Renderer::new(&window, &device);
 
