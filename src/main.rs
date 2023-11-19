@@ -89,7 +89,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "lumina", 800, 640);
+    let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
     let device = Device::new(&window);
 
     let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
@@ -246,16 +246,16 @@ fn main() {
             shader.change_uniform_vec3("GlobalUBO.directionToLight", light_pos).unwrap();
             shader.change_uniform_mat4("Push.modelMatrix",new_mat4).unwrap();
             shader.change_uniform_mat4("Push.normalMatrix", new_normal).unwrap();
+
+            renderer.render_object(&device, &mut query,&cube);
         }
-
-        renderer.render_object(&device, &mut query,&cube);
-        
-
  
         camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
        
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+        let title = String::from("Lumina Dev App ") + format!("[FPS: {:.0}]",fps.frame_count / fps.frame_elapsed).as_str();
+        window.get_window().set_title(title.as_str()).unwrap();
         if start_tick.elapsed() < fps.fps_limit {
             thread::sleep(fps.fps_limit - start_tick.elapsed());
         }

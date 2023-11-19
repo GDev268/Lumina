@@ -3,31 +3,73 @@ use lumina_core::device::Device;
 use ash::vk;
 use std::collections::HashMap;
 
-#[derive(Debug)]
 pub struct DescriptorSetLayout {
-    descriptor_set_layout: vk::DescriptorSetLayout,
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
+    pub descriptor_set_layout: vk::DescriptorSetLayout,
 }
 
 impl DescriptorSetLayout {
-    pub fn default() -> Self{
+    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
+        let mut set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> = Vec::new();
+
+        bindings.iter().for_each(|(_, binding)| {
+            set_layout_bindings.push(*binding);
+        });
+
+        let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo {
+            s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::DescriptorSetLayoutCreateFlags::empty(),
+            binding_count: set_layout_bindings.len() as u32,
+            p_bindings: set_layout_bindings.as_ptr(),
+        };
+
+        let descriptor_set_layout = unsafe {
+            device
+                .device()
+                .create_descriptor_set_layout(&descriptor_set_layout_info, None)
+                .unwrap()
+        };
+
+        Self {
+            bindings,
+            descriptor_set_layout,
+        }
+    }
+
+    pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
+        return self.descriptor_set_layout;
+    }
+}
+
+impl Default for DescriptorSetLayout {
+    fn default() -> Self{
         return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
+    }
+}
+
+pub struct LayoutConfig {
+    bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
+}
+
+impl LayoutConfig {
+    pub fn new() -> Self {
+        Self {
+            bindings: HashMap::<u32, vk::DescriptorSetLayoutBinding>::new(),
+        }
     }
 
     pub fn add_binding(
+        &mut self,
         binding: u32,
         descriptor_type: vk::DescriptorType,
         stage_flags: vk::ShaderStageFlags,
-        count: Option<u32>,
-        hashmap: Option<HashMap<u32, vk::DescriptorSetLayoutBinding>>,
-    ) -> HashMap<u32, vk::DescriptorSetLayoutBinding> {
-        let mut hashmap: HashMap<u32, vk::DescriptorSetLayoutBinding> = if hashmap.is_none() {
-            HashMap::new()
-        } else {
-            hashmap.unwrap()
-        };
-
-        let count = if count.is_none() { 1 } else { count.unwrap() };
+        count: u32,
+    ) {
+        assert!(
+            !self.bindings.contains_key(&binding),
+            "Binding already in use"
+        );
 
         let layout_binding = vk::DescriptorSetLayoutBinding {
             binding: binding,
@@ -37,57 +79,15 @@ impl DescriptorSetLayout {
             p_immutable_samplers: std::ptr::null(),
         };
 
-        hashmap.insert(binding, layout_binding);
-
-        return hashmap;
+        self.bindings.insert(binding, layout_binding);
     }
 
-    pub fn build(
-        device: &Device,
-        bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
-    ) -> DescriptorSetLayout {
-        return DescriptorSetLayout::new(device, bindings);
-    }
-
-    pub fn print_stage_flags(&self) {
-        for (_,binding) in &self.bindings {
-            println!("Binding: {}", binding.binding);
-            println!("Descriptor Type: {:?}", binding.descriptor_type);
-            println!("Shader Stage Flags: {:?}", binding.stage_flags);
-            println!("Descriptor Count: {}", binding.descriptor_count);
-            println!();
-        }
-    }
-
-    pub fn new(device: &Device, bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>) -> Self {
-        let set_layout_bindings: Vec<vk::DescriptorSetLayoutBinding> =
-            bindings.keys().map(|f| *bindings.get(f).unwrap()).collect();
-
-       let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo {
-            s_type: vk::StructureType::DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::DescriptorSetLayoutCreateFlags::empty(),
-            binding_count: set_layout_bindings.len() as u32,
-            p_bindings: set_layout_bindings.as_ptr(),
-        };
-
-        let descriptor_set_layout: vk::DescriptorSetLayout = unsafe {
-            device
-                .device()
-                .create_descriptor_set_layout(&descriptor_set_layout_info, None)
-                .expect("Failed to create descriptor set layout")
-        };
-
-        return Self {
-            descriptor_set_layout: descriptor_set_layout,
-            bindings: bindings,
-        };
-    }
-
-    pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
-        return self.descriptor_set_layout;
+    pub fn build(&self, device: &Device) -> DescriptorSetLayout {
+        DescriptorSetLayout::new(device, HashMap::clone(&self.bindings))
     }
 }
+
+
 
 pub struct PoolConfig {
     pool_sizes: Vec<vk::DescriptorPoolSize>,
@@ -206,8 +206,8 @@ impl DescriptorWriter {
         set_layout: &DescriptorSetLayout,
     ) {
         assert!(
-            set_layout.bindings.len() == 1,
-            "Layout doesn't contain the specified binding"
+            set_layout.bindings.contains_key(&binding),
+            "Layout does not contain specified binding"
         );
 
         let binding_description = set_layout
@@ -240,7 +240,7 @@ impl DescriptorWriter {
         &mut self,
         binding: u32,
         image_info: vk::DescriptorImageInfo,
-        set_layout: DescriptorSetLayout,
+        set_layout: &DescriptorSetLayout,
     ) {
         assert!(
             set_layout.bindings.len() == 1,
@@ -280,9 +280,8 @@ impl DescriptorWriter {
         pool: &DescriptorPool,
     ) -> vk::DescriptorSet {
         let set = pool.allocate_descriptor(device, descriptor_set_layout);
-        
+
         self.overwrite(device, &set);
-        
 
         return set;
     }

@@ -7,6 +7,8 @@ pub struct Image {
     extent: vk::Extent3D,
     memory: vk::DeviceMemory,
     _image_view: vk::ImageView,
+    sampler: vk::Sampler,
+    layout: vk::ImageLayout,
 }
 
 impl Image {
@@ -46,6 +48,19 @@ impl Image {
             initial_layout: vk::ImageLayout::default(),
         };
 
+        let sampler_info = vk::SamplerCreateInfo {
+            mag_filter: vk::Filter::LINEAR,
+            min_filter: vk::Filter::LINEAR,
+            ..Default::default()
+        };
+
+        let sampler = unsafe {
+            device
+                .device()
+                .create_sampler(&sampler_info, None)
+                .expect("Failed to create image sampler")
+        };
+
         unsafe {
             let (image, memory) = device.create_image_with_info(&image_info, properties);
 
@@ -55,6 +70,8 @@ impl Image {
                 format,
                 extent,
                 _image_view: vk::ImageView::null(),
+                sampler,
+                layout: vk::ImageLayout::GENERAL,
             };
         }
     }
@@ -67,6 +84,8 @@ impl Image {
             extent: extent,
             memory: vk::DeviceMemory::null(),
             _image_view: vk::ImageView::null(),
+            sampler: vk::Sampler::null(),
+            layout: vk::ImageLayout::UNDEFINED,
         }
     }
 
@@ -103,6 +122,14 @@ impl Image {
         return self._image_view;
     }
 
+    pub fn descriptor_info(&self) -> vk::DescriptorImageInfo {
+        return vk::DescriptorImageInfo {
+            sampler: self.sampler,
+            image_view: self._image_view,
+            image_layout: vk::ImageLayout::GENERAL,
+        };
+    }
+
     pub fn clean_view(&mut self, device: &Device) {
         unsafe {
             device.device().destroy_image_view(self._image_view, None);
@@ -118,6 +145,20 @@ impl Image {
     pub fn clean_memory(&mut self, device: &Device) {
         unsafe {
             device.device().free_memory(self.memory, None);
+        }
+    }
+}
+
+impl Default for Image {
+    fn default() -> Self {
+        Self {
+            _image: vk::Image::null(),
+            format: vk::Format::default(),
+            extent: vk::Extent3D::default(),
+            memory: vk::DeviceMemory::null(),
+            _image_view: vk::ImageView::null(),
+            sampler: vk::Sampler::null(),
+            layout: vk::ImageLayout::UNDEFINED,
         }
     }
 }

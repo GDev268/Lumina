@@ -47,8 +47,8 @@ impl Window {
         self.framebuffer_resized = false;
     }
 
-    pub fn get_window(&self) -> &video::Window {
-        return &self._window;
+    pub fn get_window(&mut self) -> &mut video::Window {
+        return &mut self._window;
     }
 
     pub fn create_window_surface(

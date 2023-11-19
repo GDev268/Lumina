@@ -1,12 +1,12 @@
 use std::{any::Any, collections::HashMap, fs::File, io::Read, ops::Deref};
 
-use ash::vk;
+use ash::vk::{self, DescriptorSetLayoutCreateFlags};
 
 use glsl_parser::parser::Parser;
-use lumina_core::{device::Device, swapchain::MAX_FRAMES_IN_FLIGHT};
+use lumina_core::{device::Device, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT};
 use lumina_data::{
-    buffer::Buffer,
-    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig},
+    buffer::{self, Buffer},
+    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig, LayoutConfig},
 };
 use lumina_object::game_object::Component;
 use lumina_scene::GlobalUBO;
@@ -20,11 +20,10 @@ pub struct FieldData {
     pub value: LuminaShaderType,
 }
 
-#[derive(Debug)]
 pub struct DescriptorComponents {
+    pub binding: u32,
     pub buffers: Vec<Buffer>,
-    pub descriptor_sets: Vec<vk::DescriptorSet>,
-    pub descriptor_set_layout: DescriptorSetLayout,
+    pub is_image: bool,
 }
 
 pub struct Shader {
@@ -34,8 +33,11 @@ pub struct Shader {
     pub frag_path: String,
     pub push_values: HashMap<String, Vec<FieldData>>,
     pub descriptor_values: HashMap<String, Vec<FieldData>>,
+    pub descriptor_images: HashMap<String, Image>,
     pub push_fields: HashMap<String, vk::PushConstantRange>,
     pub descriptor_fields: HashMap<String, DescriptorComponents>,
+    pub shader_descriptor_layout: DescriptorSetLayout,
+    pub shader_descriptor_sets: Vec<vk::DescriptorSet>,
     pub value_sizes: HashMap<String, (usize, u16)>,
     pool: DescriptorPool,
 }
@@ -51,6 +53,9 @@ impl Shader {
         let mut descriptor_returns: HashMap<String, Vec<(String, String)>> = HashMap::new();
         let mut push_fields: HashMap<String, vk::PushConstantRange> = HashMap::new();
         let mut descriptor_fields: HashMap<String, DescriptorComponents> = HashMap::new();
+        let mut descriptor_images: HashMap<String, Image> = HashMap::new();
+        let mut descriptor_layout_config: LayoutConfig = LayoutConfig::new();
+        let mut shader_descriptor_writer: DescriptorWriter = DescriptorWriter::new();
         let mut value_sizes: HashMap<String, (usize, u16)> = HashMap::new();
         let mut cur_offset: u16 = 0;
 
@@ -78,7 +83,6 @@ impl Shader {
             );
 
             value_sizes.insert("PUSH-".to_string() + name, (max_value, cur_offset));
-
         }
 
         for (name, values) in parser.glsl_descriptors.iter() {
@@ -87,8 +91,8 @@ impl Shader {
             if !values.iter().any(|string| string.0.contains("sampler")) {
                 let mut components: DescriptorComponents = DescriptorComponents {
                     buffers: Vec::new(),
-                    descriptor_sets: Vec::new(),
-                    descriptor_set_layout: DescriptorSetLayout::default(),
+                    binding: parser.descriptor_data.get(name).unwrap().1.unwrap(),
+                    is_image: false
                 };
 
                 let mut max_value = 0;
@@ -97,97 +101,45 @@ impl Shader {
                     max_value += parser.convert_to_size(&value.0);
                     value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value, 0));
                 }
-
 
                 for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
                     let mut buffer = Buffer::new(
                         &device,
-                        std::mem::size_of::<GlobalUBO>() as u64,
+                        max_value as u64,
                         1,
                         ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
                         ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
                     );
-                    buffer.map(&device,None, None) ;
-            
-                    components.buffers.push(buffer);
-                }
-            
-            
-                let set_layout = DescriptorSetLayout::build(
-                    &device,
-                    DescriptorSetLayout::add_binding(
-                        parser.descriptor_data.get(name).unwrap().0,
-                        vk::DescriptorType::UNIFORM_BUFFER,
-                        vk::ShaderStageFlags::ALL_GRAPHICS,
-                        Some(1),
-                        None,
-                    )
-                );
-
-                components.descriptor_set_layout = set_layout;
-                        
-                for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
-                    let buffer_info = components.buffers[i].descriptor_info(None, None);
-                    let mut descriptor_writer = DescriptorWriter::new();
-                    descriptor_writer.write_buffer(parser.descriptor_data.get(name).unwrap().0, buffer_info, &components.descriptor_set_layout);
-                    let descriptor_set = descriptor_writer.build(&device, components.descriptor_set_layout.get_descriptor_set_layout(), &pool);
-            
-                    components.descriptor_sets.push(descriptor_set);
-                }
-
-                descriptor_fields.insert(name.to_owned(), components);
-            } else {
-                let mut max_value = 0;
-
-                for value in values {
-                    max_value += parser.convert_to_size(&value.0);
-                    value_sizes.insert("DESCRIPTOR-".to_string() + name, (max_value, 0));
-                }
-
-                let mut components: DescriptorComponents = DescriptorComponents {
-                    buffers: Vec::new(),
-                    descriptor_sets: Vec::new(),
-                    descriptor_set_layout: DescriptorSetLayout::default(),
-                };
-
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
-                let mut buffer = Buffer::new(
-                        device,
-                        std::mem::size_of::<GlobalUBO>() as u64,                    
-                        1,
-                        vk::BufferUsageFlags::UNIFORM_BUFFER,
-                        vk::MemoryPropertyFlags::HOST_VISIBLE,            
-                    );
-
                     buffer.map(&device, None, None);
 
                     components.buffers.push(buffer);
                 }
 
-                let set_layout = DescriptorSetLayout::build(
-                    device,
-                    DescriptorSetLayout::add_binding(
-                        parser.descriptor_data.get(name).unwrap().0,
-                        vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                        vk::ShaderStageFlags::VERTEX,
-                        Some(1),
-                        None,
-                    ),
+                descriptor_layout_config.add_binding(
+                    parser.descriptor_data.get(name).unwrap().1.unwrap(),
+                    vk::DescriptorType::UNIFORM_BUFFER,
+                    vk::ShaderStageFlags::ALL_GRAPHICS,
+                    1,
                 );
 
-                for i in 0..MAX_FRAMES_IN_FLIGHT {
-                    let buffer_info = components.buffers[i].descriptor_info(None, None);
-                    let mut descriptor_writer = DescriptorWriter::new();
-                    descriptor_writer.write_buffer(parser.descriptor_data.get(name).unwrap().0, buffer_info, &components.descriptor_set_layout);
-                    components.descriptor_sets.push(descriptor_writer.build(
-                        device,
-                        components.descriptor_set_layout.get_descriptor_set_layout(),
-                        &pool,
-                    ));
-                }
+                descriptor_fields.insert(name.to_owned(), components);
+            } else {
+                let mut max_value = 0;
 
+                let mut components: DescriptorComponents = DescriptorComponents {
+                    buffers: Vec::new(),
+                    binding: 0,
+                    is_image: true
+                };
 
-                components.descriptor_set_layout = set_layout;
+                descriptor_layout_config.add_binding(
+                    parser.descriptor_data.get(name).unwrap().1.unwrap(),
+                    vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                    vk::ShaderStageFlags::ALL_GRAPHICS,
+                    1,
+                );
+
+                descriptor_images.insert(name.to_owned(), Image::default());
 
                 descriptor_fields.insert(name.to_owned(), components);
             }
@@ -222,6 +174,35 @@ impl Shader {
             descriptor_values.insert(name.deref().to_string(), result_values);
         }
 
+        let shader_descriptor_layout = descriptor_layout_config.build(device);
+
+        let mut shader_descriptor_sets: Vec<vk::DescriptorSet> = Vec::new();
+        for i in 0..lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT {
+            let mut descriptor_writer = DescriptorWriter::new();
+
+            for (name, components) in descriptor_fields.iter() {
+                if components.is_image {
+                    descriptor_writer.write_image(
+                        components.binding,
+                        descriptor_images.get(name).unwrap().descriptor_info(),
+                        &shader_descriptor_layout,
+                    );
+                } else {
+                    descriptor_writer.write_buffer(
+                        components.binding,
+                        components.buffers[i].descriptor_info(None, None),
+                        &shader_descriptor_layout,
+                    )
+                }
+            }
+
+            shader_descriptor_sets.push(descriptor_writer.build(
+                device,
+                shader_descriptor_layout.get_descriptor_set_layout(),
+                &pool,
+            ));
+        }
+
         return Self {
             vert_module: Shader::create_shader_module(
                 Shader::read_file(String::from(vert_file_path.to_owned() + &".spv".to_owned())),
@@ -239,8 +220,13 @@ impl Shader {
             descriptor_fields,
             value_sizes,
             pool,
+            descriptor_images,
+            shader_descriptor_layout,
+            shader_descriptor_sets,
         };
     }
+
+    pub fn create_descriptor_sets(&mut self) {}
 
     pub fn read_file(file_path: String) -> Vec<u8> {
         let file = File::open(file_path).expect("Failed to open shader file");
@@ -304,7 +290,7 @@ impl Shader {
             }
         }
 
-    for (name, fields) in self.descriptor_values.iter_mut() {
+        for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
                     if field.name == parts[1] && field.data_type == "float" {
@@ -563,7 +549,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -598,7 +584,7 @@ impl Shader {
                 }
             }
         }
-        
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -654,7 +640,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -682,7 +668,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -710,7 +696,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -738,7 +724,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -772,7 +758,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -807,7 +793,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -835,7 +821,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -863,7 +849,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -947,7 +933,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -981,7 +967,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {
@@ -1016,7 +1002,7 @@ impl Shader {
                 }
             }
         }
-                
+
         for (name, fields) in self.descriptor_values.iter_mut() {
             if name == parts[0] {
                 for field in fields {

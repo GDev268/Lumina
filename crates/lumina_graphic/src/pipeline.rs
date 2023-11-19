@@ -301,9 +301,11 @@ impl Pipeline {
         }
     }
 
-    pub unsafe fn cleanup(&mut self, device: &Device) {
-        device
-            .device()
-            .destroy_pipeline(self.graphics_pipeline.unwrap(), None);
+    pub fn drop(&mut self, device: &Device) {
+        unsafe {
+            device
+                .device()
+                .destroy_pipeline(self.graphics_pipeline.unwrap(), None);
+        }
     }
 }

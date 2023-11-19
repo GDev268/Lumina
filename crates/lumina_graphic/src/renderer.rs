@@ -1,4 +1,4 @@
-use std::{rc::Rc,collections::HashMap};
+use std::{collections::HashMap, rc::Rc};
 
 use lumina_core::{
     device::Device,
@@ -6,18 +6,19 @@ use lumina_core::{
     window::Window,
 };
 
+use lumina_data::descriptor::DescriptorSetLayout;
 use lumina_geometry::model::{Model, PushConstantData};
-use lumina_object::{transform::Transform, game_object::GameObject};
+use lumina_object::{game_object::GameObject, transform::Transform};
 use lumina_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 
-use crate::shader::{FieldData, DescriptorComponents};
+use crate::shader::FieldData;
 
 use super::{
     pipeline::{Pipeline, PipelineConfiguration},
     shader::Shader,
-    types::{LuminaShaderType,LuminaShaderTypeConverter},
+    types::{LuminaShaderType, LuminaShaderTypeConverter},
 };
 
 pub struct Renderer<'a> {
@@ -29,14 +30,11 @@ pub struct Renderer<'a> {
     pipeline: Option<Pipeline>,
     pipeline_layout: vk::PipelineLayout,
     cur_shader: Option<&'a Shader>,
-    cur_cmd:vk::CommandBuffer,
+    cur_cmd: vk::CommandBuffer,
 }
 
 impl<'a> Renderer<'a> {
-    pub fn new(
-        window: &Window,
-        device: &Device,
-    ) -> Self {
+    pub fn new(window: &Window, device: &Device) -> Self {
         let swapchain = Renderer::create_swapchain(window, device, None);
         let command_buffers = Renderer::create_command_buffers(device);
 
@@ -86,7 +84,7 @@ impl<'a> Renderer<'a> {
     /*pub fn activate_shader(&mut self,device:&Device,shader:&'a Shader){
         self.cur_shader = Some(shader);
         self.create_pipeline_layout(device,&self.cur_shader.unwrap().push_fields,&self.cur_shader.unwrap().descriptor_fields);
-        self.create_pipeline(device,self.get_swapchain_renderpass()); 
+        self.create_pipeline(device,self.get_swapchain_renderpass());
     }*/
 
     pub fn begin_frame(&mut self, device: &Device, window: &Window) {
@@ -117,7 +115,7 @@ impl<'a> Renderer<'a> {
                 .begin_command_buffer(self.cur_cmd, &begin_info)
                 .expect("Failed to begin recording command buffer");
         }
-        
+
         self.begin_swapchain_renderpass(self.cur_cmd, device);
     }
 
@@ -147,9 +145,11 @@ impl<'a> Renderer<'a> {
             self.recreate_swapchain(device, window);
         }
 
+        
         self.is_frame_started = false;
         self.current_frame_index =
             (self.current_frame_index + 1) % swapchain::MAX_FRAMES_IN_FLIGHT as i32;
+
     }
 
     fn begin_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer, device: &Device) {
@@ -237,19 +237,20 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device,push_fields:&HashMap<String,vk::PushConstantRange>,descriptor_fields:&HashMap<String,DescriptorComponents>) {
-        let mut push_constant_ranges:Vec<vk::PushConstantRange> = Vec::new();
+    pub fn create_pipeline_layout(
+        &mut self,
+        device: &Device,
+        push_fields: &HashMap<String, vk::PushConstantRange>,
+        descriptor_set_layout: &DescriptorSetLayout,
+    ) {
+        let mut push_constant_ranges: Vec<vk::PushConstantRange> = Vec::new();
 
-        for (_,range) in push_fields {
+        for (_, range) in push_fields {
             push_constant_ranges.push(*range);
         }
-    
-        let mut descriptor_set_layouts:Vec<vk::DescriptorSetLayout> = Vec::new();
 
-        for (_,components) in descriptor_fields {
-            descriptor_set_layouts.push(components.descriptor_set_layout.get_descriptor_set_layout());
-        }
-        
+        let descriptor_set_layouts = vec![descriptor_set_layout.get_descriptor_set_layout()];
+
         let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
             s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
             p_next: std::ptr::null(),
@@ -268,7 +269,12 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn create_pipeline(&mut self, device: &Device,render_pass: vk::RenderPass,shader:&Shader) {
+    pub fn create_pipeline(
+        &mut self,
+        device: &Device,
+        render_pass: vk::RenderPass,
+        shader: &Shader,
+    ) {
         let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = Some(self.pipeline_layout);
@@ -281,67 +287,83 @@ impl<'a> Renderer<'a> {
         ));
     }
 
-    pub fn render_object(&mut self, device: &Device, scene: &mut Query,gameobject_id:&GameObject) {
-        for (id,entity) in scene.entities.iter_mut(){
-            if id == &gameobject_id.get_id(){
+    pub fn render_object(
+        &mut self,
+        device: &Device,
+        scene: &mut Query,
+        gameobject_id: &GameObject,
+    ) {
+        for (id, entity) in scene.entities.iter_mut() {
+            if id == &gameobject_id.get_id() {
+                let shader = entity.get_mut_component::<Shader>().unwrap();
 
-            let shader = entity.get_mut_component::<Shader>().unwrap();
+                self.create_pipeline_layout(
+                    device,
+                    &shader.push_fields,
+                    &shader.shader_descriptor_layout,
+                );
 
-            self.create_pipeline_layout(device,&shader.push_fields,&shader.descriptor_fields);
-            self.create_pipeline(device,self.get_swapchain_renderpass(),shader); 
+                self.create_pipeline(device, self.get_swapchain_renderpass(), shader);
 
-            self.pipeline
-                .as_ref()
-                .unwrap()
-                .bind(device, self.cur_cmd);
+                self.pipeline.as_ref().unwrap().bind(device, self.cur_cmd);
 
-            for (name,components) in shader.descriptor_fields.iter_mut(){
-                let mut descriptor_bytes:Vec<u8> = Vec::new();
+                for (name, components) in shader.descriptor_fields.iter_mut() {
+                    if !components.is_image {
+                        let mut descriptor_bytes: Vec<u8> = Vec::new();
 
-                for value in shader.descriptor_values.get(name).unwrap().iter() {
-                    value.value.to_ne_bytes(&mut descriptor_bytes);
+                        for value in shader.descriptor_values.get(name).unwrap().iter() {
+                            value.value.to_ne_bytes(&mut descriptor_bytes);
+                        }
+
+                        components.buffers[self.get_frame_index() as usize].write_to_buffer(
+                            &descriptor_bytes,
+                            None,
+                            None,
+                        );
+                        components.buffers[self.get_frame_index() as usize]
+                            .flush(None, None, device);
+                    }
                 }
 
-                components.buffers[self.get_frame_index() as usize].write_to_buffer(&descriptor_bytes, None, None);
-                components.buffers[self.get_frame_index() as usize].flush(None, None, device);
                 unsafe {
                     device.device().cmd_bind_descriptor_sets(
                         self.cur_cmd,
                         vk::PipelineBindPoint::GRAPHICS,
                         self.pipeline_layout,
                         0,
-                        &[components.descriptor_sets[self.get_frame_index() as usize]],
+                        &[shader.shader_descriptor_sets[self.get_frame_index() as usize]],
                         &[],
                     );
                 }
-            }
 
-            
-            for (name,values) in shader.push_values.iter(){
-                let mut push_bytes:Vec<u8> = Vec::new();
-                for value in values.iter() {
-                    value.value.to_ne_bytes(&mut push_bytes);
+                for (name, values) in shader.push_values.iter() {
+                    let mut push_bytes: Vec<u8> = Vec::new();
+                    for value in values.iter() {
+                        value.value.to_ne_bytes(&mut push_bytes);
+                    }
+
+                    unsafe {
+                        device.device().cmd_push_constants(
+                            self.cur_cmd,
+                            self.pipeline_layout,
+                            shader.push_fields.get(name).unwrap().stage_flags,
+                            shader
+                                .value_sizes
+                                .get(&("PUSH-".to_string() + name))
+                                .unwrap()
+                                .1 as u32,
+                            push_bytes.as_ref(),
+                        )
+                    };
                 }
 
-                unsafe {
-                    device.device().cmd_push_constants(
-                        self.cur_cmd,
-                        self.pipeline_layout,
-                        shader.push_fields.get(name).unwrap().stage_flags,
-                        shader.value_sizes.get(&("PUSH-".to_string() + name)).unwrap().1 as u32,
-                        push_bytes.as_ref(),
-                    )
-                };
-                
+                if entity.has_component::<Model>() {
+                    entity
+                        .get_mut_component::<Model>()
+                        .unwrap()
+                        .render(device, self.cur_cmd);
+                }
             }
-
-            if entity.has_component::<Model>() {
-                entity
-                    .get_mut_component::<Model>()
-                    .unwrap()
-                    .render(device, self.cur_cmd);
-            }
-        }
         }
     }
 
@@ -407,10 +429,9 @@ impl<'a> Renderer<'a> {
 
     pub fn cleanup(&mut self, device: &Device) {
         unsafe {
-            self.free_command_buffers(device); 
+            self.free_command_buffers(device);
             self.command_buffers.clear();
             self.swapchain.cleanup(device);
         }
     }
-  
 }
