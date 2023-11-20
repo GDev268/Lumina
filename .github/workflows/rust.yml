@@ -1,0 +1,53 @@
+name: Revier Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  buildLinux:
+    name: Build and Test on Linux
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install libudev
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev -y
+    - name: Install SDL2 and SDL2_image
+      run: |
+        sudo apt-get install libsdl2-dev libsdl2-image-dev -y
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  buildMacOS:
+    name: Build and Test on macOS
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  buildWindows:
+    name: Build and Test on Windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Ninja and CMake
+      run: |
+        choco install ninja
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
