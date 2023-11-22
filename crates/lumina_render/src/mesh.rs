@@ -93,10 +93,10 @@ impl Mesh {
         let mut staging_buffer: Buffer = Buffer::new(
             device,
             vertex_size,
-            vertex_count as u64,
+            vertex_count,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
-
+            device.physical_device_properties.unwrap().limits.min_uniform_buffer_offset_alignment
         );
 
         staging_buffer.map(device,None,None);
@@ -105,9 +105,10 @@ impl Mesh {
         let vertex_buffer = Buffer::new(
             device,
             vertex_size,
-            vertex_count as u64,
+            vertex_count,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            device.physical_device_properties.unwrap().limits.min_uniform_buffer_offset_alignment
         );
 
         device.copy_buffer(
@@ -134,9 +135,11 @@ impl Mesh {
         let mut staging_buffer = Buffer::new(
             device,
             index_size,
-            index_count as u64,
+            index_count,
             vk::BufferUsageFlags::TRANSFER_SRC,
             vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+            device.physical_device_properties.unwrap().limits.min_uniform_buffer_offset_alignment
+
         );
 
         staging_buffer.map(device,None,None);
@@ -145,9 +148,11 @@ impl Mesh {
         let index_buffer = Buffer::new(
             device,
             index_size,
-            index_count as u64,
+            index_count,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
             vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            device.physical_device_properties.unwrap().limits.min_uniform_buffer_offset_alignment
+
         );
 
         device.copy_buffer(

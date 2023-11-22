@@ -4,13 +4,13 @@ use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 use winit::{
     event_loop::EventLoop,
-    window::{self, WindowBuilder},
+    window::{self, WindowBuilder}, dpi::PhysicalSize,
 };
 
 use sdl2::video;
 
 pub struct Window {
-    pub _window: video::Window,
+    pub _window: winit::window::Window,
     pub width: u32,
     pub height: u32,
     pub framebuffer_resized: bool,
@@ -18,10 +18,12 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(sdl:&sdl2::Sdl, title: &str, width: u32, height: u32) -> Self {
-        let window_subsystem = sdl.video().unwrap();
+    pub fn new(event_loop:&EventLoop<()>, title: &str, width: u32, height: u32) -> Self {
+        let window = WindowBuilder::new()
+        .with_title(title)
+        .with_inner_size(winit::dpi::LogicalSize::new(width, height))
+        .build(event_loop).expect("Failed to create window");
 
-        let window = window_subsystem.window(title, width, height).resizable().vulkan().build().expect("Failed to create sdl2 window!");
 
         return Self {
             _window: window,
@@ -32,11 +34,8 @@ impl Window {
         };
     }
 
-    pub fn get_extent(&self) -> vk::Extent2D {
-        return vk::Extent2D {
-            width: self.width as u32,
-            height: self.height as u32,
-        };
+    pub fn get_size(&self) -> PhysicalSize<u32> {
+        return self._window.inner_size();
     }
 
     pub fn was_window_resized(&self) -> bool {
@@ -47,20 +46,10 @@ impl Window {
         self.framebuffer_resized = false;
     }
 
-    pub fn get_window(&mut self) -> &mut video::Window {
-        return &mut self._window;
+    pub fn get_window(&self) -> &winit::window::Window {
+        return &self._window;
     }
 
-    pub fn create_window_surface(
-        &self,
-        instance: &ash::Instance,
-    ) -> vk::SurfaceKHR {
-        let raw_instance = instance.handle().as_raw() as usize;
-
-        let raw_surface = self._window.vulkan_create_surface(raw_instance).expect("Failed to create vulkan surface");
-        
-        return vk::SurfaceKHR::from_raw(raw_surface);
-    }
 
     pub fn framebuffer_resize_callback(window: &mut Window, width: u32, height: u32) {
         window.framebuffer_resized = true;

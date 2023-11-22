@@ -108,6 +108,7 @@ impl Shader {
                         1,
                         ash::vk::BufferUsageFlags::UNIFORM_BUFFER,
                         ash::vk::MemoryPropertyFlags::HOST_VISIBLE,
+                        device.physical_device_properties.unwrap().limits.min_uniform_buffer_offset_alignment
                     );
                     buffer.map(&device, None, None);
 
@@ -143,7 +144,7 @@ impl Shader {
                 descriptor_fields.insert(name.to_owned(), components);
             }
         }
-
+        
         let mut push_values: HashMap<String, Vec<FieldData>> = HashMap::new();
 
         for (name, values) in push_returns.iter() {
