@@ -1,4 +1,4 @@
-use lumina_core::device::Device;
+/*use lumina_core::device::Device;
 use lumina_object::game_object::GameObject;
 use lumina_render::mesh::Vertex;
 use lumina_scene::query::Query;
@@ -403,5 +403,5 @@ pub fn mono_cube(scene: &mut Query, device: &Device) -> GameObject {
     scene.push(&game_object,model);
         
     return game_object;
-}
+}*/
 

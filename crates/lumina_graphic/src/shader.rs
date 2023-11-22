@@ -1,13 +1,9 @@
-use std::{any::Any, collections::HashMap, fs::File, io::Read, ops::Deref};
+/*use std::{any::Any, collections::HashMap, fs::File, io::Read, ops::Deref};
 
 use ash::vk::{self, DescriptorSetLayoutCreateFlags};
 
 use glsl_parser::parser::Parser;
-use lumina_core::{device::Device, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT};
-use lumina_data::{
-    buffer::{self, Buffer},
-    descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, PoolConfig, LayoutConfig},
-};
+use lumina_core::{device::Device};
 use lumina_object::game_object::Component;
 
 use crate::types::LuminaShaderType;
@@ -26,8 +22,8 @@ pub struct DescriptorComponents {
 }
 
 pub struct Shader {
-    pub vert_module: vk::ShaderModule,
-    pub frag_module: vk::ShaderModule,
+    pub vert_module: wgpu::ShaderModule,
+    pub frag_module: wgpu::ShaderModule,
     pub vert_path: String,
     pub frag_path: String,
     pub push_values: HashMap<String, Vec<FieldData>>,
@@ -1186,4 +1182,4 @@ impl Shader {
     }
 }
 
-impl Component for Shader {}
+impl Component for Shader {}*/

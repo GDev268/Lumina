@@ -6,7 +6,7 @@ use crate::window::Window;
 pub struct Device {
     _device: wgpu::Device,
     surface: wgpu::Surface,
-    queue: wgpu::Queue,
+    pub queue: wgpu::Queue,
     surface_configuration: wgpu::SurfaceConfiguration
 }
 

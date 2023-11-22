@@ -1,13 +1,13 @@
-use lumina_core::device::Device;
-use lumina_render::{mesh::Vertex, offset_of};
+/*use lumina_core::device::Device;
+//use lumina_render::{mesh::Vertex, offset_of};
 
 use ash::vk::{self};
-use std::ffi::CString;
+use std::{ffi::CString, num::NonZeroU32};
 
 use crate::{pipeline, shader::Shader};
 
 pub struct PipelineConfiguration {
-    pub primitve: wgpu::PrimitiveState,
+    pub primitive: wgpu::PrimitiveState,
     pub depth_stencil: Option<wgpu::DepthStencilState>,
     pub multisample: wgpu::MultisampleState,
     pub multiview: Option<NonZeroU32>,
@@ -40,8 +40,9 @@ impl Default for PipelineConfiguration {
             alpha_to_coverage_enabled: false,
         };
 
+
         Self {
-            primitve,
+            primitive,
             depth_stencil,
             multisample,
             multiview: None,
@@ -70,19 +71,19 @@ impl Pipeline {
 
         pipeline.graphics_pipeline = Some(device.device().create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
-                label: Some(pipeline_id + ("_Pipeline".to_string()).as_str()),
-                layout: pipeline_config.pipeline_layout.unwrap(),
+                label: Some((pipeline_id.to_string() + "_Pipeline").as_str()),
+                layout: Some(&pipeline_config.pipeline_layout.unwrap()),
                 vertex: wgpu::VertexState {
-                    module: shader.vert_module,
-                    entry_point: Some(pipeline_id + ("_vert".to_string()).as_str()),
+                    module: &shader.vert_module,
+                    entry_point: (pipeline_id.to_string() + "_vert").as_str(),
                     buffers: &[],
                 },
-                primitive: pipeline_config.primitve,
+                primitive: pipeline_config.primitive,
                 depth_stencil: pipeline_config.depth_stencil,
                 multisample: pipeline_config.multisample,
                 fragment: Some(wgpu::FragmentState {
-                    module: shader.frag_module,
-                    entry_point: Some(pipeline_id + ("_frag".to_string()).as_str()),
+                    module: &shader.frag_module,
+                    entry_point: (pipeline_id.to_string() + "_frag").as_str(),
                     targets: &[Some(wgpu::ColorTargetState{
                         format: device.get_surface_format(),
                         blend: Some(wgpu::BlendState::REPLACE),
@@ -97,24 +98,6 @@ impl Pipeline {
 
         return pipeline;
     }
-
-    pub fn bind(&self, device: &Device, command_buffer: vk::CommandBuffer) {
-        unsafe {
-            device.device().cmd_bind_pipeline(
-                command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.graphics_pipeline.unwrap(),
-            );
-        }
-    }
-
-    pub fn drop(&mut self, device: &Device) {
-        unsafe {
-            device
-                .device()
-                .destroy_pipeline(self.graphics_pipeline.unwrap(), None);
-        }
-    }
 }
 
 impl Default for Pipeline {
@@ -124,3 +107,4 @@ impl Default for Pipeline {
         };
     }
 }
+*/
