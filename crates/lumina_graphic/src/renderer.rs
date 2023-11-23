@@ -1,9 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use lumina_core::{
-    device::Device,
-    window::Window,
-};
+use lumina_core::{device::Device, window::Window};
 
 //use lumina_geometry::model::{Model, PushConstantData};
 use lumina_object::{game_object::GameObject, transform::Transform};
@@ -34,19 +31,29 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn begin_frame(&mut self, device: &Device, surface_texture: &wgpu::TextureView) {
-        let mut encoder = device.device()
+    pub fn begin_frame(&mut self, device: &mut Device) {
+
+        //NOTE: CREATE DEPTH_TEXTURE FIELD THAT HAS AN TEXTURE
+        
+        let output = device.get_surface().get_current_texture().unwrap_or_else(|e| {
+            eprintln!("Failed to get surface texture: {:?}", e);
+            panic!();
+        });
+
+        let view = output
+            .texture
+            .create_view(&TextureViewDescriptor::default());
+
+        let mut encoder = device
+            .device()
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
 
-        //self.command_encoder = Some(encoder);
-
-
-        let render_pass = Some(encoder.begin_render_pass(&RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
-                view: surface_texture,
+                view: &view,
                 resolve_target: None,
                 ops: Operations {
                     load: LoadOp::Clear(Color {
@@ -55,22 +62,22 @@ impl<'a> Renderer<'a> {
                         b: 0.2,
                         a: 1.0,
                     }),
-                    store: StoreOp::Store,
+                    store: true,
                 },
             })],
             depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
-                view: surface_texture,
+                view: &view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
-                    store: StoreOp::Store,
+                    store: true,
                 }),
                 stencil_ops: None,
             }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        }));
+        });
+
+        drop(render_pass);
+        device.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+
     }
-
-
-    // Add methods to interact with the render pass as needed
 }

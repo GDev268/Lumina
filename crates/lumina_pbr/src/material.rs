@@ -1,4 +1,4 @@
-use lumina_graphic::shader::Shader;
+/*use lumina_graphic::shader::Shader;
 use lumina_object::game_object::Component;
 
 pub struct Material {
@@ -48,4 +48,4 @@ impl Material {
     };
 }
 
-impl Component for Material {}
+impl Component for Material {}*/

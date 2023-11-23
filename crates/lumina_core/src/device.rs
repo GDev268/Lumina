@@ -7,7 +7,8 @@ pub struct Device {
     _device: wgpu::Device,
     surface: wgpu::Surface,
     pub queue: wgpu::Queue,
-    surface_configuration: wgpu::SurfaceConfiguration
+    surface_configuration: wgpu::SurfaceConfiguration,
+    pub adapter: wgpu::Adapter
 }
 
 impl Device {
@@ -58,7 +59,8 @@ impl Device {
             _device,
             surface,
             queue,
-            surface_configuration
+            surface_configuration,
+            adapter
         }
     }
 
@@ -75,6 +77,7 @@ impl Device {
     }
 
     pub fn resize(&mut self,new_size:PhysicalSize<u32>) {
+        println!("New window Size: {:?}x{:?}",new_size.width,new_size.height);
         self.surface_configuration.width = new_size.width;
         self.surface_configuration.height = new_size.height;
 
