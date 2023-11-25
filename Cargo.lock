@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "ash-window",
  "async-std",
+ "bytemuck",
  "cgmath",
  "criterion",
  "egui 0.22.0",

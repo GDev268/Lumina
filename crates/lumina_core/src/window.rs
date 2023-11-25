@@ -51,9 +51,9 @@ impl Window {
     }
 
 
-    pub fn framebuffer_resize_callback(window: &mut Window, width: u32, height: u32) {
-        window.framebuffer_resized = true;
-        window.width = width;
-        window.height = height;
+    pub fn resize(&mut self, new_size:PhysicalSize<u32>) {
+        self.framebuffer_resized = true;
+        self.width = new_size.width;
+        self.height = new_size.height;
     }
 }

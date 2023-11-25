@@ -55,6 +55,22 @@ impl Device {
 
         surface.configure(&_device, &surface_configuration);
 
+
+        let depth_texture = _device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Depth Texture"),
+            size: wgpu::Extent3d {
+                width: window.width,
+                height: window.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: Default::default(),
+        });
+
         Self{
             _device,
             surface,
@@ -80,6 +96,7 @@ impl Device {
         println!("New window Size: {:?}x{:?}",new_size.width,new_size.height);
         self.surface_configuration.width = new_size.width;
         self.surface_configuration.height = new_size.height;
+
 
         self.surface.configure(&self._device, &self.surface_configuration);
     }
