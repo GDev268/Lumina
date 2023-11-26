@@ -1,4 +1,4 @@
-pub struct Camera {
+/*pub struct Camera {
     projection_matrix: glam::Mat4,
     view_matrix: glam::Mat4,
     inverse_view_matrix: glam::Mat4,
@@ -145,3 +145,4 @@ impl Camera {
         };
     }
 }
+*/

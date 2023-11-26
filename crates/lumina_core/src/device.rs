@@ -48,28 +48,12 @@ impl Device {
             format: capabilities.formats[0],
             width: window.get_size().width,
             height: window.get_size().height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Mailbox,
             alpha_mode: capabilities.alpha_modes[0],
             view_formats: vec![]
         };
 
         surface.configure(&_device, &surface_configuration);
-
-
-        let depth_texture = _device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Depth Texture"),
-            size: wgpu::Extent3d {
-                width: window.width,
-                height: window.height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: Default::default(),
-        });
 
         Self{
             _device,
