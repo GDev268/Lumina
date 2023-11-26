@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 
 
 [features]
-default = ["lumina_core", "lumina_render", "lumina_graphic", "lumina_geometry", "lumina_object", "lumina_scene", "lumina_debug", "lumina_input", "lumina_pbr", "glsl_parser"]
+default = ["lumina_core" ,"lumina_render", "lumina_graphic", "lumina_geometry", "lumina_object", "lumina_scene", "lumina_debug", "lumina_input", "lumina_pbr", "glsl_parser"]
 optional = []
 
 [dependencies]

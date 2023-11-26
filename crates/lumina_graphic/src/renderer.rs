@@ -1,9 +1,10 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, cell::RefCell};
 
 use lumina_core::{device::Device, window::Window};
 
 //use lumina_geometry::model::{Model, PushConstantData};
 use lumina_object::{game_object::GameObject, transform::Transform};
+use lumina_render::mesh::Mesh;
 use lumina_scene::query::Query;
 
 use wgpu::*;
@@ -18,15 +19,19 @@ use super::{
 
 use std::fmt::Debug;
 
+use crate::{pipeline::{Pipeline, PipelineConfiguration}, shader::Shader};
+
 pub struct Renderer<'a> {
+    device: Rc<RefCell<Device>>,
     command_encoder: Option<wgpu::CommandEncoder>,
     render_pass: Option<wgpu::RenderPass<'a>>,
     depth_texture: wgpu::Texture,
+    cur_pipeline:Option<wgpu::RenderPipeline>
 }
 
 impl<'a> Renderer<'a> {
-    pub fn new(device: &Device,window: &Window) -> Self {
-        let depth_texture = device.device().create_texture(&TextureDescriptor {
+    pub fn new(device: Rc<RefCell<Device>>,window: &Window) -> Self {
+        let depth_texture = device.borrow().device().create_texture(&TextureDescriptor {
             label: Some("Depth Texture"),
             size: wgpu::Extent3d {
                 width: window.width,
@@ -42,22 +47,21 @@ impl<'a> Renderer<'a> {
         });
 
         Self {
+            device,
             command_encoder: None,
             render_pass: None,
-            depth_texture
+            depth_texture,
+            cur_pipeline: None
         }
     }
 
-    pub fn begin_frame(&mut self, device: &mut Device) {
+    pub fn begin_frame(&mut self) {
         //NOTE: CREATE DEPTH_TEXTURE FIELD THAT HAS AN TEXTURE
 
-        let output = device
+        let output = self.device.borrow()
             .get_surface()
-            .get_current_texture()
-            .unwrap_or_else(|e| {
-                eprintln!("Failed to get surface texture: {:?}", e);
-                panic!();
-            });
+            .get_current_texture().unwrap();
+                  
 
         let view = output
             .texture
@@ -65,7 +69,7 @@ impl<'a> Renderer<'a> {
 
         let depth_view = self.depth_texture.create_view(&TextureViewDescriptor::default());
 
-        let mut encoder = device
+        let mut encoder = self.device.borrow_mut()
             .device()
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
@@ -97,13 +101,24 @@ impl<'a> Renderer<'a> {
         });
 
         drop(render_pass);
-        device.queue.submit(std::iter::once(encoder.finish()));
+        self.device.borrow_mut().queue.submit(std::iter::once(encoder.finish()));
         output.present();
+        
     }
 
-    pub fn update(&mut self,device: &Device,window: &Window){
+    pub async fn render_object(&'a mut self,shader:&Shader,mesh:&'a Mesh) {
+        let pipeline = Pipeline::new(&self.device.borrow(),shader,&PipelineConfiguration::default(),"0");
+
+        self.cur_pipeline = pipeline.graphics_pipeline;
+        self.render_pass.as_mut().unwrap().set_pipeline(&self.cur_pipeline.as_ref().unwrap());
+        self.render_pass.as_mut().unwrap().set_vertex_buffer(0,mesh.vertex_buffer.slice(..));
+        self.render_pass.as_mut().unwrap().draw(0..mesh.vertex_count, 0..0);
+
+    }
+
+    pub fn update(&mut self, window: &Window){
         if (self.depth_texture.size().width,self.depth_texture.size().height) != (window.width,window.height) {
-            self.depth_texture = device.device().create_texture(&TextureDescriptor {
+            self.depth_texture = self.device.borrow().device().create_texture(&TextureDescriptor {
                 label: Some("Depth Texture"),
                 size: wgpu::Extent3d {
                     width: window.width,

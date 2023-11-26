@@ -1,4 +1,4 @@
-/*use lumina_core::device::Device;
+use lumina_core::device::Device;
 //use lumina_render::{mesh::Vertex, offset_of};
 
 use ash::vk::{self};
@@ -59,7 +59,7 @@ impl Pipeline {
     pub fn new(
         device: &Device,
         shader: &Shader,
-        pipeline_config: &mut PipelineConfiguration,
+        pipeline_config: &PipelineConfiguration,
         pipeline_id: &str,
     ) -> Self {
         assert!(
@@ -72,18 +72,18 @@ impl Pipeline {
         pipeline.graphics_pipeline = Some(device.device().create_render_pipeline(
             &wgpu::RenderPipelineDescriptor {
                 label: Some((pipeline_id.to_string() + "_Pipeline").as_str()),
-                layout: Some(&pipeline_config.pipeline_layout.unwrap()),
+                layout: Some(&pipeline_config.pipeline_layout.as_ref().unwrap()),
                 vertex: wgpu::VertexState {
-                    module: &shader.vert_module,
-                    entry_point: (pipeline_id.to_string() + "_vert").as_str(),
+                    module: &shader.shader_module,
+                    entry_point: "vs_main",
                     buffers: &[],
                 },
                 primitive: pipeline_config.primitive,
-                depth_stencil: pipeline_config.depth_stencil,
+                depth_stencil: pipeline_config.depth_stencil.clone(),
                 multisample: pipeline_config.multisample,
                 fragment: Some(wgpu::FragmentState {
-                    module: &shader.frag_module,
-                    entry_point: (pipeline_id.to_string() + "_frag").as_str(),
+                    module: &shader.shader_module,
+                    entry_point: "fs_main",
                     targets: &[Some(wgpu::ColorTargetState{
                         format: device.get_surface_format(),
                         blend: Some(wgpu::BlendState::REPLACE),
@@ -107,4 +107,3 @@ impl Default for Pipeline {
         };
     }
 }
-*/

@@ -93,7 +93,6 @@ impl Device {
     }
 
     pub fn resize(&mut self,new_size:PhysicalSize<u32>) {
-        println!("New window Size: {:?}x{:?}",new_size.width,new_size.height);
         self.surface_configuration.width = new_size.width;
         self.surface_configuration.height = new_size.height;
 

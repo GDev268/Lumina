@@ -8,195 +8,194 @@ use crate::model::Model;
 pub fn cube(scene: &mut Query, device: &Device) -> GameObject {
     let mut model = Model::new();
 
-    let vertices: Vec<Vertex> = vec![
-        // left face (white)
+  let vertices: Vec<Vertex> = vec![
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, -0.5, -0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [-0.5, 0.5, 0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [-0.5, -0.5, 0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, -0.5, -0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [-0.5, 0.5, -0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [1.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(-1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [-0.5, 0.5, 0.5],
+            normal: [-1.0, 0.0, 0.0],
+            uv: [1.0, 1.0],
         },
-        // right face (yellow)
+        // Right face (yellow)
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
-        },
-        Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, -0.5, -0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [0.5, -0.5, 0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [0.5, -0.5, -0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(1.0, 0.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
-        },
-        // top face (orange)
-        Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [0.5, 0.5, -0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [1.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [1.0, 0.0, 0.0],
+            uv: [1.0, 1.0],
+        },
+        // Top face (orange)
+        Vertex {
+            position: [-0.5, -0.5, -0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [0.5, -0.5, 0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, -0.5, 0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [-0.5, -0.5, -0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, -1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
-        },
-        // bottom face (red)
-        Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [0.5, -0.5, -0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [1.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, -0.5, 0.5],
+            normal: [0.0, -1.0, 0.0],
+            uv: [1.0, 1.0],
+        },
+        // Bottom face (red)
+        Vertex {
+            position: [-0.5, 0.5, -0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, 0.5, 0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [-0.5, 0.5, -0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 1.0, 0.0),
-            uv: glam::Vec2::new(1.0, 1.0),
-        },
-        // nose face (blue)
-        Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [0.5, 0.5, -0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [1.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [0.0, 1.0, 0.0],
+            uv: [1.0, 1.0],
+        },
+        // Nose face (blue)
+        Vertex {
+            position: [-0.5, -0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, 0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [-0.5, -0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, 0.5),
-            normal: glam::Vec3::new(0.0, 0.0, 1.0),
-            uv: glam::Vec2::new(1.0, 1.0),
-        },
-        // tail face (green)
-        Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [0.5, -0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [1.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, 0.5, 0.5],
+            normal: [0.0, 0.0, 1.0],
+            uv: [1.0, 1.0],
+        },
+        // Tail face (green)
+        Vertex {
+            position: [-0.5, -0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(0.0, 1.0),
+            position: [0.5, 0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [1.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(-0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(0.0, 0.0),
+            position: [-0.5, 0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [0.0, 1.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, -0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(1.0, 0.0),
+            position: [-0.5, -0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [0.0, 0.0],
         },
         Vertex {
-            position: glam::Vec3::new(0.5, 0.5, -0.5),
-            normal: glam::Vec3::new(0.0, 0.0, -1.0),
-            uv: glam::Vec2::new(1.0, 1.0),
+            position: [0.5, -0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [1.0, 0.0],
+        },
+        Vertex {
+            position: [0.5, 0.5, -0.5],
+            normal: [0.0, 0.0, -1.0],
+            uv: [1.0, 1.0],
         },
     ];
-
+    
     model.create_mesh_from_array(vertices, Vec::new(), device);
 
     let game_object = scene.spawn();

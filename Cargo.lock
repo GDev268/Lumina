@@ -1922,6 +1922,7 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "ash-window",
+ "bytemuck",
  "cgmath",
  "color-print",
  "glam",
@@ -1996,9 +1997,10 @@ dependencies = [
 name = "lumina_render"
 version = "0.1.0"
 dependencies = [
- "ash",
+ "bytemuck",
  "glam",
  "lumina_core",
+ "wgpu",
 ]
 
 [[package]]
