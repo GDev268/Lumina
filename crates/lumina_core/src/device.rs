@@ -43,9 +43,16 @@ impl Device {
 
         let capabilities = surface.get_capabilities(&adapter);
 
+        let surface_format = capabilities
+            .formats
+            .iter()
+            .copied()
+            .find(|f| f.is_srgb())
+            .unwrap_or(capabilities.formats[0]);
+
         let surface_configuration = wgpu::SurfaceConfiguration{
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: capabilities.formats[0],
+            format: surface_format,
             width: window.get_size().width,
             height: window.get_size().height,
             present_mode: wgpu::PresentMode::Mailbox,
@@ -53,6 +60,7 @@ impl Device {
             view_formats: vec![]
         };
 
+        
         surface.configure(&_device, &surface_configuration);
 
         Self{
@@ -69,7 +77,15 @@ impl Device {
     }
 
     pub fn get_surface_format(&self) -> wgpu::TextureFormat {
-        return self.surface_configuration.format;
+        let capabilities = self.surface.get_capabilities(&self.adapter);
+
+        return capabilities
+        .formats
+        .iter()
+        .copied()
+        .find(|f| f.is_srgb())
+        .unwrap_or(capabilities.formats[0]);
+;
     }
     
     pub fn get_surface(&self) -> &wgpu::Surface {

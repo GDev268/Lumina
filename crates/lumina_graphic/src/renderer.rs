@@ -1,4 +1,4 @@
-/*use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, iter};
 
 use lumina_core::{device::Device, window::Window, Vertex};
 
@@ -20,7 +20,7 @@ use super::{
 use std::fmt::Debug;
 
 use crate::{
-    pipeline::{Pipeline, PipelineConfiguration},
+    pipeline::{Pipeline, PipelineConfiguration, self},
     shader::Shader,
 };
 
@@ -52,91 +52,49 @@ impl Renderer {
         }
     }
 
-    pub fn render_object(&self, shader: &Shader, mesh: &Mesh) {
-        let vertices: Vec<Vertex> = vec![
-            Vertex {
-                position: [-0.5, -0.5, 0.0],
-                normal: [0.0, 0.0, 1.0],  // Assuming a normal pointing out of the 2D plane
-                uv: [0.0, 0.0],
-            },
-            Vertex {
-                position: [0.5, 0.5, 0.0],
-                normal: [0.0, 0.0, 1.0],
-                uv: [1.0, 1.0],
-            },
-            Vertex {
-                position: [-0.5, 0.5, 0.0],
-                normal: [0.0, 0.0, 1.0],
-                uv: [0.0, 1.0],
-            },
-        ];
-
-        
-        let pipe_config = &mut PipelineConfiguration::default();
-
-        pipe_config.pipeline_layout = Some(self.device.borrow().device().create_pipeline_layout(
-            &wgpu::PipelineLayoutDescriptor {
-                label: Some("Pipeline Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            },
-        ));
-
-        /*let pipeline = Pipeline::new(&self.device.borrow(), shader, &pipe_config, "0");
-
-        //NOTE: CREATE DEPTH_TEXTURE FIELD THAT HAS AN TEXTURE
-
-        let output = self
-            .device
-            .borrow()
-            .get_surface()
-            .get_current_texture()
-            .unwrap();
-
+    pub fn render_object(&self, shader: &Shader, mesh: &Mesh, pipeline:&Pipeline) {
+        let output = self.device.borrow().get_surface().get_current_texture().expect("Faield to get the surface");
         let view = output
             .texture
-            .create_view(&TextureViewDescriptor::default());
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let depth_view = self
-            .depth_texture
-            .create_view(&TextureViewDescriptor::default());
+        let mut encoder = self
+            .device.borrow().device()
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
-        let mut encoder =
-            self.device
-                .borrow_mut()
-                .device()
-                .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
-                });
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.1,
+                            g: 0.2,
+                            b: 0.3,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
 
-        let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Render Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Clear(Color {
-                        r: 0.2,
-                        g: 0.2,
-                        b: 0.2,
-                        a: 1.0,
-                    }),
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None
-        });
+            render_pass.set_pipeline(&pipeline.graphics_pipeline);
 
-        render_pass.set_pipeline(&pipeline.graphics_pipeline.as_ref().unwrap());
-        render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-        render_pass.draw(0..vertices.len() as u32, 0..1);
+            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer.as_ref().unwrap().slice(..), wgpu::IndexFormat::Uint32);
 
-        drop(render_pass);
-        self.device
-            .borrow_mut()
-            .queue
-            .submit(std::iter::once(encoder.finish()));
-        output.present();*/
+            render_pass.draw_indexed(0..9, 0, 0..1);
+        }
+
+        self.device.borrow().queue.submit(iter::once(encoder.finish()));
+        output.present();
     }
 
     pub fn update(&mut self, window: &Window) {
@@ -166,4 +124,3 @@ impl Renderer {
         }
     }
 }
-*/
