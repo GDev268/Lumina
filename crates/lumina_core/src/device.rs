@@ -85,7 +85,7 @@ impl Device {
         .copied()
         .find(|f| f.is_srgb())
         .unwrap_or(capabilities.formats[0]);
-;
+
     }
     
     pub fn get_surface(&self) -> &wgpu::Surface {

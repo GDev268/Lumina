@@ -212,10 +212,17 @@ impl Parser{
 
         buf_reader.read_to_string(&mut contents).unwrap();
 
-        let vector:Vec<String> = contents.split("\n").map(|line| line.replace(";", "")).collect();
-        
+        let vector: Vec<&str> = contents.split(|c| c == ';' || c == '\n').collect();
+
+        let vert_start = vector.iter().position(|s| *s == "#Vertex").unwrap_or(0);
+
+        let vert_end = vector.iter().position(|s| s.contains("fn vs_main")).unwrap_or(0);
+    
+        let vert_contents = vector[vert_start..vert_end].to_vec();
+
+
         for line in vector{
-            if line.contains("void main"){
+            if line.contains("fn"){
                 break;
             }
             if !line.trim().is_empty(){

@@ -90,7 +90,7 @@ impl Renderer {
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_index_buffer(mesh.index_buffer.as_ref().unwrap().slice(..), wgpu::IndexFormat::Uint32);
 
-            render_pass.draw_indexed(0..9, 0, 0..1);
+            render_pass.draw_indexed(0..9 , 0, 0..1);
         }
 
         self.device.borrow().queue.submit(iter::once(encoder.finish()));
