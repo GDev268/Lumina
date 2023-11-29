@@ -31,14 +31,58 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn new(device: &Device, shader_file_path: &str) /*-> Self*/ {
+    pub fn new(/*device: &Device,*/ shader_file_path: &str) /*-> Self*/ {
         let mut shader_code = Shader::read_file(shader_file_path);
 
         let shader_lines:Vec<&str> = shader_code.lines().collect();
 
-        let result:Vec<&str> = shader_lines.into_iter().filter(|line| *line != "#Vertex" && *line != "#Fragment").collect();
+        let mut result:Vec<&str> = shader_lines.into_iter().collect();
+
+        let mut cur_stage = "";
+        for mut line in result.iter_mut() {
+
+            match *line{
+                "#Vertex" => {
+                    cur_stage = "vert";
+                    *line = "";
+                },
+                "#Fragment" => {
+                    cur_stage = "frag";
+                    *line = "";
+                },
+                "#Compute" => {
+                    cur_stage = "comp";
+                    *line = "";
+                },
+                "@Constant" => {
+                    *line = "";
+                }
+                "@Uniform" => {
+                    *line = "";
+                }
+                _ => {}
+            }
+            if line.contains("#Vertex") {
+                cur_stage = "vert";
+                *line = "";
+            } else if line.contains("#Fragment") {
+                cur_stage = "frag";
+                *line = "";
+            }
+
+           
+            if *line == "#end" && cur_stage == "vert" {
+                *line = "@vertex";
+            }
+            else if *line == "#end" && cur_stage == "frag" {
+                *line = "@fragment";
+            }
+        }
 
         shader_code = result.join("\n");
+
+        //println!("{:?}",shader_code);
+        //panic!("");
 
         /*return Self {
             shader_module: device.device().create_shader_module(ShaderModuleDescriptor{label: Some("Vertex Module"), source: wgpu::ShaderSource::Wgsl(Shader::read_file(shader_file_path).into())}),

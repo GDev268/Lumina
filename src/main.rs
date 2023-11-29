@@ -144,7 +144,7 @@ use glsl_parser::parser::Parser;
 use lumina_graphic::shader::Shader;
 
 fn main(){
-    Shader::new("shaders/default.wgsl");
+    Shader::new("shaders/default.lsl");
     let mut parser = Parser::new();
-    parser.parse_shader("shaders/default.wgsl", "");
+    parser.parse_shader("shaders/default.lsl");
 }
