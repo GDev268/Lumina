@@ -1,17 +1,16 @@
-#Vertex
+#Data
 
-@Constant
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec3<f32>,
 };
 
-@group(1) @binding(123)
-var<uniform> val:vec3<f32>
 #end
 
+
+@vertex
 fn vs_main(
-    model: VertexInput,
+    model: VertexInput
 ) -> VertexOutput {
     var out: VertexOutput;
     out.color = model.color;
@@ -19,9 +18,8 @@ fn vs_main(
     return out;
 }
 
-#Fragment
+#Data
 
-@Constant
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec3<f32>,
@@ -29,6 +27,8 @@ struct VertexOutput {
 
 #end
 
+
+@fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, 1.0);
 }

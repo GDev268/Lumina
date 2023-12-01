@@ -28,25 +28,61 @@ impl Parser {
     pub fn new() -> Self {
         let mut types: HashMap<String, usize> = HashMap::new();
 
-        types.insert(String::from("int"), std::mem::size_of::<i32>());
-        types.insert(String::from("uint"), std::mem::size_of::<u32>());
-        types.insert(String::from("float"), std::mem::size_of::<f32>());
+        types.insert(String::from("i32"), std::mem::size_of::<i32>());
+        types.insert(String::from("u32"), std::mem::size_of::<u32>());
+        types.insert(String::from("f32"), std::mem::size_of::<f32>());
         types.insert(String::from("bool"), std::mem::size_of::<bool>());
-        types.insert(String::from("bvec2"), std::mem::size_of::<glam::BVec2>());
-        types.insert(String::from("bvec3"), std::mem::size_of::<glam::BVec3>());
-        types.insert(String::from("bvec4"), std::mem::size_of::<glam::BVec4>());
-        types.insert(String::from("ivec2"), std::mem::size_of::<glam::IVec2>());
-        types.insert(String::from("ivec3"), std::mem::size_of::<glam::IVec3>());
-        types.insert(String::from("ivec4"), std::mem::size_of::<glam::IVec4>());
-        types.insert(String::from("uvec2"), std::mem::size_of::<glam::UVec2>());
-        types.insert(String::from("uvec3"), std::mem::size_of::<glam::UVec3>());
-        types.insert(String::from("uvec4"), std::mem::size_of::<glam::UVec4>());
-        types.insert(String::from("vec2"), std::mem::size_of::<glam::Vec2>());
-        types.insert(String::from("vec3"), std::mem::size_of::<glam::Vec3>());
-        types.insert(String::from("vec4"), std::mem::size_of::<glam::Vec4>());
-        types.insert(String::from("mat2"), std::mem::size_of::<glam::Mat2>());
-        types.insert(String::from("mat3"), std::mem::size_of::<glam::Mat3>());
-        types.insert(String::from("mat4"), std::mem::size_of::<glam::Mat4>());
+        types.insert(
+            String::from("vec2<bool>"),
+            std::mem::size_of::<glam::BVec2>(),
+        );
+        types.insert(
+            String::from("vec3<bool>"),
+            std::mem::size_of::<glam::BVec3>(),
+        );
+        types.insert(
+            String::from("vec4<bool>"),
+            std::mem::size_of::<glam::BVec4>(),
+        );
+        types.insert(
+            String::from("vec2<i32>"),
+            std::mem::size_of::<glam::IVec2>(),
+        );
+        types.insert(
+            String::from("vec3<i32>"),
+            std::mem::size_of::<glam::IVec3>(),
+        );
+        types.insert(
+            String::from("vec4<i32>"),
+            std::mem::size_of::<glam::IVec4>(),
+        );
+        types.insert(
+            String::from("vec2<u32>"),
+            std::mem::size_of::<glam::UVec2>(),
+        );
+        types.insert(
+            String::from("vec3<u32>"),
+            std::mem::size_of::<glam::UVec3>(),
+        );
+        types.insert(
+            String::from("vec4<u32>"),
+            std::mem::size_of::<glam::UVec4>(),
+        );
+        types.insert(String::from("vec2<f32>"), std::mem::size_of::<glam::Vec2>());
+        types.insert(String::from("vec3<f32>"), std::mem::size_of::<glam::Vec3>());
+        types.insert(String::from("vec4<f32>"), std::mem::size_of::<glam::Vec4>());
+        types.insert(
+            String::from("mat2x2<f32>"),
+            std::mem::size_of::<glam::Mat2>(),
+        );
+        types.insert(
+            String::from("mat3x3<f32>"),
+            std::mem::size_of::<glam::Mat3>(),
+        );
+        types.insert(
+            String::from("mat4x4<f32>"),
+            std::mem::size_of::<glam::Mat4>(),
+        );
         types.insert(String::from("sampler1D"), 0);
         types.insert(String::from("sampler2D"), 0);
         types.insert(String::from("sampler3D"), 0);
@@ -200,6 +236,52 @@ impl Parser {
         return (0, 0);
     }
 
+    fn parse_shader_text(vector: &Vec<&str>){
+        let mut vector = vector.clone();
+
+        let mut data_contents: Vec<&str> = Vec::new();
+
+        while vector.contains(&"#Data") {
+            let vert_start = vector.iter().position(|s| *s == "#Data").unwrap_or(0);
+
+            let vert_end = vector
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| s.contains("#end"))
+                .min_by_key(|(index, _)| (*index as isize - vert_start as isize).abs())
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+
+            data_contents.extend_from_slice(&vector[vert_start + 1..vert_end]);
+            vector.remove(vert_start);
+        }
+
+
+        println!("{:?}",data_contents);
+
+        let vs_start = vector
+            .iter()
+            .position(|s| s.contains("fn vs_main"))
+            .unwrap_or(0);
+
+        let vs_end = vector
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.contains("{"))
+            .min_by_key(|(index, _)| (*index as isize - vs_start as isize).abs())
+            .map(|(index, _)| index)
+            .unwrap_or(0);
+
+        let vs_main: String = vector[vs_start..vs_end + 1].concat();
+
+        let variables: String = vs_main[vs_main.chars().position(|c| c == '(').unwrap() + 1
+            ..vs_main.chars().position(|c| c == ')').unwrap()]
+            .replace(" ", "");
+
+        let ads: Vec<&str> = variables.split(",").collect();
+
+    }
+
     /**
      * Converter os ficheiros shader "Vertex" e "Fragment" a partir do caminho fornecido
      */
@@ -216,11 +298,42 @@ impl Parser {
 
         let vector: Vec<&str> = contents.split(|c| c == ';' || c == '\n').collect();
 
+        Parser::parse_shader_text(&vector);
+
         let vert_start = vector.iter().position(|s| *s == "#Vertex").unwrap_or(0);
 
-        let vert_end = vector.iter().position(|s| s.contains("#end")).unwrap_or(0);
+        let vert_end = vector
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.contains("#end"))
+            .min_by_key(|(index, _)| (*index as isize - vert_start as isize).abs())
+            .map(|(index, _)| index)
+            .unwrap_or(0);
 
-        let vert_contents = vector[vert_start..vert_end].to_vec();
+        let vs_start = vector
+            .iter()
+            .position(|s| s.contains("fn vs_main"))
+            .unwrap_or(0);
+
+        let vs_end = vector
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.contains("{"))
+            .min_by_key(|(index, _)| (*index as isize - vs_start as isize).abs())
+            .map(|(index, _)| index)
+            .unwrap_or(0);
+
+        let mut vert_contents: Vec<&str> = vector[vert_start..vert_end].to_vec();
+
+        let vs_main: String = vector[vs_start..vs_end + 1].concat();
+
+        let variables: String = vs_main[vs_main.chars().position(|c| c == '(').unwrap() + 1
+            ..vs_main.chars().position(|c| c == ')').unwrap()]
+            .replace(" ", "");
+
+        let ads: Vec<&str> = variables.split(",").collect();
+
+        println!("{:?}", ads);
 
         let frag_start = vector.iter().position(|s| *s == "#Fragment").unwrap_or(0);
 
@@ -232,7 +345,7 @@ impl Parser {
             .map(|(index, _)| index)
             .unwrap_or(0);
 
-        let frag_contents = vector[frag_start..frag_end].to_vec();
+        //let frag_contents = vector[frag_start..frag_end].to_vec();
 
         //VERT SHADER
 
@@ -314,8 +427,19 @@ impl Parser {
                         let words: Vec<&str> =
                             vert_contents[index + 1].split_whitespace().collect();
 
-                        let var:Vec<&str> = words[1].split(":").collect();
-                        println!("{:?}", var);
+                        let var: Vec<&str> = words[1].split(":").collect();
+
+                        self.wgsl_uniforms.insert(
+                            var[0].to_string(),
+                            vec![(var[0].to_string(), var[1].to_string())],
+                        );
+                    }
+
+                    if line.contains("vs_main") {
+                        println!("A: {:?}", line);
+                        let variables: &str = &line[line.chars().position(|c| c == '(').unwrap()
+                            ..line.chars().position(|c| c == ')').unwrap()];
+                        println!("B: {:?}", variables);
                     }
 
                     /*
