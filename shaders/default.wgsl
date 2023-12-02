@@ -5,6 +5,9 @@ struct VertexInput {
     @location(1) color: vec3<f32>,
 };
 
+@group(1) @binding(1) @name(Adas)
+let in:vec2<bool>
+
 #end
 
 
