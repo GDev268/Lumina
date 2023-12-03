@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 #Lumina
 lumina_core = {path="../lumina_core",version = "0.1.0"}
+lumina_data = {path="../lumina_data",version = "0.1.0"}
 lumina_render = {path="../lumina_render",version = "0.1.0"}
 lumina_geometry = {path="../lumina_geometry",version = "0.1.0"}
 lumina_object = {path="../lumina_object",version = "0.1.0"}
@@ -19,4 +20,5 @@ glsl_parser = { path = "../glsl_parser", version = "0.1.0"}
 ash = {version="0.37.3",features = ["linked", "debug"]}
 glam = "0.24.1"
 wgpu = "0.18"
+bytemuck = {version = "1.13", features = [ "derive" ]}
 

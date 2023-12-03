@@ -6,7 +6,7 @@ struct VertexInput {
 };
 
 @group(1) @binding(1) @name(Adas)
-let in:vec2<bool>
+let in:VertexInput
 
 #end
 

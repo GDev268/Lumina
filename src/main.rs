@@ -142,9 +142,26 @@ async fn run() {
 
 use glsl_parser::parser::Parser;
 use lumina_graphic::shader::Shader;
+use lumina_core::{device::Device,window::Window};
+use std::{cell::RefCell, rc::Rc};
+use winit::{
+    event::*,
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
 
-fn main(){
-    Shader::new("shaders/default.wgsl");
+
+fn main() {
+    pollster::block_on(run());
+}
+
+async fn run() {
+    let event_loop = EventLoop::new();
+    let mut window = Window::new(&event_loop, "Lumina Test", 860, 640);
+    let device: Rc<RefCell<Device>> = Rc::new(RefCell::new(
+        Device::new(&window, wgpu::Backends::PRIMARY).await,
+    ));
+    Shader::new(&device.borrow(),"shaders/default.wgsl");
     let mut parser = Parser::new();
     parser.parse_shader("shaders/default.wgsl");
 }
