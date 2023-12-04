@@ -55,7 +55,7 @@ impl Device {
             format: surface_format,
             width: window.get_size().width,
             height: window.get_size().height,
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: capabilities.alpha_modes[0],
             view_formats: vec![]
         };

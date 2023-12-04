@@ -1,13 +1,28 @@
 use super::game_object::Component;
 
+struct PushValues {
+    model_matrix: [[f32; 4]; 4],
+    normal_matrix: [[f32; 3]; 3],
+}
+
+impl Default for PushValues {
+    fn default() -> Self {
+        Self {
+            model_matrix: [[0.0; 4]; 4],
+            normal_matrix: [[0.0; 3]; 3],
+        }
+    }
+}
+
 pub struct Transform {
     pub translation: glam::Vec3,
     pub scale: glam::Vec3,
-    pub rotation: glam::Vec3, // Rotation angles for X, Y, and Z axes
+    pub rotation: glam::Vec3,
+    values: PushValues,
 }
 
 impl Transform {
-    pub fn get_mat4(&self) -> glam::Mat4 {
+    pub fn update_mat4(&mut self) {
         let c1_x = self.rotation.x.cos();
         let s1_x = self.rotation.x.sin();
         let c2_y = self.rotation.y.cos();
@@ -15,7 +30,7 @@ impl Transform {
         let c3_z = self.rotation.z.cos(); // Use the absolute value of Z-axis rotation
         let s3_z = self.rotation.z.sin(); // Use the absolute value of Z-axis rotation
 
-        return glam::Mat4::from_cols(
+        self.values.model_matrix = glam::Mat4::from_cols(
             glam::Vec4::new(
                 self.scale.x * (c2_y * c3_z),
                 self.scale.x * (s1_x * s2_y * c3_z - c1_x * s3_z),
@@ -40,10 +55,10 @@ impl Transform {
                 self.translation.z,
                 1.0,
             ),
-        );
+        ).to_cols_array_2d();
     }
 
-    pub fn get_normal_matrix(&self) -> glam::Mat4 {
+    pub fn update_normal_matrix(&mut self){
         let c3: f32 = self.rotation.z.cos();
         let s3: f32 = self.rotation.z.sin();
         let c2: f32 = self.rotation.x.cos();
@@ -52,35 +67,35 @@ impl Transform {
         let s1: f32 = self.rotation.y.sin();
         let inverse_scale: glam::Vec3 = 1.0 / self.scale;
 
-        return glam::Mat4::from_cols(
-            glam::Vec4::new(
+        self.values.normal_matrix = glam::Mat3::from_cols(
+            glam::Vec3::new(
                 inverse_scale.x * (c1 * c3 + s1 * s2 * s3),
                 inverse_scale.x * (c2 * s3),
                 inverse_scale.x * (c1 * s2 * s3 - c3 * s1),
-                1.0,
             ),
-            glam::Vec4::new(
+            glam::Vec3::new(
                 inverse_scale.y * (c3 * s1 * s2 - c1 * s3),
                 inverse_scale.y * (c2 * c3),
                 inverse_scale.y * (c1 * c3 * s2 + s1 * s3),
-                1.0,
             ),
-            glam::Vec4::new(
+            glam::Vec3::new(
                 inverse_scale.z * (c2 * s1),
                 inverse_scale.z * (-s2),
                 inverse_scale.z * (c1 * c2),
-                1.0,
             ),
-            glam::Vec4::new(1.0, 1.0, 1.0, 1.0),
-        );
+        ).to_cols_array_2d();
     }
 
-    pub fn default() -> Self {
-        return Self {
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self {
             translation: glam::Vec3::default(),
             scale: glam::Vec3::default(),
             rotation: glam::Vec3::default(),
-        };
+            values: PushValues::default(),
+        }
     }
 }
 

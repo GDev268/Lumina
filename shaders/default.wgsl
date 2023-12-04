@@ -1,15 +1,7 @@
-#Data
-
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec3<f32>,
 };
-
-@group(1) @binding(1) @name(Adas)
-let in:VertexInput
-
-#end
-
 
 @vertex
 fn vs_main(
@@ -21,14 +13,10 @@ fn vs_main(
     return out;
 }
 
-#Data
-
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec3<f32>,
 };
-
-#end
 
 
 @fragment

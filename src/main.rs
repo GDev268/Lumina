@@ -26,7 +26,7 @@ use lumina_object::{game_object::GameObject, transform::Transform};
 use lumina_render::{camera::Camera, mesh::Mesh};
 use lumina_scene::query::Query;*/
 
-/*use std::{cell::RefCell, iter, rc::Rc};
+use std::{cell::RefCell, iter, rc::Rc};
 
 use cgmath::prelude::*;
 use lumina_core::{device::Device, window::Window, Vertex};
@@ -91,7 +91,7 @@ async fn run() {
                 push_constant_ranges: &[],
             });
 
-    let mut pipeline_config = PipelOineConfiguration::default();
+    let mut pipeline_config = PipelineConfiguration::default();
     pipeline_config.pipeline_layout = Some(render_pipeline_layout);
 
     let render_pipeline = Pipeline::new(&device.borrow(), &shader, &pipeline_config, "0");
@@ -138,30 +138,4 @@ async fn run() {
             _ => {}
         }
     });
-}*/
-
-use glsl_parser::parser::Parser;
-use lumina_graphic::shader::Shader;
-use lumina_core::{device::Device,window::Window};
-use std::{cell::RefCell, rc::Rc};
-use winit::{
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-};
-
-
-fn main() {
-    pollster::block_on(run());
-}
-
-async fn run() {
-    let event_loop = EventLoop::new();
-    let mut window = Window::new(&event_loop, "Lumina Test", 860, 640);
-    let device: Rc<RefCell<Device>> = Rc::new(RefCell::new(
-        Device::new(&window, wgpu::Backends::PRIMARY).await,
-    ));
-    Shader::new(&device.borrow(),"shaders/default.wgsl");
-    let mut parser = Parser::new();
-    parser.parse_shader("shaders/default.wgsl");
 }

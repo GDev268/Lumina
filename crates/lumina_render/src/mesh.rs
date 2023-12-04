@@ -11,6 +11,7 @@ pub struct Mesh {
     index_count: u32,
 }
 
+
 impl Mesh {
     pub fn new(device: &Device, vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffer(vertices, device);

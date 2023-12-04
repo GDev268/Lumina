@@ -18,7 +18,6 @@ dependencies = [
  "glsl_parser",
  "lazy_static",
  "lumina_core",
- "lumina_data",
  "lumina_debug",
  "lumina_geometry",
  "lumina_graphic",
@@ -1963,13 +1962,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lumina_data"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
-]
-
-[[package]]
 name = "lumina_debug"
 version = "0.1.0"
 dependencies = [
@@ -1997,7 +1989,6 @@ dependencies = [
  "glam",
  "glsl_parser",
  "lumina_core",
- "lumina_data",
  "lumina_geometry",
  "lumina_object",
  "lumina_render",
