@@ -1,6 +1,11 @@
+use wgpu::VertexAttribute;
+
 use super::game_object::Component;
 
-struct PushValues {
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[allow(dead_code)]
+pub struct PushValues {
     model_matrix: [[f32; 4]; 4],
     normal_matrix: [[f32; 3]; 3],
 }
@@ -55,10 +60,11 @@ impl Transform {
                 self.translation.z,
                 1.0,
             ),
-        ).to_cols_array_2d();
+        )
+        .to_cols_array_2d();
     }
 
-    pub fn update_normal_matrix(&mut self){
+    pub fn update_normal_matrix(&mut self) {
         let c3: f32 = self.rotation.z.cos();
         let s3: f32 = self.rotation.z.sin();
         let c2: f32 = self.rotation.x.cos();
@@ -83,9 +89,56 @@ impl Transform {
                 inverse_scale.z * (-s2),
                 inverse_scale.z * (c1 * c2),
             ),
-        ).to_cols_array_2d();
+        )
+        .to_cols_array_2d();
     }
 
+    pub fn to_constant(&self) -> (PushValues, wgpu::VertexBufferLayout) {
+        return (
+            self.values,
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<PushValues>() as wgpu::BufferAddress,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: &[
+                    VertexAttribute {
+                        offset: 0,
+                        shader_location: 5,
+                        format: wgpu::VertexFormat::Float32x4,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                        shader_location: 6,
+                        format: wgpu::VertexFormat::Float32x4,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                        shader_location: 7,
+                        format: wgpu::VertexFormat::Float32x4,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
+                        shader_location: 8,
+                        format: wgpu::VertexFormat::Float32x4,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 16]>() as wgpu::BufferAddress,
+                        shader_location: 9,
+                        format: wgpu::VertexFormat::Float32x3,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 19]>() as wgpu::BufferAddress,
+                        shader_location: 10,
+                        format: wgpu::VertexFormat::Float32x3,
+                    },
+                    VertexAttribute {
+                        offset: std::mem::size_of::<[f32; 22]>() as wgpu::BufferAddress,
+                        shader_location: 11,
+                        format: wgpu::VertexFormat::Float32x3,
+                    },
+                ],
+            },
+        );
+    }
 }
 
 impl Default for Transform {

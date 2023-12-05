@@ -1,4 +1,3 @@
-use ash::vk;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,

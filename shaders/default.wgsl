@@ -3,6 +3,19 @@ struct VertexInput {
     @location(1) color: vec3<f32>,
 };
 
+struct Light {
+    position: vec3<f32>,
+    color: vec3<f32>,
+}
+
+struct LightsBuffer {
+    lights: array<Light,5>
+};
+
+
+@group(2) @binding(0)
+var<uniform> light: LightsBuffer;
+
 @vertex
 fn vs_main(
     model: VertexInput

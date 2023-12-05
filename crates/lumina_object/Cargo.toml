@@ -10,5 +10,6 @@ edition = "2021"
 lumina_core = {path="../lumina_core",version = "0.1.0"}
 
 #Other
-ash = {version="0.37.3",features = ["linked", "debug"]}
 glam = "0.24.1"
+bytemuck = {version = "1.13", features = [ "derive" ]}
+wgpu = "0.18"

@@ -2007,9 +2007,10 @@ dependencies = [
 name = "lumina_object"
 version = "0.1.0"
 dependencies = [
- "ash",
+ "bytemuck",
  "glam",
  "lumina_core",
+ "wgpu",
 ]
 
 [[package]]
