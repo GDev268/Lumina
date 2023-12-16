@@ -124,6 +124,10 @@ impl Image {
         return self._image_view;
     }
 
+    pub fn get_format(&self) -> vk::Format {
+        return self.format;
+    }
+
     pub fn descriptor_info(&self) -> vk::DescriptorImageInfo {
         return vk::DescriptorImageInfo {
             sampler: self.sampler,

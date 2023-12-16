@@ -4,5 +4,8 @@
         "./Cargo.toml"
     ],
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "rust-analyzer.checkOnSave": true
+    "rust-analyzer.checkOnSave": true,
+    "files.associations": {
+        "stdexcept": "cpp"
+    }
 }

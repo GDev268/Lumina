@@ -12,7 +12,7 @@ use ash::vk::{self, TRUE};
 use glsl_parser::parser::Parser;
 use rand::Rng;
 
-use lumina_core::{device::Device, fps_manager::FPS, swapchain::Swapchain, window::Window};
+use lumina_core::{device::Device, fps_manager::FPS, swapchain::Swapchain, window::Window, texture::Texture};
 
 use lumina_data::{
     buffer::Buffer,
@@ -123,10 +123,17 @@ struct Light {
 
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
-struct TestUBO {
+struct MaterialInfo {
     material: Material,
     view_pos: [f32; 3],
 }
+
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy)]
+struct LightInfo {
+    light: Light,
+}
+
 
 fn print_type_id<T: std::any::Any>(value: &T) {
     let type_id = TypeId::of::<T>();
@@ -143,8 +150,6 @@ fn main() {
 
     let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
     let device = Rc::new(Device::new(&window));
-
-    let _command_buffers: Vec<vk::CommandBuffer> = Vec::new();
 
     let mut query = Query::new();
 
@@ -181,24 +186,6 @@ fn main() {
         3 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-    
-    /*let mut descriptor_manager =
-        DescriptorManager::new(Rc::clone(&device), pool_config.build(&device));
-    descriptor_manager.add_new_descriptor("GlobalUBO".to_string(), 0, true);
-    descriptor_manager.add_new_descriptor("TestUBO".to_string(), 1, true);
-
-    descriptor_manager.build_descriptor::<GlobalUBO>("GlobalUBO");
-    descriptor_manager.build_descriptor::<TestUBO>("TestUBO");
-
-    descriptor_manager.preload_we();
-
-    renderer.create_pipeline_layout(
-        &device,
-        descriptor_manager
-            .get_descriptor_layout()
-            .get_descriptor_set_layout(),
-    );
-    renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);*/
 
     let mut camera = Camera::new();
 
@@ -218,13 +205,10 @@ fn main() {
     let mut global_timer = Instant::now();
     let mut start_tick = Instant::now();
 
-    let mut light_pos = glam::vec3(1.0, 10.0, 10.0);
-
-    let mut parser = Parser::new();
-    parser.parse_shader("shaders/default_shader.vert", "shaders/default_shader.frag");
-
     fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
     let delta_time = 1.0 / fps._fps as f32;
+
+    let light_pos = glam::vec3(3.0, -2.0, 100.0);
 
     'running: loop {
         start_tick = Instant::now();
@@ -317,10 +301,10 @@ fn main() {
                 light_direction: (glam::vec3(1.0, 1.0, -1.0)).to_array(),
             };
 
-            let test: TestUBO = TestUBO {
+            let material: MaterialInfo = MaterialInfo {
                 material: Material {
                     ambient: [0.1, 0.1, 0.1],
-                    diffuse: [0.1, 0.1, 0.1],
+                    diffuse: [0.0, 0.0, 0.0],
                     specular: [0.5, 0.5, 0.5],
                     shininess: 1.0,
                     _padding1: [0.0],
@@ -329,16 +313,44 @@ fn main() {
                 view_pos: camera.get_position().to_array(),
             };
 
+            let light: LightInfo = LightInfo {
+                light: Light {
+                    position: [3.0, -2.0, 3.0],
+                    ambient: [0.1, 0.1, 0.1],
+                    diffuse: [0.0, 0.0, 0.0],
+                    specular: [0.25, 0.25, 0.25],
+                    _padding1: [0.0],
+                    _padding2: [0.0],
+                    _padding3: [0.0]
+                },
+            };
+
+            let texture = Texture::new(String::default(),Rc::clone(&device));
+
             shader.borrow_mut().descriptor_manager.change_buffer_value(
                 "GlobalUBO".to_string(),
                 frame_index as u32,
                 &[ubo],
             );
             shader.borrow_mut().descriptor_manager.change_buffer_value(
-                "TestUBO".to_string(),
+                "MaterialInfo".to_string(),
                 frame_index as u32,
-                &[test],
+                &[material],
             );
+            shader.borrow_mut().descriptor_manager.change_buffer_value(
+                "LightInfo".to_string(),
+                frame_index as u32,
+                &[light],
+            );
+            shader.borrow_mut().descriptor_manager.change_image_value(
+                "sampler2D".to_string(),
+                frame_index as u32,
+                texture,
+            );
+
+            if let Some(transform) = query.query_mut::<Transform>(&cube) {
+                transform.rotation += glam::vec3(100.0 * delta_time, 100.0 * delta_time, 100.0 * delta_time);
+            }
 
             renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
 

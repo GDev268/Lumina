@@ -6,7 +6,12 @@ use std::{
 };
 
 use ash::vk;
-use lumina_core::{device::Device, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT};
+use lumina_core::{
+    device::{self, Device},
+    image::Image,
+    swapchain::MAX_FRAMES_IN_FLIGHT,
+    texture::Texture,
+};
 
 use crate::{
     buffer::Buffer,
@@ -77,8 +82,6 @@ impl DescriptorManager {
                 },
             );
 
-            println!("BEFORE: {:?}", label);
-
             if self.descriptor_positions.is_empty()
                 || binding as usize >= self.descriptor_positions.len() - 1
             {
@@ -134,6 +137,7 @@ impl DescriptorManager {
                     64,
                     64,
                 );
+
 
                 image.new_image_view(&self.device, vk::ImageAspectFlags::COLOR);
 
@@ -241,6 +245,203 @@ impl DescriptorManager {
         {
             cur_struct.buffers[cur_frame as usize].write_to_buffer(value, None, None);
             cur_struct.buffers[cur_frame as usize].flush(None, None)
+        }
+    }
+
+    pub fn change_image_value(&mut self, label: String, cur_frame: u32, value: Texture) {
+        let cur_struct = self
+            .descriptor_table
+            .get_mut(&label)
+            .expect("Failed to get the value!");
+
+        let buffer_size =
+            value.get_texture_info().0 * value.get_texture_info().1 * value.get_texture_info().2;
+
+        let mut staging_buffer = Buffer::new(
+            Rc::clone(&self.device),
+            buffer_size as u64,
+            1,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+        );
+
+        staging_buffer.map(None, None);
+        staging_buffer.write_to_buffer(&value.get_texture_data(), None, None);
+        staging_buffer.flush(None, None);
+
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        );
+        
+
+        let command_buffer: vk::CommandBuffer;
+
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            command_pool: self.device.get_command_pool(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_buffer_count: 1,
+        };
+
+        command_buffer = unsafe {
+            self.device
+                .device()
+                .allocate_command_buffers(&alloc_info)
+                .unwrap()[0]
+        };
+
+
+        let begin_info = vk::CommandBufferBeginInfo{
+            s_type:vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+            ..Default::default()
+        };
+
+        unsafe{
+            self.device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin command buffer!");
+        }
+
+
+        let region = vk::BufferImageCopy {
+            buffer_offset: 0,
+            buffer_row_length: 0,
+            buffer_image_height: 0,
+            image_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+            image_extent: vk::Extent3D {
+                width: value.get_texture_info().0,
+                height: value.get_texture_info().1,
+                depth: 1,
+            },
+        };
+
+        unsafe {
+            self.device.device().cmd_copy_buffer_to_image(
+                command_buffer,
+                staging_buffer.get_buffer(),
+                cur_struct.images[cur_frame as usize].get_image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[region],
+            );
+        }
+
+        
+        unsafe{
+            self.device.device().end_command_buffer(command_buffer).expect("Failed to end command buffer!");
+            let submit_info = vk::SubmitInfo{
+                s_type: vk::StructureType::SUBMIT_INFO,
+                command_buffer_count: 1,
+                p_command_buffers: &command_buffer,
+                ..Default::default()
+            };
+            self.device.device().queue_submit(self.device.graphics_queue(), &[submit_info], vk::Fence::null()).expect("Failed to submit data");
+            self.device.device().queue_wait_idle(self.device.graphics_queue()).unwrap();
+            self.device.device().free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
+        }
+        
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::GENERAL,
+        );
+        
+    }
+
+    fn transition_image_layout(
+        device: Rc<Device>,
+        image: vk::Image,
+        format: vk::Format,
+        old_layout: vk::ImageLayout,
+        new_layout: vk::ImageLayout,
+    ) {
+        let mut memory_barrier = vk::ImageMemoryBarrier {
+            s_type: vk::StructureType::IMAGE_MEMORY_BARRIER,
+            p_next: std::ptr::null(),
+            old_layout,
+            new_layout,
+            src_queue_family_index: 0,
+            dst_queue_family_index: 0,
+            image,
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            ..Default::default()
+        };
+
+        let command_buffer: vk::CommandBuffer;
+
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            command_pool: device.get_command_pool(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_buffer_count: 1,
+        };
+
+        command_buffer = unsafe {
+            device
+                .device()
+                .allocate_command_buffers(&alloc_info)
+                .unwrap()[0]
+        };
+
+        let begin_info = vk::CommandBufferBeginInfo{
+            s_type:vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+            ..Default::default()
+        };
+
+        unsafe{
+            device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin command buffer!");
+        }
+
+        let src_stage: vk::PipelineStageFlags = vk::PipelineStageFlags::ALL_COMMANDS;
+        let dst_stage: vk::PipelineStageFlags = vk::PipelineStageFlags::ALL_COMMANDS;
+
+
+        unsafe {
+            device.device().cmd_pipeline_barrier(
+                command_buffer,
+                src_stage,
+                dst_stage,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[memory_barrier],
+            )
+        }
+
+        unsafe{
+            device.device().end_command_buffer(command_buffer).expect("Failed to end command buffer!");
+            let submit_info = vk::SubmitInfo{
+                s_type: vk::StructureType::SUBMIT_INFO,
+                command_buffer_count: 1,
+                p_command_buffers: &command_buffer,
+                ..Default::default()
+            };
+            device.device().queue_submit(device.graphics_queue(), &[submit_info], vk::Fence::null()).expect("Failed to submit data");
+            device.device().queue_wait_idle(device.graphics_queue()).unwrap();
+            device.device().free_command_buffers(device.get_command_pool(), &[command_buffer]);
         }
     }
 

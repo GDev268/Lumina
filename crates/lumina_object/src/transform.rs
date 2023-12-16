@@ -8,12 +8,12 @@ pub struct Transform {
 
 impl Transform {
     pub fn get_mat4(&self) -> glam::Mat4 {
-        let c1_x = self.rotation.x.cos();
-        let s1_x = self.rotation.x.sin();
-        let c2_y = self.rotation.y.cos();
-        let s2_y = self.rotation.y.sin();
-        let c3_z = self.rotation.z.cos(); // Use the absolute value of Z-axis rotation
-        let s3_z = self.rotation.z.sin(); // Use the absolute value of Z-axis rotation
+        let c1_x = self.rotation.x.to_radians().cos();
+        let s1_x = self.rotation.x.to_radians().sin();
+        let c2_y = self.rotation.y.to_radians().cos();
+        let s2_y = self.rotation.y.to_radians().sin();
+        let c3_z = self.rotation.z.to_radians().cos();
+        let s3_z = self.rotation.z.to_radians().sin();
 
         return glam::Mat4::from_cols(
             glam::Vec4::new(

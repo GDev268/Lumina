@@ -26,18 +26,18 @@ unsafe extern "system" fn vulkan_debug_callback(
     
     match message_severity {
         vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => {
-            cprintln!("[Debug][Verbose]{:?}", message)
+            cprintln!("\n[Debug][Verbose]{:?}", message)
         }
         vk::DebugUtilsMessageSeverityFlagsEXT::WARNING => {
-            cprintln!("<yellow>[Debug][Warning]{:?}", message)
+            cprintln!("\n<yellow>[Debug][Warning]{:?}", message)
         }
         vk::DebugUtilsMessageSeverityFlagsEXT::ERROR => {
-            cprintln!("<red>[Debug][Error]{:?}", message)
+            cprintln!("\n<red>[Debug][Error]{:?}", message)
         }
         vk::DebugUtilsMessageSeverityFlagsEXT::INFO => {
-            cprintln!("<green>[Debug][Info]{:?}", message)
+            cprintln!("\n<green>[Debug][Info]{:?}", message)
         }
-        _ => println!("[Debug][n/a]{:?}", message),
+        _ => println!("\n[Debug][n/a]{:?}", message),
     };
     vk::FALSE
 }

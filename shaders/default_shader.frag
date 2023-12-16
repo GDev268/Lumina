@@ -27,33 +27,34 @@ struct Light {
 };
 
 //64
-layout(set = 0,binding = 1) uniform TestUBO {
+layout(set = 0,binding = 1) uniform MaterialInfo {
   Material material;
   vec3 viewPos;
-} object ;
+} object;
 
-layout(set = 0,binding = 2) uniform sampler2D normalMap;
+//64
+layout(set = 0,binding = 2) uniform LightInfo {
+  Light light;
+} object_light;
+
+layout(set = 0,binding = 3) uniform sampler2D normalMap;
 
 void main() {
-
-  outColor = texture(normalMap,FragUV) * vec4(object.material.ambient,1.0);
-}
-
-
-
-  /*vec3 ambient = object.cur_light.ambient * object.material.ambient;
+  vec3 ambient = object_light.light.ambient * texture(normalMap,FragUV).rgb;
 
   //Diffuse
   vec3 normal = normalize(Normal);
-  vec3 lightDirection = normalize(object.cur_light.position - FragPos);
+  vec3 lightDirection = normalize(object_light.light.position - FragPos);
   float diffuseDistance = max(dot(normal,lightDirection),0.0);
-  vec3 diffuse = object.cur_light.diffuse * (diffuseDistance * object.material.diffuse);
+  vec3 diffuse = object_light.light.diffuse * (diffuseDistance * object.material.diffuse);
 
   //Specular
   vec3 viewDirection = normalize(object.viewPos - FragPos);
-  vec3 reflectDirection = reflect(-object.cur_light.position,normal);
+  vec3 reflectDirection = reflect(-object_light.light.position,normal);
   float spec = pow(max(dot(viewDirection,reflectDirection),0.0), object.material.shininess);
-  vec3 specular = object.cur_light.specular * (spec * object.material.specular);
+  vec3 specular = object_light.light.specular * (spec * object.material.specular);
 
   vec3 result = ambient + diffuse + specular;
-  outColor = vec4(result,1.0);*/
+
+  outColor = vec4(result,1.0);
+}

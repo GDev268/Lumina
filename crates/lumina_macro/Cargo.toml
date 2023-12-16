@@ -9,5 +9,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
+lumina_core = { path = "../lumina_core", version = "0.1.0" }
+
 syn = "2.0.41"
 quote = "1.0.12"
