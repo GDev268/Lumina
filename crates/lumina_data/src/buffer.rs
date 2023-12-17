@@ -164,8 +164,8 @@ impl Buffer {
 
 impl Drop for Buffer {
     fn drop(&mut self) {
-        self.unmap();
         unsafe { 
+            self.device.as_ref().unwrap().device().device_wait_idle().unwrap();
             self.device.as_ref().unwrap().device().destroy_buffer(self.buffer, None);
             self.device.as_ref().unwrap().device().free_memory(self.memory, None);
         };

@@ -1,6 +1,19 @@
+enum CameraDirection {
+    NONE,
+    FOWARD,
+    BACKWARD,
+    LEFT,
+    RIGHT,
+    UP,
+    DOWN
+}
+
 pub struct Camera {
     projection_matrix: glam::Mat4,
     view_matrix: glam::Mat4,
+    camera_pos:glam::Vec3,
+    camera_front:glam::Vec3,
+    camera_up:glam::Vec3,
     inverse_view_matrix: glam::Mat4,
 }
 
@@ -9,6 +22,9 @@ impl Camera {
         return Self {
             projection_matrix: glam::Mat4::default(),
             view_matrix: glam::Mat4::default(),
+            camera_pos: glam::Vec3::default(),
+            camera_up: glam::Vec3::default(),
+            camera_front: glam::Vec3::default(),
             inverse_view_matrix: glam::Mat4::default(),
         };
     }
@@ -130,7 +146,7 @@ impl Camera {
     }
 
     pub fn get_view(&self) -> glam::Mat4 {
-        return self.view_matrix;
+        return glam::Mat4::look_at_lh(self.camera_pos, self.camera_pos + self.camera_front, self.camera_up  );
     }
 
     pub fn get_inverse_view(&self) -> glam::Mat4 {

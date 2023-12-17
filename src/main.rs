@@ -156,6 +156,9 @@ fn main() {
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
 
     window._window.set_icon(window_icon);
+
+    sdl_context.mouse().set_relative_mouse_mode(true);
+
    
     let shader = Rc::new(RefCell::new(Shader::new(
         Rc::clone(&device),
@@ -170,13 +173,32 @@ fn main() {
 
     let mut mouse_pool = Mouse::new();
 
-    let mut game_objects: Vec<GameObject> = Vec::new();
+    let mut game_objects:Vec<GameObject> = Vec::new();
 
-    let mut cube = shapes::cube(&mut query, Rc::clone(&device));
+    let cube_positions: [glam::Vec3; 10] = [
+        glam::Vec3::new(0.0, 0.0, 0.0),
+        glam::Vec3::new(2.0, 5.0, -15.0),
+        glam::Vec3::new(-1.5, -2.2, -2.5),
+        glam::Vec3::new(-3.8, -2.0, -12.3),
+        glam::Vec3::new(2.4, -0.4, -3.5),
+        glam::Vec3::new(-1.7, 3.0, -7.5),
+        glam::Vec3::new(1.3, -2.0, -2.5),
+        glam::Vec3::new(1.5, 2.0, -2.5),
+        glam::Vec3::new(1.5, 0.2, -1.5),
+        glam::Vec3::new(-1.3, 1.0, -1.5),
+    ];
 
-    if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation = glam::vec3(0.0, 0.0, 2.5);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+    for i in 0..10 {
+        let cube = shapes::cube(&mut query, Rc::clone(&device));
+            
+        if let Some(transform) = query.query_mut::<Transform>(&cube) {
+            transform.translation = cube_positions[i];
+            transform.scale = glam::vec3(1.0, 1.0, 1.0);
+            let angle = 20.0 * i as f32;
+            transform.rotation = glam::vec3(angle, angle, angle);
+        }
+
+        game_objects.push(cube);
     }
 
     let mut pool_config = PoolConfig::new();
@@ -315,7 +337,7 @@ fn main() {
 
             let light: LightInfo = LightInfo {
                 light: Light {
-                    position: [3.0, -2.0, 3.0],
+                    position: [-0.2, -1.0, -0.3],
                     ambient: [0.1, 0.1, 0.1],
                     diffuse: [0.0, 0.0, 0.0],
                     specular: [0.25, 0.25, 0.25],
@@ -347,10 +369,6 @@ fn main() {
                 frame_index as u32,
                 texture,
             );
-
-            if let Some(transform) = query.query_mut::<Transform>(&cube) {
-                transform.rotation += glam::vec3(100.0 * delta_time, 100.0 * delta_time, 100.0 * delta_time);
-            }
 
             renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
 
