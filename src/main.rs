@@ -3,16 +3,20 @@ use std::{
     cell::RefCell,
     fs::File,
     io::Write,
+    ops::Deref,
     rc::Rc,
     thread,
-    time::{Duration, Instant}, ops::Deref,
+    time::{Duration, Instant},
 };
 
 use ash::vk::{self, TRUE};
+use egui::Key;
 use glsl_parser::parser::Parser;
 use rand::Rng;
 
-use lumina_core::{device::Device, fps_manager::FPS, swapchain::Swapchain, window::Window, texture::Texture};
+use lumina_core::{
+    device::Device, fps_manager::FPS, swapchain::Swapchain, texture::Texture, window::Window,
+};
 
 use lumina_data::{
     buffer::Buffer,
@@ -40,7 +44,6 @@ use lumina_scene::{query::Query, FrameInfo, GlobalUBO};
 use lazy_static::lazy_static;
 
 use sdl2::{event::Event, image::LoadSurface};
-
 
 lazy_static! {
     static ref LOGGER: Logger = Logger::new();
@@ -101,9 +104,9 @@ macro_rules! error {
 #[derive(Debug, Clone, Copy)]
 struct Material {
     ambient: [f32; 3],
-    _padding1: [f32; 1],  // Padding to align 'diffuse' to a 16-byte boundary
+    _padding1: [f32; 1], // Padding to align 'diffuse' to a 16-byte boundary
     diffuse: [f32; 3],
-    _padding2: [f32; 1],  // Padding to align 'specular' to a 16-byte boundary
+    _padding2: [f32; 1], // Padding to align 'specular' to a 16-byte boundary
     specular: [f32; 3],
     shininess: f32,
 }
@@ -134,7 +137,6 @@ struct LightInfo {
     light: Light,
 }
 
-
 fn print_type_id<T: std::any::Any>(value: &T) {
     let type_id = TypeId::of::<T>();
     println!("Type ID: {:?}", type_id);
@@ -148,7 +150,8 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
+    let mut window = Window::new(&sdl_context, "Lumina Dev App", 1920, 1080);
+    window._window.fullscreen_state();
     let device = Rc::new(Device::new(&window));
 
     let mut query = Query::new();
@@ -159,7 +162,6 @@ fn main() {
 
     sdl_context.mouse().set_relative_mouse_mode(true);
 
-   
     let shader = Rc::new(RefCell::new(Shader::new(
         Rc::clone(&device),
         "shaders/default_shader.vert.spv",
@@ -173,7 +175,7 @@ fn main() {
 
     let mut mouse_pool = Mouse::new();
 
-    let mut game_objects:Vec<GameObject> = Vec::new();
+    let mut game_objects: Vec<GameObject> = Vec::new();
 
     let cube_positions: [glam::Vec3; 10] = [
         glam::Vec3::new(0.0, 0.0, 0.0),
@@ -190,7 +192,7 @@ fn main() {
 
     for i in 0..10 {
         let cube = shapes::cube(&mut query, Rc::clone(&device));
-            
+
         if let Some(transform) = query.query_mut::<Transform>(&cube) {
             transform.translation = cube_positions[i];
             transform.scale = glam::vec3(1.0, 1.0, 1.0);
@@ -201,6 +203,7 @@ fn main() {
         game_objects.push(cube);
     }
 
+
     let mut pool_config = PoolConfig::new();
     pool_config.set_max_sets(3 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
     pool_config.add_pool_size(
@@ -208,15 +211,13 @@ fn main() {
         3 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
     );
 
-
-    let mut camera = Camera::new();
+    let mut camera = Camera::new(renderer.get_aspect_ratio(), false);
 
     let mut view = Transform::default();
     view.translation = glam::Vec3::ONE;
     view.rotation = glam::Vec3::ZERO;
 
     let aspect = renderer.get_aspect_ratio();
-    camera.set_perspective_projection(50.0_f32.to_radians(), aspect, 0.1, 100.0);
 
     let mut time: f32 = 0.0;
 
@@ -231,6 +232,16 @@ fn main() {
     let delta_time = 1.0 / fps._fps as f32;
 
     let light_pos = glam::vec3(3.0, -2.0, 100.0);
+
+    renderer.create_pipeline_layout(
+        &device,
+        shader
+            .borrow()
+            .descriptor_manager
+            .get_descriptor_layout()
+            .get_descriptor_set_layout(),
+    );
+    renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
 
     'running: loop {
         start_tick = Instant::now();
@@ -266,45 +277,34 @@ fn main() {
             break 'running;
         }
 
-        if !keyboard_pool.get_key(Keycode::LShift) {
-            if keyboard_pool.get_key(Keycode::Up) {
-                view.translation.z += 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Down) {
-                view.translation.z -= 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Right) {
-                view.translation.x += 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Left) {
-                view.translation.x -= 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Space) {
-                view.translation.y -= 10.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::LCtrl) {
-                view.translation.y += 10.0 * delta_time;
-            }
-        } else {
-            if keyboard_pool.get_key(Keycode::Up) {
-                view.translation.z += 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Down) {
-                view.translation.z -= 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Right) {
-                view.translation.x += 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Left) {
-                view.translation.x -= 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::Space) {
-                view.translation.y -= 50.0 * delta_time;
-            }
-            if keyboard_pool.get_key(Keycode::LCtrl) {
-                view.translation.y += 50.0 * delta_time;
-            }
+        if keyboard_pool.get_key(Keycode::W) {
+            camera.update_position(lumina_render::camera::CameraDirection::FOWARD, delta_time);
         }
+        if keyboard_pool.get_key(Keycode::S) {
+            camera.update_position(lumina_render::camera::CameraDirection::BACKWARD, delta_time);
+        }
+        if keyboard_pool.get_key(Keycode::D) {
+            camera.update_position(lumina_render::camera::CameraDirection::RIGHT, delta_time);
+        }
+        if keyboard_pool.get_key(Keycode::A) {
+            camera.update_position(lumina_render::camera::CameraDirection::LEFT, delta_time);
+        }
+        if keyboard_pool.get_key(Keycode::Space) {
+            camera.update_position(lumina_render::camera::CameraDirection::UP, delta_time);
+        }
+        if keyboard_pool.get_key(Keycode::LShift) {
+            camera.update_position(lumina_render::camera::CameraDirection::DOWN, delta_time);
+        }
+
+        if keyboard_pool.get_key(Keycode::LCtrl) {
+            camera.speed = 50.0;
+        } else {
+            camera.speed = 10.0;
+        }
+
+        camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(),delta_time);
+
+
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
@@ -313,13 +313,17 @@ fn main() {
                 frame_time: 0.0,
                 command_buffer,
                 camera: &camera,
-                global_descriptor_set: shader.borrow_mut().descriptor_manager.get_descriptor_set(frame_index as u32),
+                global_descriptor_set: shader
+                    .borrow_mut()
+                    .descriptor_manager
+                    .get_descriptor_set(frame_index as u32),
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
 
             let ubo: GlobalUBO = GlobalUBO {
-                projection: (camera.get_projection() * camera.get_view()).to_cols_array_2d(),
+                //projection: (camera.get_matrix()).to_cols_array_2d(),
+                projection: camera.get_matrix(),
                 light_direction: (glam::vec3(1.0, 1.0, -1.0)).to_array(),
             };
 
@@ -330,7 +334,7 @@ fn main() {
                     specular: [0.5, 0.5, 0.5],
                     shininess: 1.0,
                     _padding1: [0.0],
-                    _padding2: [0.0]
+                    _padding2: [0.0],
                 },
                 view_pos: camera.get_position().to_array(),
             };
@@ -343,11 +347,11 @@ fn main() {
                     specular: [0.25, 0.25, 0.25],
                     _padding1: [0.0],
                     _padding2: [0.0],
-                    _padding3: [0.0]
+                    _padding3: [0.0],
                 },
             };
 
-            let texture = Texture::new(String::default(),Rc::clone(&device));
+            let texture = Texture::new(String::default(), Rc::clone(&device));
 
             shader.borrow_mut().descriptor_manager.change_buffer_value(
                 "GlobalUBO".to_string(),
@@ -373,10 +377,8 @@ fn main() {
             renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
-            camera.set_view_yxz(view.translation, view.rotation);
         }
 
-        camera.set_view_yxz(view.translation, view.rotation);
         renderer.end_frame(&device, &mut window);
 
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);

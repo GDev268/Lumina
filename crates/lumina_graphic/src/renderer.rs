@@ -270,8 +270,6 @@ impl Renderer {
 
     pub fn render_game_objects(&mut self, device: &Device, frame_info: &FrameInfo, scene: &mut Query,mut shader: Rc<RefCell<Shader>>) {
 
-        self.create_pipeline_layout(&device, shader.borrow().descriptor_manager.get_descriptor_layout().get_descriptor_set_layout());
-        self.create_pipeline(self.get_swapchain_renderpass(), &device);
 
         self.pipeline
             .as_ref()

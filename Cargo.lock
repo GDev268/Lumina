@@ -1641,6 +1641,7 @@ dependencies = [
  "glam",
  "lumina_core",
  "lumina_data",
+ "lumina_object",
 ]
 
 [[package]]
