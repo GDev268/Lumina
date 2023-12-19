@@ -8,10 +8,9 @@ layout(location = 0) out vec3 FragPos;
 layout(location = 1) out vec3 Normal;
 layout(location = 2) out vec2 FragUV;
 
-//80
+//64
 layout(set = 0, binding = 0) uniform GlobalUBO {
   mat4 projectionViewMatrix;
-  vec3 directionToLight;
 } ubo;
 
 layout(push_constant) uniform Push {

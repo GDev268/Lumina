@@ -234,16 +234,20 @@ impl DescriptorManager {
         println!("{:?}", self.descriptor_positions);
     }
 
-    pub fn change_buffer_value<T: Any>(&mut self, label: String, cur_frame: u32, value: &[T]) {
+    pub fn change_buffer_value<T: Any>(&mut self, label: String, cur_frame: u32, values: &[T]) {
         let cur_struct = self
             .descriptor_table
             .get_mut(&label)
             .expect("Failed to get the value!");
 
-        if std::mem::size_of_val(value) as u64
+        let value_size = std::mem::size_of::<T>();
+
+        let max_size = (value_size * values.len()) as u64;
+
+        if max_size
             == cur_struct.buffers[cur_frame as usize].get_buffer_size()
         {
-            cur_struct.buffers[cur_frame as usize].write_to_buffer(value, None, None);
+            cur_struct.buffers[cur_frame as usize].write_to_buffer(values, None, None);
             cur_struct.buffers[cur_frame as usize].flush(None, None)
         }
     }

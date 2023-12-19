@@ -230,6 +230,14 @@ impl Camera {
         return glam::Mat4::from_cols_array_2d(&self.inverse_view_matrix);
     }
 
+    pub fn get_direction(&self) -> glam::Vec3 {
+        return glam::Vec3 {
+            x: self.rotation.y.sin(),
+            y: 0.0,
+            z: self.rotation.y.cos(),
+        };
+    }
+
     pub fn get_position(&self) -> glam::Vec3 {
         return glam::Vec3 {
             x: self.translation.x,
@@ -238,168 +246,3 @@ impl Camera {
         };
     }
 }
-
-/*pub struct Camera {
-    projection_matrix: [[f32; 4]; 4],
-    view_matrix: [[f32; 4]; 4],
-    inverse_view_matrix: [[f32; 4]; 4],
-}
-
-impl Camera {
-    pub fn new() -> Self {
-        return Self {
-            projection_matrix: [[1.0; 4]; 4],
-            view_matrix: [[1.0; 4]; 4],
-            inverse_view_matrix: [[1.0; 4]; 4],
-        };
-    }
-
-    pub fn set_orthographic_projection(
-        &mut self,
-        left: f32,
-        right: f32,
-        top: f32,
-        bottom: f32,
-        near: f32,
-        far: f32,
-    ) {
-        self.projection_matrix[0][0] = 2.0 / (right - left);
-        self.projection_matrix[1][1] = 2.0 / (bottom - top);
-        self.projection_matrix[2][2] = 1.0 / (far - near);
-        self.projection_matrix[3][0] = -(right + left) / (right - left);
-        self.projection_matrix[3][1] = -(bottom + top) / (bottom - top);
-        self.projection_matrix[3][2] = -near / (far - near);
-    }
-
-    pub fn set_perspective_projection(&mut self, fovy: f32, aspect: f32, near: f32, far: f32) {
-        assert!((aspect - f32::EPSILON) > 0.0);
-
-        let (sin_fov, cos_fov) = (0.5 * fovy).sin_cos();
-        let h = cos_fov / sin_fov;
-        let w = h / aspect;
-        let r = far / (far - near);
-        
-        self.projection_matrix = [[0.0; 4]; 4];
-        self.projection_matrix[0][0] = w;
-        self.projection_matrix[1][1] = h;
-        self.projection_matrix[2][2] = r;
-        self.projection_matrix[2][3] = 1.0;
-        self.projection_matrix[3][2] = -r * near;
-    }
-
-    pub fn set_view_direction(
-        &mut self,
-        position: glam::Vec3,
-        direction: glam::Vec3,
-        up: glam::Vec3,
-    ) {
-        let w: glam::Vec3 = direction.normalize();
-        let u = w.cross(up);
-        let v = w.cross(u);
-
-        self.view_matrix = [[1.0; 4]; 4];
-        self.view_matrix[0][0] = u.x;
-        self.view_matrix[1][0] = u.y;
-        self.view_matrix[2][0] = u.z;
-        self.view_matrix[0][1] = v.x;
-        self.view_matrix[1][1] = v.y;
-        self.view_matrix[2][1] = v.z;
-        self.view_matrix[0][2] = w.x;
-        self.view_matrix[1][2] = w.y;
-        self.view_matrix[2][2] = w.z;
-        self.view_matrix[3][0] = -u.dot(position);
-        self.view_matrix[3][1] = -v.dot(position);
-        self.view_matrix[3][2] = -w.dot(position);
-
-        self.inverse_view_matrix = [[1.0; 4]; 4];
-        self.inverse_view_matrix[0][0] = u.x;
-        self.inverse_view_matrix[1][0] = u.y;
-        self.inverse_view_matrix[2][0] = u.z;
-        self.inverse_view_matrix[0][1] = v.x;
-        self.inverse_view_matrix[1][1] = v.y;
-        self.inverse_view_matrix[2][1] = v.z;
-        self.inverse_view_matrix[0][2] = w.x;
-        self.inverse_view_matrix[1][2] = w.y;
-        self.inverse_view_matrix[2][2] = w.z;
-        self.inverse_view_matrix[3][0] = position.x;
-        self.inverse_view_matrix[3][1] = position.y;
-        self.inverse_view_matrix[3][2] = position.z;
-    }
-
-    pub fn set_view_target(
-        &mut self,
-        position: glam::Vec3,
-        target: glam::Vec3,
-        up: glam::Vec3,
-    ) {
-        self.set_view_direction(position, target - position, up);
-    }
-
-    pub fn set_view_yxz(&mut self, position: glam::Vec3, rotation: glam::Vec3) {
-        let c3 = rotation.z.cos();
-        let s3 = rotation.z.sin();
-        let c2 = rotation.x.cos();
-        let s2 = rotation.x.sin();
-        let c1 = rotation.y.cos();
-        let s1 = rotation.y.sin();
-
-        let u = glam::Vec3::new(c1 * c3 + s1 * s2 * s3, c2 * s3, c1 * s2 * s3 - c3 * s1);
-        let v = glam::Vec3::new(c3 * s1 * s2 - c1 * s3, c2 * c3, c1 * c3 * s2 + s1 * s3);
-        let w = glam::Vec3::new(c2 * s1, -s2, c1 * c2);
-
-        let adjusted_position = glam::Vec3::new(position.x, position.y, position.z);
-
-
-        self.view_matrix = [[0.0; 4]; 4];
-        self.view_matrix[0][0] = u.x;
-        self.view_matrix[1][0] = u.y;
-        self.view_matrix[2][0] = u.z;
-        self.view_matrix[0][1] = v.x;
-        self.view_matrix[1][1] = v.y;
-        self.view_matrix[2][1] = v.z;
-        self.view_matrix[0][2] = w.x;
-        self.view_matrix[1][2] = w.y;
-        self.view_matrix[2][2] = w.z;
-        self.view_matrix[3][0] = -u.dot(adjusted_position);
-        self.view_matrix[3][1] = -v.dot(adjusted_position);
-        self.view_matrix[3][2] = -w.dot(adjusted_position);
-        self.view_matrix[3][3] = 1.0;
-
-
-        self.inverse_view_matrix = [[1.0; 4]; 4];
-        self.inverse_view_matrix[0][0] = u.x;
-        self.inverse_view_matrix[0][1] = u.y;
-        self.inverse_view_matrix[0][2] = u.z;
-        self.inverse_view_matrix[1][0] = v.x;
-        self.inverse_view_matrix[1][1] = v.y;
-        self.inverse_view_matrix[1][2] = v.z;
-        self.inverse_view_matrix[2][0] = w.x;
-        self.inverse_view_matrix[2][1] = w.y;
-        self.inverse_view_matrix[2][2] = w.z;
-        self.inverse_view_matrix[3][0] = position.x;
-        self.inverse_view_matrix[3][1] = position.y;
-        self.inverse_view_matrix[3][2] = position.z;
-    }
-
-    pub fn get_projection(&self) -> glam::Mat4 {
-        return glam::Mat4::from_cols_array_2d(&self.projection_matrix);
-    }
-
-    pub fn get_view(&self) -> glam::Mat4 {
-        return glam::Mat4::from_cols_array_2d(&self.view_matrix);
-    }
-
-    pub fn get_inverse_view(&self) -> glam::Mat4 {
-        return glam::Mat4::from_cols_array_2d(&self.inverse_view_matrix);
-    }
-
-    pub fn get_position(&self) -> glam::Vec3 {
-        return glam::Vec3 {
-            x: self.inverse_view_matrix[3][0],
-            y: self.inverse_view_matrix[3][1],
-            z: self.inverse_view_matrix[3][2],
-        };
-    }
-}*/
-
-

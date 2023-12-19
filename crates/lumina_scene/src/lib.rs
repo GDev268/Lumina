@@ -14,7 +14,6 @@ struct PointLight{
 #[repr(C,align(16))]
 pub struct GlobalUBO{
     pub projection:[[f32;4];4],
-    pub light_direction:[f32;3]
 }
 
 pub struct FrameInfo<'a>{

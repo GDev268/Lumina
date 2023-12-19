@@ -10,6 +10,7 @@ use std::{
 };
 
 use ash::vk::{self, TRUE};
+use cgmath::num_traits::float::FloatCore;
 use egui::Key;
 use glsl_parser::parser::Parser;
 use rand::Rng;
@@ -104,17 +105,17 @@ macro_rules! error {
 #[derive(Debug, Clone, Copy)]
 struct Material {
     ambient: [f32; 3],
-    _padding1: [f32; 1], // Padding to align 'diffuse' to a 16-byte boundary
+    _padding1: [f32; 1],
     diffuse: [f32; 3],
-    _padding2: [f32; 1], // Padding to align 'specular' to a 16-byte boundary
+    _padding2: [f32; 1],
     specular: [f32; 3],
     shininess: f32,
 }
 
-// No need to add explicit padding here, as Rust will handle it automatically
+/*
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
-struct Light {
+struct OLDLight {
     position: [f32; 3],
     _padding1: [f32; 1],
     ambient: [f32; 3],
@@ -122,7 +123,60 @@ struct Light {
     diffuse: [f32; 3],
     _padding3: [f32; 1],
     specular: [f32; 3],
+}*/
+
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy)]
+struct DirectionalLight {
+    direction: [f32; 3],
+    _padding1: [f32; 1],
+    ambient: [f32; 3],
+    _padding2: [f32; 1],
+    diffuse: [f32; 3],
+    _padding3: [f32; 1],
+    specular: [f32; 3],
 }
+
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy)]
+struct PointLight {
+    position: [f32; 3],
+    _padding1: [f32; 1],
+    ambient: [f32; 3],
+    _padding2: [f32; 1],
+    diffuse: [f32; 3],
+    _padding3: [f32; 1],
+    specular: [f32; 3],
+    _padding4: [f32; 1],
+    constant: f32,
+    linear: f32,
+    quadratic: f32,
+}
+
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy)]
+struct SpotLight {
+    position: [f32; 3],
+    _padding1: f32,
+    direction: [f32; 3],
+    _padding2: f32,
+    cut_off: f32,
+    _padding9: f32,
+    outer_cut_off: f32,
+    _padding8: f32,
+    ambient: [f32; 3],
+    _padding3: f32,
+    diffuse: [f32; 3],
+    _padding4: f32,
+    specular: [f32; 3],
+    _padding5: f32,
+    constant: f32,
+    _padding6: f32,
+    linear: f32,
+    _padding7: f32,
+    quadratic: f32,
+}
+
 
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
@@ -134,7 +188,7 @@ struct MaterialInfo {
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
 struct LightInfo {
-    light: Light,
+    light: SpotLight,
 }
 
 fn print_type_id<T: std::any::Any>(value: &T) {
@@ -150,8 +204,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    let mut window = Window::new(&sdl_context, "Lumina Dev App", 1920, 1080);
-    window._window.fullscreen_state();
+    let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
     let device = Rc::new(Device::new(&window));
 
     let mut query = Query::new();
@@ -177,7 +230,7 @@ fn main() {
 
     let mut game_objects: Vec<GameObject> = Vec::new();
 
-    let cube_positions: [glam::Vec3; 10] = [
+   let cube_positions: [glam::Vec3; 10] = [
         glam::Vec3::new(0.0, 0.0, 0.0),
         glam::Vec3::new(2.0, 5.0, -15.0),
         glam::Vec3::new(-1.5, -2.2, -2.5),
@@ -202,7 +255,6 @@ fn main() {
 
         game_objects.push(cube);
     }
-
 
     let mut pool_config = PoolConfig::new();
     pool_config.set_max_sets(3 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
@@ -242,6 +294,7 @@ fn main() {
             .get_descriptor_set_layout(),
     );
     renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
+
 
     'running: loop {
         start_tick = Instant::now();
@@ -302,9 +355,7 @@ fn main() {
             camera.speed = 10.0;
         }
 
-        camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(),delta_time);
-
-
+        camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
         if let Some(command_buffer) = renderer.begin_frame(&device, &window) {
             let frame_index = renderer.get_frame_index() as usize;
@@ -322,9 +373,7 @@ fn main() {
             renderer.begin_swapchain_renderpass(command_buffer, &device);
 
             let ubo: GlobalUBO = GlobalUBO {
-                //projection: (camera.get_matrix()).to_cols_array_2d(),
                 projection: camera.get_matrix(),
-                light_direction: (glam::vec3(1.0, 1.0, -1.0)).to_array(),
             };
 
             let material: MaterialInfo = MaterialInfo {
@@ -339,15 +388,28 @@ fn main() {
                 view_pos: camera.get_position().to_array(),
             };
 
+
             let light: LightInfo = LightInfo {
-                light: Light {
-                    position: [-0.2, -1.0, -0.3],
+                light: SpotLight {
+                    position: [1.2, 1.0, 2.0],
+                    direction: [-0.6,0.0,-0.9],
+                    cut_off: 12.5.to_radians(),
+                    outer_cut_off: 17.5.to_radians(),
                     ambient: [0.1, 0.1, 0.1],
                     diffuse: [0.0, 0.0, 0.0],
                     specular: [0.25, 0.25, 0.25],
-                    _padding1: [0.0],
-                    _padding2: [0.0],
-                    _padding3: [0.0],
+                    constant: 1.0,
+                    linear: 0.7,
+                    quadratic: 1.8,
+                    _padding1: 0.0,
+                    _padding2: 0.0,
+                    _padding3: 0.0,
+                    _padding4: 0.0,
+                    _padding5: 0.0,
+                    _padding6: 0.0,
+                    _padding7: 0.0,
+                    _padding8: 0.0,
+                    _padding9: 0.0
                 },
             };
 
