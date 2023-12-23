@@ -1,5 +1,6 @@
 use super::game_object::Component;
 
+#[derive(Debug)]
 pub struct Transform {
     pub translation: glam::Vec3,
     pub scale: glam::Vec3,
@@ -85,3 +86,5 @@ impl Transform {
 }
 
 impl Component for Transform {}
+
+unsafe impl Send for Transform {}

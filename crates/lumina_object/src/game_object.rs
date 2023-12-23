@@ -10,7 +10,11 @@ use lazy_static::lazy_static;
 
 static mut EXISTING_IDS: Vec<u32> = vec![];
 
-pub trait Component: Any {}
+pub trait Component: Any {
+    fn max_component_count() -> Option<usize> {
+        return None;
+    }
+}
 
 #[derive(Debug)]
 pub struct GameObject {
