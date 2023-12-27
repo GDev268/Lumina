@@ -10,6 +10,8 @@ edition = "2021"
 lumina_core = {path="../lumina_core",version = "0.1.0"}
 lumina_data = {path="../lumina_data",version = "0.1.0"}
 lumina_object = {path="../lumina_object",version = "0.1.0"}
+lumina_bundle = {path="../lumina_bundle",version = "0.1.0"}
+
 
 #Other
 ash = {version="0.37.3",features = ["linked", "debug"]}

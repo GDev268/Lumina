@@ -1,3 +1,35 @@
+use std::rc::Rc;
+
+use lumina_core::{device::Device, window::Window};
+use lumina_graphic::renderer::Renderer;
+use sdl2::image::LoadSurface;
+
+fn main() {
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        std::env::set_var("SDL_VIDEODRIVER", "wayland");
+    }
+
+    let sdl_context = sdl2::init().unwrap();
+
+    let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
+    let device = Rc::new(Device::new(&window));
+
+    let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
+    let mut renderer = Renderer::new(&window, &device, None);
+
+    window._window.set_icon(window_icon);
+
+    'running: loop {
+        let command_buffer = renderer.begin_frame(&device, &window).unwrap();
+
+        renderer.begin_swapchain_renderpass(command_buffer, &device);
+
+        renderer.end_swapchain_renderpass(command_buffer, &device);
+        renderer.end_frame(&device, &mut window);
+    }
+}
+
+/*use core::panic;
 use std::{
     any::TypeId,
     cell::RefCell,
@@ -177,7 +209,6 @@ struct SpotLight {
     quadratic: f32,
 }
 
-
 #[repr(C, align(16))]
 #[derive(Debug, Clone, Copy)]
 struct MaterialInfo {
@@ -215,14 +246,7 @@ fn main() {
 
     sdl_context.mouse().set_relative_mouse_mode(true);
 
-    let shader = Rc::new(RefCell::new(Shader::new(
-        Rc::clone(&device),
-        "shaders/default_shader.vert.spv",
-        "shaders/default_shader.frag.spv",
-    )));
-
-    let mut renderer: Renderer = Renderer::new(&window, &device, Rc::clone(&shader), None);
-    //renderer.activate_shader(&device, &shader);
+    let mut renderer: Renderer = Renderer::new(&window, &device, None);
 
     let mut keyboard_pool = Keyboard::new();
 
@@ -230,7 +254,7 @@ fn main() {
 
     let mut game_objects: Vec<GameObject> = Vec::new();
 
-   let cube_positions: [glam::Vec3; 10] = [
+    let cube_positions: [glam::Vec3; 10] = [
         glam::Vec3::new(0.0, 0.0, 0.0),
         glam::Vec3::new(2.0, 5.0, -15.0),
         glam::Vec3::new(-1.5, -2.2, -2.5),
@@ -245,6 +269,14 @@ fn main() {
 
     for i in 0..10 {
         let cube = shapes::cube(&mut query, Rc::clone(&device));
+
+        let shader = Shader::new(
+            Rc::clone(&device),
+            "shaders/default_shader.vert",
+            "shaders/default_shader.frag",
+        );
+
+        query.push(&cube, shader);
 
         if let Some(transform) = query.query_mut::<Transform>(&cube) {
             transform.translation = cube_positions[i];
@@ -284,17 +316,6 @@ fn main() {
     let delta_time = 1.0 / fps._fps as f32;
 
     let light_pos = glam::vec3(3.0, -2.0, 100.0);
-
-    renderer.create_pipeline_layout(
-        &device,
-        shader
-            .borrow()
-            .descriptor_manager
-            .get_descriptor_layout()
-            .get_descriptor_set_layout(),
-    );
-    renderer.create_pipeline(renderer.get_swapchain_renderpass(), &device);
-
 
     'running: loop {
         start_tick = Instant::now();
@@ -364,23 +385,16 @@ fn main() {
                 frame_time: 0.0,
                 command_buffer,
                 camera: &camera,
-                global_descriptor_set: shader
-                    .borrow_mut()
-                    .descriptor_manager
-                    .get_descriptor_set(frame_index as u32),
             };
 
             renderer.begin_swapchain_renderpass(command_buffer, &device);
 
-            let ubo: GlobalUBO = GlobalUBO {
-                projection: camera.get_matrix(),
-            };
 
             let material: MaterialInfo = MaterialInfo {
                 material: Material {
                     ambient: [0.1, 0.1, 0.1],
-                    diffuse: [0.0, 0.0, 0.0],
-                    specular: [0.5, 0.5, 0.5],
+                    diffuse: [0.1, 0.1, 0.1],
+                    specular: [0.1, 0.1, 0.1],
                     shininess: 1.0,
                     _padding1: [0.0],
                     _padding2: [0.0],
@@ -388,11 +402,10 @@ fn main() {
                 view_pos: camera.get_position().to_array(),
             };
 
-
             let light: LightInfo = LightInfo {
                 light: SpotLight {
                     position: [1.2, 1.0, 2.0],
-                    direction: [-0.6,0.0,-0.9],
+                    direction: [-0.0, 0.0, -0.9],
                     cut_off: 12.5.to_radians(),
                     outer_cut_off: 17.5.to_radians(),
                     ambient: [0.1, 0.1, 0.1],
@@ -409,34 +422,40 @@ fn main() {
                     _padding6: 0.0,
                     _padding7: 0.0,
                     _padding8: 0.0,
-                    _padding9: 0.0
+                    _padding9: 0.0,
                 },
             };
 
-            let texture = Texture::new(String::default(), Rc::clone(&device));
+            for (_,entity) in query.entities.iter_mut() {
+                let ubo: GlobalUBO = GlobalUBO {
+                    projection: camera.get_matrix(),
+                };
 
-            shader.borrow_mut().descriptor_manager.change_buffer_value(
-                "GlobalUBO".to_string(),
-                frame_index as u32,
-                &[ubo],
-            );
-            shader.borrow_mut().descriptor_manager.change_buffer_value(
-                "MaterialInfo".to_string(),
-                frame_index as u32,
-                &[material],
-            );
-            shader.borrow_mut().descriptor_manager.change_buffer_value(
-                "LightInfo".to_string(),
-                frame_index as u32,
-                &[light],
-            );
-            shader.borrow_mut().descriptor_manager.change_image_value(
-                "sampler2D".to_string(),
-                frame_index as u32,
-                texture,
-            );
+                let texture = Texture::new(String::default(), Rc::clone(&device));
 
-            renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
+                entity.get_mut_component::<Shader>().unwrap().descriptor_manager.change_buffer_value(
+                    "GlobalUBO".to_string(),
+                    frame_index as u32,
+                    &[ubo],
+                );
+                entity.get_mut_component::<Shader>().unwrap().descriptor_manager.change_buffer_value(
+                    "MaterialInfo".to_string(),
+                    frame_index as u32,
+                    &[material],
+                );
+                entity.get_mut_component::<Shader>().unwrap().descriptor_manager.change_buffer_value(
+                    "LightInfo".to_string(),
+                    frame_index as u32,
+                    &[light],
+                );
+                entity.get_mut_component::<Shader>().unwrap().descriptor_manager.change_image_value(
+                    "sampler2D".to_string(),
+                    frame_index as u32,
+                    texture,
+                );
+            }
+
+            renderer.render_game_objects(&device, &frame_info, &mut query);
 
             renderer.end_swapchain_renderpass(command_buffer, &device);
         }
@@ -444,7 +463,7 @@ fn main() {
         renderer.end_frame(&device, &mut window);
 
         print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
-        let title = String::from("Lumina Dev App ")
+        let title = String::from("Lumina Dev App")
             + format!("[FPS: {:.0}]", fps.frame_count / fps.frame_elapsed).as_str();
         window.get_window().set_title(title.as_str()).unwrap();
         if start_tick.elapsed() < fps.fps_limit {
@@ -453,4 +472,4 @@ fn main() {
         time += 5.0 * delta_time;
         fps.update();
     }
-}
+}*/

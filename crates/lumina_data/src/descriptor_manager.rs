@@ -138,7 +138,6 @@ impl DescriptorManager {
                     64,
                 );
 
-
                 image.new_image_view(&self.device, vk::ImageAspectFlags::COLOR);
 
                 values.images.push(image);
@@ -244,9 +243,7 @@ impl DescriptorManager {
 
         let max_size = (value_size * values.len()) as u64;
 
-        if max_size
-            == cur_struct.buffers[cur_frame as usize].get_buffer_size()
-        {
+        if max_size == cur_struct.buffers[cur_frame as usize].get_buffer_size() {
             cur_struct.buffers[cur_frame as usize].write_to_buffer(values, None, None);
             cur_struct.buffers[cur_frame as usize].flush(None, None)
         }
@@ -257,6 +254,14 @@ impl DescriptorManager {
             .descriptor_table
             .get_mut(&label)
             .expect("Failed to get the value!");
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        );
 
         let buffer_size =
             value.get_texture_info().0 * value.get_texture_info().1 * value.get_texture_info().2;
@@ -272,16 +277,6 @@ impl DescriptorManager {
         staging_buffer.map(None, None);
         staging_buffer.write_to_buffer(&value.get_texture_data(), None, None);
         staging_buffer.flush(None, None);
-
-
-        DescriptorManager::transition_image_layout(
-            Rc::clone(&self.device),
-            cur_struct.images[cur_frame as usize].get_image(),
-            cur_struct.images[cur_frame as usize].get_format(),
-            vk::ImageLayout::UNDEFINED,
-            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-        );
-        
 
         let command_buffer: vk::CommandBuffer;
 
@@ -300,18 +295,19 @@ impl DescriptorManager {
                 .unwrap()[0]
         };
 
-
-        let begin_info = vk::CommandBufferBeginInfo{
-            s_type:vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+        let begin_info = vk::CommandBufferBeginInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
             flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
             ..Default::default()
         };
 
-        unsafe{
-            self.device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin command buffer!");
+        unsafe {
+            self.device
+                .device()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin command buffer!");
         }
-
 
         let region = vk::BufferImageCopy {
             buffer_offset: 0,
@@ -341,20 +337,33 @@ impl DescriptorManager {
             );
         }
 
-        
-        unsafe{
-            self.device.device().end_command_buffer(command_buffer).expect("Failed to end command buffer!");
-            let submit_info = vk::SubmitInfo{
+        unsafe {
+            self.device
+                .device()
+                .end_command_buffer(command_buffer)
+                .expect("Failed to end command buffer!");
+            let submit_info = vk::SubmitInfo {
                 s_type: vk::StructureType::SUBMIT_INFO,
                 command_buffer_count: 1,
                 p_command_buffers: &command_buffer,
                 ..Default::default()
             };
-            self.device.device().queue_submit(self.device.graphics_queue(), &[submit_info], vk::Fence::null()).expect("Failed to submit data");
-            self.device.device().queue_wait_idle(self.device.graphics_queue()).unwrap();
-            self.device.device().free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
+            self.device
+                .device()
+                .queue_submit(
+                    self.device.graphics_queue(),
+                    &[submit_info],
+                    vk::Fence::null(),
+                )
+                .expect("Failed to submit data");
+            self.device
+                .device()
+                .queue_wait_idle(self.device.graphics_queue())
+                .unwrap();
+            self.device
+                .device()
+                .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
         }
-        
 
         DescriptorManager::transition_image_layout(
             Rc::clone(&self.device),
@@ -363,7 +372,6 @@ impl DescriptorManager {
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             vk::ImageLayout::GENERAL,
         );
-        
     }
 
     fn transition_image_layout(
@@ -408,20 +416,22 @@ impl DescriptorManager {
                 .unwrap()[0]
         };
 
-        let begin_info = vk::CommandBufferBeginInfo{
-            s_type:vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+        let begin_info = vk::CommandBufferBeginInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
             flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
             ..Default::default()
         };
 
-        unsafe{
-            device.device().begin_command_buffer(command_buffer, &begin_info).expect("Failed to begin command buffer!");
+        unsafe {
+            device
+                .device()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin command buffer!");
         }
 
         let src_stage: vk::PipelineStageFlags = vk::PipelineStageFlags::ALL_COMMANDS;
         let dst_stage: vk::PipelineStageFlags = vk::PipelineStageFlags::ALL_COMMANDS;
-
 
         unsafe {
             device.device().cmd_pipeline_barrier(
@@ -435,17 +445,28 @@ impl DescriptorManager {
             )
         }
 
-        unsafe{
-            device.device().end_command_buffer(command_buffer).expect("Failed to end command buffer!");
-            let submit_info = vk::SubmitInfo{
+        unsafe {
+            device
+                .device()
+                .end_command_buffer(command_buffer)
+                .expect("Failed to end command buffer!");
+            let submit_info = vk::SubmitInfo {
                 s_type: vk::StructureType::SUBMIT_INFO,
                 command_buffer_count: 1,
                 p_command_buffers: &command_buffer,
                 ..Default::default()
             };
-            device.device().queue_submit(device.graphics_queue(), &[submit_info], vk::Fence::null()).expect("Failed to submit data");
-            device.device().queue_wait_idle(device.graphics_queue()).unwrap();
-            device.device().free_command_buffers(device.get_command_pool(), &[command_buffer]);
+            device
+                .device()
+                .queue_submit(device.graphics_queue(), &[submit_info], vk::Fence::null())
+                .expect("Failed to submit data");
+            device
+                .device()
+                .queue_wait_idle(device.graphics_queue())
+                .unwrap();
+            device
+                .device()
+                .free_command_buffers(device.get_command_pool(), &[command_buffer]);
         }
     }
 

@@ -5,18 +5,24 @@ use ash::vk;
 use glsl_parser::parser::Parser;
 use lumina_core::device::Device;
 use lumina_data::{descriptor::PoolConfig, descriptor_manager::DescriptorManager};
+use lumina_object::game_object::Component;
+
+use crate::pipeline::Pipeline;
 
 pub struct Shader {
+    device: Rc<Device>,
     pub descriptor_manager: DescriptorManager,
     pub vert_module: vk::ShaderModule,
     pub frag_module: vk::ShaderModule,
+    pub pipeline_layout: Option<vk::PipelineLayout>,
+    pub pipeline: Option<Pipeline>,
 }
 
 impl Shader {
     pub fn new(device: Rc<Device>, vert_file_path: &str, frag_file_path: &str) -> Self {
         let mut parser = Parser::new();
 
-        parser.parse_shader("shaders/default_shader.vert", "shaders/default_shader.frag");
+        parser.parse_shader(vert_file_path, frag_file_path);
 
         let mut pool_config = PoolConfig::new();
         pool_config.set_max_sets(3 * lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32);
@@ -45,9 +51,12 @@ impl Shader {
         descriptor_manager.preload_we();
 
         return Self {
+            device: Rc::clone(&device),
             descriptor_manager,
-            vert_module: Shader::create_shader_module(Shader::read_file(vert_file_path), &device),
-            frag_module: Shader::create_shader_module(Shader::read_file(frag_file_path), &device),
+            vert_module: Shader::create_shader_module(Shader::read_file(&(vert_file_path.to_string() + ".spv")), &device),
+            frag_module: Shader::create_shader_module(Shader::read_file(&(frag_file_path.to_string() + ".spv")), &device),
+            pipeline: None,
+            pipeline_layout: None
         };
     }
 
@@ -74,3 +83,30 @@ impl Shader {
         }
     }
 }
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.device().device_wait_idle().unwrap();
+            self.device
+                .device()
+                .destroy_shader_module(self.vert_module, None);
+            self.device
+                .device()
+                .destroy_shader_module(self.frag_module, None);
+            if self.pipeline_layout.is_some() {
+                self.device
+                    .device()
+                    .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None)
+            }
+        }
+    }
+}
+
+impl Component for Shader {
+    fn max_component_count() -> Option<usize> {
+        Some(1)
+    }
+}
+
+unsafe impl Send for Shader {}

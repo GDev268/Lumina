@@ -61,7 +61,7 @@ layout(set = 0,binding = 1) uniform MaterialInfo {
 } object;
 
 //128
-layout(set = 0,binding = 2) uniform LightInfo {
+layout(std430,binding = 2) uniform LightInfo {
   SpotLight light;
 } object_light;
 
@@ -129,7 +129,7 @@ void main() {
   outColor = vec4(result,1.0);*/
 
   //Spot Light
-  /*vec3 ambient = vec3(0.1,0.1,0.1) * texture(normalMap,FragUV).rgb;
+  /*\vec3 ambient = vec3(0.1,0.1,0.1) * texture(normalMap,FragUV).rgb;
 
   //Diffuse
   vec3 normal = normalize(Normal);

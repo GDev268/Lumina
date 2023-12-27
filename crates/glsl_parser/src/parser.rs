@@ -15,7 +15,6 @@ pub enum INSERT_TYPE {
 #[derive(Debug)]
 pub struct DescriptorData{
     pub size:u32,
-    pub set:u32,
     pub binding:u32,
     pub is_uniform:bool
 }
@@ -37,7 +36,7 @@ impl Parser {
     /**
      * Obter as informaçoes de um "Descriptor" sendo elas o "binding" e o "set"
      */
-    fn get_descriptor_data(vector: &Vec<&str>) -> (u32, Option<u32>) {
+    fn get_descriptor_binding(vector: &Vec<&str>) -> u32 {
         let line = vector.join(" ");
 
         let start_index = line.find("(");
@@ -49,14 +48,13 @@ impl Parser {
             .map(|item| item.split_whitespace().collect())
             .collect();
 
-        if content.len() > 1 {
-            return (
-                content[0][2].parse::<u32>().unwrap(),
-                Some(content[1][2].parse::<u32>().unwrap()),
-            );
-        } else {
-            return (content[0][2].parse::<u32>().unwrap(), None);
+        for words in content {
+            if words.contains(&"binding") {
+                return words[2].parse::<u32>().unwrap();
+            }
         }
+
+        return 0;
     }
 
     /**
@@ -97,8 +95,7 @@ impl Parser {
                             words[uniform_pos + 1].to_owned(),
                             DescriptorData{
                                 size: size.parse::<u32>().unwrap(),
-                                set: Parser::get_descriptor_data(&words).0,
-                                binding: Parser::get_descriptor_data(&words).1.unwrap(),
+                                binding: Parser::get_descriptor_binding(&words),
                                 is_uniform: false,
                             },
                         );
@@ -116,8 +113,7 @@ impl Parser {
                                 words[uniform_pos + 1].to_owned(),
                                 DescriptorData{
                                     size: size.parse::<u32>().unwrap(),
-                                    set: Parser::get_descriptor_data(&words).0,
-                                    binding: Parser::get_descriptor_data(&words).1.unwrap(),
+                                    binding: Parser::get_descriptor_binding(&words),
                                     is_uniform: true,
                                 },
                             );
@@ -154,8 +150,7 @@ impl Parser {
                             words[uniform_pos + 1].to_owned(),
                             DescriptorData{
                                 size: 0,
-                                set: Parser::get_descriptor_data(&words).0,
-                                binding: Parser::get_descriptor_data(&words).1.unwrap(),
+                                binding: Parser::get_descriptor_binding(&words),
                                 is_uniform: false,
                             },
                         );
@@ -169,12 +164,13 @@ impl Parser {
 
                             let word_size:Vec<char> = vector[index - 1].chars().collect();
                             let size:String = word_size[2..word_size.len()].iter().collect();
+                            Parser::get_descriptor_binding(&words);
+
                         self.descriptor_data.insert(
                             words[uniform_pos + 1].to_owned(),
                             DescriptorData{
                                 size: size.parse::<u32>().unwrap(),
-                                set: Parser::get_descriptor_data(&words).0,
-                                binding: Parser::get_descriptor_data(&words).1.unwrap(),
+                                binding: Parser::get_descriptor_binding(&words),
                                 is_uniform: true,
                             },
                         );

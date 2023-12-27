@@ -1,14 +1,10 @@
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
 use lumina_core::{
     device::Device,
     swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
     window::Window,
 };
-
-use lumina_geometry::model::{Model, PushConstantData};
-use lumina_object::transform::Transform;
-use lumina_scene::{query::Query, FrameInfo};
 
 use ash::vk;
 
@@ -23,17 +19,13 @@ pub struct Renderer {
     pub current_image_index: u32,
     current_frame_index: i32,
     pub is_frame_started: bool,
-    pub pipeline: Option<Pipeline>,
-    pub pipeline_layout: vk::PipelineLayout,
-    pub shader: Option<Rc<RefCell<Shader>>>,
 }
 
 impl Renderer {
     pub fn new(
         window: &Window,
         device: &Device,
-        shader: Rc<RefCell<Shader>>,
-        swapchain: Option<&Swapchain>
+        swapchain: Option<&Swapchain>,
     ) -> Self {
         let swapchain = Renderer::create_swapchain(window, device, swapchain);
         let command_buffers = Renderer::create_command_buffers(device);
@@ -44,9 +36,6 @@ impl Renderer {
             current_image_index: 0,
             current_frame_index: 0,
             is_frame_started: false,
-            pipeline: None,
-            pipeline_layout: vk::PipelineLayout::null(),
-            shader: Some(shader),
         };
     }
 
@@ -158,7 +147,7 @@ impl Renderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.01, 0.01, 0.01,1.0],
+            float32: [0.01, 0.01, 0.01, 1.0],
         };
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
@@ -228,7 +217,10 @@ impl Renderer {
         }
     }
 
-    pub fn create_pipeline_layout(&mut self, device: &Device,global_set_layout:vk::DescriptorSetLayout) {
+/*    pub fn create_pipeline_layout(
+        device: &Device,
+        global_set_layout: vk::DescriptorSetLayout,
+    ) -> vk::PipelineLayout {
         let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
             stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
             offset: 0,
@@ -248,51 +240,78 @@ impl Renderer {
         };
 
         unsafe {
-            self.pipeline_layout = device
+            return device
                 .device()
                 .create_pipeline_layout(&pipeline_layout_info, None)
                 .expect("Failed to create pipeline layout!");
         }
     }
 
-    pub fn create_pipeline(&mut self, render_pass: vk::RenderPass, device: &Device) {
+    pub fn create_pipeline(
+        render_pass: vk::RenderPass,
+        shader: &Shader,
+        device: &Device,
+    ) -> Pipeline {
         let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
         pipeline_config.renderpass = Some(render_pass);
-        pipeline_config.pipeline_layout = Some(self.pipeline_layout);
+        pipeline_config.pipeline_layout = shader.pipeline_layout;
 
-        self.pipeline = Some(Pipeline::new(
+        return Pipeline::new(
             device,
-            self.shader.as_ref().unwrap().borrow().vert_module,
-            self.shader.as_ref().unwrap().borrow().frag_module,
+            shader.vert_module,
+            shader.frag_module,
             &mut pipeline_config,
-        ));
+        );
     }
 
-    pub fn render_game_objects(&mut self, device: &Device, frame_info: &FrameInfo, scene: &mut Query,mut shader: Rc<RefCell<Shader>>) {
-
-
-        self.pipeline
-            .as_ref()
-            .unwrap()
-            .bind(device, frame_info.command_buffer);
-
-        unsafe {
-            device.device().cmd_bind_descriptor_sets(
-                frame_info.command_buffer,
-                vk::PipelineBindPoint::GRAPHICS,
-                self.pipeline_layout,
-                0,
-                &[frame_info.global_descriptor_set],
-                &[],
-            );
-        }
-
+    pub fn render_game_objects(
+        &mut self,
+        device: &Device,
+        frame_info: &FrameInfo,
+        scene: &mut Query,
+    ) {
         for (id, entity) in scene.entities.iter_mut() {
+            if let Some(shader) = entity.get_mut_component::<Shader>() {
+                if shader.pipeline_layout.is_none() && shader.pipeline.is_none() {
+                    shader.pipeline_layout = Some(Renderer::create_pipeline_layout(
+                        device,
+                        shader
+                            .descriptor_manager
+                            .get_descriptor_layout()
+                            .get_descriptor_set_layout(),
+                    ));
+                    shader.pipeline = Some(Renderer::create_pipeline(
+                        self.get_swapchain_renderpass(),
+                        shader,
+                        device,
+                    ));
+                }
+
+                shader
+                    .pipeline
+                    .as_ref()
+                    .unwrap()
+                    .bind(device, frame_info.command_buffer);
+
+                unsafe {
+                    device.device().cmd_bind_descriptor_sets(
+                        frame_info.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        shader.pipeline_layout.unwrap(),
+                        0,
+                        &[shader
+                            .descriptor_manager
+                            .get_descriptor_set(self.get_frame_index() as u32)],
+                        &[],
+                    );
+                }
+            };
+
             let push: PushConstantData = if entity.has_component::<Transform>() {
                 PushConstantData {
-                    model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),
+                    model_matrix: entity.get_component::<Transform>().unwrap().get_mat4(),
                     normal_matrix: entity
-                        .get_mut_component::<Transform>()
+                        .get_component::<Transform>()
                         .unwrap()
                         .get_normal_matrix(),
                 }
@@ -308,25 +327,27 @@ impl Renderer {
                 std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
             };
 
-            unsafe {
-                device.device().cmd_push_constants(
-                    frame_info.command_buffer,
-                    self.pipeline_layout,
-                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                    0,
-                    push_bytes,
-                );
-            }
+            if let Some(shader) = entity.get_component::<Shader>() {
+                unsafe {
+                    device.device().cmd_push_constants(
+                        frame_info.command_buffer,
+                        shader.pipeline_layout.unwrap(),
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        push_bytes,
+                    );
+                }
 
-            if entity.has_component::<Model>() {
-                entity
-                    .get_mut_component::<Model>()
-                    .unwrap()
-                    .render(device, frame_info.command_buffer);
+                if entity.has_component::<Model>() {
+                    entity
+                        .get_mut_component::<Model>()
+                        .unwrap()
+                        .render(device, frame_info.command_buffer);
+                }
             }
         }
     }
-
+*/
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,

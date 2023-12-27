@@ -1,3 +1,17 @@
+use ash::vk;
+use lumina_bundle::CameraBundle;
+use lumina_core::{
+    device::Device, framebuffer::Framebuffer, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT,
+    texture::Texture,
+};
+
+struct RenderTexture {
+    images: Vec<Image>,
+    depth_images: Vec<Image>,
+    framebuffers: Vec<Framebuffer>,
+    max_extent: vk::Extent2D,
+}
+
 pub enum CameraDirection {
     NONE,
     FOWARD,
@@ -8,7 +22,14 @@ pub enum CameraDirection {
     DOWN,
 }
 
+pub enum Background {
+    SOLID_COLOR([f32; 3]),
+    SKYBOX,
+    TEXTURE(Texture),
+}
+
 pub struct Camera {
+    background: Background,
     projection_matrix: [[f32; 4]; 4],
     view_matrix: [[f32; 4]; 4],
     inverse_view_matrix: [[f32; 4]; 4],
@@ -19,11 +40,64 @@ pub struct Camera {
     aspect_ratio: f32,
     rotation: glam::Vec3,
     translation: glam::Vec3,
+    camera_data: RenderTexture,
+    max_extent:vk::Extent2D
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f32, ortho_mode: bool) -> Self {
+    pub fn new(
+        device: &Device,
+        aspect_ratio: f32,
+        ortho_mode: bool,
+        extent: vk::Extent2D,
+        camera_bundle: &CameraBundle,
+    ) -> Self {
+        let mut camera_data = RenderTexture {
+            images: Vec::new(),
+            depth_images: Vec::new(),
+            framebuffers: Vec::new(),
+            max_extent: camera_bundle.max_extent,
+        };
+
+        for i in 0..MAX_FRAMES_IN_FLIGHT {
+            let mut image = Image::new_2d(
+                device,
+                camera_bundle.image_format,
+                vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL
+                    | vk::MemoryPropertyFlags::HOST_VISIBLE
+                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                extent.width,
+                extent.height,
+            );
+            image.new_image_view(device, vk::ImageAspectFlags::COLOR);
+            camera_data.images.push(image);
+
+            let mut depth_image = Image::new_2d(
+                device,
+                camera_bundle.depth_format,
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL
+                    | vk::MemoryPropertyFlags::HOST_VISIBLE
+                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                extent.width,
+                extent.height,
+            );
+
+            depth_image.new_image_view(device, vk::ImageAspectFlags::DEPTH);
+            camera_data.depth_images.push(depth_image);
+        }
+
+        for i in 0..MAX_FRAMES_IN_FLIGHT {
+            let attachments = [camera_data.images[i].get_image_view(),camera_data.depth_images[i].get_image_view()];
+
+            let framebuffer = Framebuffer::new(device, attachments, camera_bundle.render_pass, extent.width, extent.height);
+            
+            camera_data.framebuffers.push(framebuffer);
+        }
+
         return Self {
+            background: Background::SKYBOX,
             projection_matrix: [[1.0; 4]; 4],
             view_matrix: [[1.0; 4]; 4],
             inverse_view_matrix: [[1.0; 4]; 4],
@@ -34,6 +108,8 @@ impl Camera {
             aspect_ratio,
             rotation: glam::Vec3::ZERO,
             translation: glam::Vec3::ZERO,
+            camera_data,
+            max_extent: camera_bundle.max_extent
         };
     }
 
@@ -45,8 +121,7 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> glam::Mat4 {
-
-        let mut projection_matrix = [[1.0;4];4];
+        let mut projection_matrix = [[1.0; 4]; 4];
         projection_matrix[0][0] = 2.0 / (right - left);
         projection_matrix[1][1] = 2.0 / (bottom - top);
         projection_matrix[2][2] = 1.0 / (far - near);
@@ -64,8 +139,8 @@ impl Camera {
         let h = cos_fov / sin_fov;
         let w = h / aspect;
         let r = far / (far - near);
-        
-        let mut projection_matrix = [[1.0;4];4];
+
+        let mut projection_matrix = [[1.0; 4]; 4];
         projection_matrix = [[0.0; 4]; 4];
         projection_matrix[0][0] = w;
         projection_matrix[1][1] = h;
@@ -78,50 +153,49 @@ impl Camera {
 
     pub fn update_position(&mut self, dir: CameraDirection, dt: f32) {
         let velocity = dt * self.speed;
-    
+
         let yaw = self.rotation.y;
         let mut move_direction = glam::Vec3::ZERO;
-    
+
         match dir {
             CameraDirection::NONE => {}
-            CameraDirection::FOWARD => move_direction += glam::vec3(0.0,0.0,1.0),
-            CameraDirection::BACKWARD => move_direction -= glam::vec3(0.0,0.0,1.0),
-            CameraDirection::LEFT => move_direction -= glam::vec3(1.0,0.0,0.0),
-            CameraDirection::RIGHT => move_direction += glam::vec3(1.0,0.0,0.0),
-            CameraDirection::UP => move_direction -= glam::vec3(0.0,1.0,0.0),
-            CameraDirection::DOWN => move_direction += glam::vec3(0.0,1.0,0.0),
+            CameraDirection::FOWARD => move_direction += glam::vec3(0.0, 0.0, 1.0),
+            CameraDirection::BACKWARD => move_direction -= glam::vec3(0.0, 0.0, 1.0),
+            CameraDirection::LEFT => move_direction -= glam::vec3(1.0, 0.0, 0.0),
+            CameraDirection::RIGHT => move_direction += glam::vec3(1.0, 0.0, 0.0),
+            CameraDirection::UP => move_direction -= glam::vec3(0.0, 1.0, 0.0),
+            CameraDirection::DOWN => move_direction += glam::vec3(0.0, 1.0, 0.0),
         }
-    
+
         if move_direction.dot(move_direction) > std::f32::EPSILON {
             self.translation += self.speed * dt * move_direction;
         }
     }
-    
+
     pub fn update_direction(&mut self, dx: f64, dy: f64, dt: f32) {
         let mut rotation = glam::Vec3::ZERO;
-    
+
         if dy > 0.0 {
             rotation.x -= dy.abs() as f32;
         } else if dy < 0.0 {
             rotation.x += dy.abs() as f32;
         }
-    
+
         if dx > 0.0 {
             rotation.y += dx.abs() as f32
         } else if dx < 0.0 {
             rotation.y -= dx.abs() as f32
         }
-    
+
         if rotation.dot(rotation) > std::f32::EPSILON {
             self.rotation += self.sensivity * dt * rotation;
         }
-    
+
         self.rotation.x = self.rotation.x.clamp(-1.5, 1.5);
         self.rotation.y = self.rotation.y % (2.0 * std::f32::consts::PI);
     }
 
-    
-    pub fn get_matrix(&self) -> [[f32;4];4] {
+    pub fn get_matrix(&self) -> [[f32; 4]; 4] {
         let perspective = if self.ortho_mode {
             Camera::create_orthographic_projection(
                 -self.aspect_ratio,
@@ -139,9 +213,9 @@ impl Camera {
                 1000.0,
             )
         };
-    
+
         let view = self.set_view_yxz(self.translation, self.rotation);
-    
+
         return (perspective * view).to_cols_array_2d();
     }
 
@@ -184,12 +258,7 @@ impl Camera {
         self.inverse_view_matrix[3][2] = position.z;
     }
 
-    pub fn set_view_target(
-        &mut self,
-        position: glam::Vec3,
-        target: glam::Vec3,
-        up: glam::Vec3,
-    ) {
+    pub fn set_view_target(&mut self, position: glam::Vec3, target: glam::Vec3, up: glam::Vec3) {
         self.set_view_direction(position, target - position, up);
     }
 
@@ -206,7 +275,6 @@ impl Camera {
         let w = glam::Vec3::new(c2 * s1, -s2, c1 * c2);
 
         let adjusted_position = glam::Vec3::new(position.x, position.y, position.z);
-
 
         let mut view_matrix: [[f32; 4]; 4] = [[0.0; 4]; 4];
         view_matrix[0][0] = u.x;

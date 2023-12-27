@@ -27,7 +27,7 @@ impl Query {
         return game_object;
     }
 
-    pub fn push<T: Component + 'static>(&mut self, game_object: &GameObject, component: T) {
+    pub fn push<T: Component + Send + 'static>(&mut self, game_object: &GameObject, component: T) {
         self.entities
             .get_mut(&game_object.get_id())
             .unwrap()
@@ -43,13 +43,13 @@ impl Query {
         return Some(self.entities.get(&game_object.get_id()).unwrap());
     }
 
-    pub fn query<'a, T: Component + 'static>(&'a self, game_object: &GameObject) -> Option<&'a T> {
+    pub fn query<'a, T: Component + Send + 'static>(&'a self, game_object: &GameObject) -> Option<&'a T> {
         self.entities
             .get(&game_object.get_id())
             .and_then(|entity| entity.get_component::<T>())
     }
 
-    pub fn query_mut<'a, T: Component + 'static>(
+    pub fn query_mut<'a, T: Component + Send + 'static>(
         &'a mut self,
         game_object: &GameObject,
     ) -> Option<&'a mut T> {
@@ -58,14 +58,14 @@ impl Query {
             .and_then(|entity| entity.get_mut_component::<T>())
     }
 
-    pub fn query_all<'a, T: Component + 'static>(&'a self, game_object: &GameObject) -> Vec<&'a T> {
+    pub fn query_all<'a, T: Component + Send + 'static>(&'a self, game_object: &GameObject) -> Vec<&'a T> {
         self.entities
             .get(&game_object.get_id())
             .and_then(|entity| Some(entity.get_components::<T>()))
             .unwrap()
     }
 
-    pub fn query_all_mut<'a, T: Component + 'static>(
+    pub fn query_all_mut<'a, T: Component + Send + 'static>(
         &'a mut self,
         game_object: &GameObject,
     ) -> Vec<&'a mut T> {
