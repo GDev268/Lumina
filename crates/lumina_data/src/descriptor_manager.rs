@@ -374,6 +374,158 @@ impl DescriptorManager {
         );
     }
 
+    pub fn change_image_value_with_images(
+        &mut self,
+        label: String,
+        cur_frame: u32,
+        extent: vk::Extent2D,
+        color_image: vk::Image,
+        depth_image: vk::Image,
+    ) {
+        let cur_struct = self
+            .descriptor_table
+            .get_mut(&label)
+            .expect("Failed to get the value!");
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::UNDEFINED,
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+        );
+
+        let command_buffer: vk::CommandBuffer;
+
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            command_pool: self.device.get_command_pool(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_buffer_count: 1,
+        };
+
+        command_buffer = unsafe {
+            self.device
+                .device()
+                .allocate_command_buffers(&alloc_info)
+                .unwrap()[0]
+        };
+
+        let begin_info = vk::CommandBufferBeginInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+            ..Default::default()
+        };
+
+        unsafe {
+            self.device
+                .device()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin command buffer!");
+        }
+
+        let color_image_copy = vk::ImageCopy {
+            src_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            src_offset: vk::Offset3D::default(),
+            dst_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::COLOR,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            dst_offset: vk::Offset3D::default(),
+            extent: vk::Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            },
+        };
+
+        let depth_image_copy = vk::ImageCopy {
+            src_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::DEPTH,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            src_offset: vk::Offset3D::default(),
+            dst_subresource: vk::ImageSubresourceLayers {
+                aspect_mask: vk::ImageAspectFlags::DEPTH,
+                mip_level: 0,
+                base_array_layer: 0,
+                layer_count: 1,
+            },
+            dst_offset: vk::Offset3D::default(),
+            extent: vk::Extent3D {
+                width: extent.width,
+                height: extent.height,
+                depth: 1,
+            },
+        };
+
+        unsafe {
+            self.device.device().cmd_copy_image(
+                command_buffer,
+                color_image,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                cur_struct.images[cur_frame as usize].get_image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[color_image_copy],
+            );
+
+            self.device.device().cmd_copy_image(
+                command_buffer,
+                depth_image,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                cur_struct.images[cur_frame as usize].get_image(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[depth_image_copy],
+            );
+
+            
+            self.device
+                .device()
+                .end_command_buffer(command_buffer)
+                .expect("Failed to end command buffer!");
+            let submit_info = vk::SubmitInfo {
+                s_type: vk::StructureType::SUBMIT_INFO,
+                command_buffer_count: 1,
+                p_command_buffers: &command_buffer,
+                ..Default::default()
+            };
+            self.device
+                .device()
+                .queue_submit(
+                    self.device.graphics_queue(),
+                    &[submit_info],
+                    vk::Fence::null(),
+                )
+                .expect("Failed to submit data");
+            self.device
+                .device()
+                .queue_wait_idle(self.device.graphics_queue())
+                .unwrap();
+            self.device
+                .device()
+                .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
+        }
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::GENERAL,
+        );
+    }
+
     fn transition_image_layout(
         device: Rc<Device>,
         image: vk::Image,

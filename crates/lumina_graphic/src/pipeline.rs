@@ -1,8 +1,16 @@
 use lumina_core::device::Device;
-use lumina_render::{mesh::Vertex, offset_of};
 
 use ash::vk::{self};
 use std::ffi::CString;
+
+use crate::offset_of;
+
+#[derive(Clone, Copy)]
+pub struct Vertex {
+    pub position: glam::Vec3,
+    pub normal: glam::Vec3,
+    pub uv: glam::Vec2,
+}
 
 pub struct PipelineConfiguration {
     pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,

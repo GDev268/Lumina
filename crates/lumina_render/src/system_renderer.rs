@@ -8,12 +8,8 @@ use lumina_core::{
 
 use ash::vk;
 
-use super::{
-    pipeline::{Pipeline, PipelineConfiguration},
-    shader::Shader,
-};
 
-pub struct Renderer {
+pub struct SystemRenderer {
     pub swapchain: Swapchain,
     pub command_buffers: Vec<vk::CommandBuffer>,
     pub current_image_index: u32,
@@ -21,14 +17,14 @@ pub struct Renderer {
     pub is_frame_started: bool,
 }
 
-impl Renderer {
+impl SystemRenderer {
     pub fn new(
         window: &Window,
         device: &Device,
         swapchain: Option<&Swapchain>,
     ) -> Self {
-        let swapchain = Renderer::create_swapchain(window, device, swapchain);
-        let command_buffers = Renderer::create_command_buffers(device);
+        let swapchain = SystemRenderer::create_swapchain(window, device, swapchain);
+        let command_buffers = SystemRenderer::create_command_buffers(device);
 
         return Self {
             swapchain,
@@ -273,14 +269,14 @@ impl Renderer {
         for (id, entity) in scene.entities.iter_mut() {
             if let Some(shader) = entity.get_mut_component::<Shader>() {
                 if shader.pipeline_layout.is_none() && shader.pipeline.is_none() {
-                    shader.pipeline_layout = Some(Renderer::create_pipeline_layout(
+                    shader.pipeline_layout = Some(SystemRenderer::create_pipeline_layout(
                         device,
                         shader
                             .descriptor_manager
                             .get_descriptor_layout()
                             .get_descriptor_set_layout(),
                     ));
-                    shader.pipeline = Some(Renderer::create_pipeline(
+                    shader.pipeline = Some(SystemRenderer::create_pipeline(
                         self.get_swapchain_renderpass(),
                         shader,
                         device,
@@ -404,8 +400,8 @@ impl Renderer {
         }
 
         self.cleanup(device);
-        self.swapchain = Renderer::create_swapchain(window, device, None);
-        self.command_buffers = Renderer::create_command_buffers(device);
+        self.swapchain = SystemRenderer::create_swapchain(window, device, None);
+        self.command_buffers = SystemRenderer::create_command_buffers(device);
     }
 
     pub fn cleanup(&mut self, device: &Device) {

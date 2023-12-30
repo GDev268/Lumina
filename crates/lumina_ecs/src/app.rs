@@ -2,7 +2,7 @@ struct ClearColor([f32; 3]);
 use std::{rc::Rc, thread, time::Instant};
 
 use lumina_core::{device::Device, fps_manager::FPS, window::Window};
-use lumina_graphic::renderer::Renderer;
+//use lumina_graphic::renderer::Renderer;
 use lumina_input::{keyboard::Keyboard, mouse::Mouse};
 use num_cpus;
 use sdl2::Sdl;
@@ -12,7 +12,7 @@ use crate::{query::Query, stage::Stage};
 struct App {
     window: Window,
     device: Device,
-    renderer: Renderer,
+    //renderer: Renderer,
     fps_manager: FPS,
     keyboard_pool: Keyboard,
     mouse_pool: Mouse,
@@ -26,14 +26,14 @@ impl App {
     pub fn new(sdl: &Sdl) -> Self {
         let window = Window::new(sdl, "Lumina", 1920, 1080);
         let device = Device::new(&window);
-        let renderer = Renderer::new(&window, &device, None);
+        //let renderer = Renderer::new(&window, &device, None);
         let mut fps_manager = FPS::new();
         fps_manager.set_max_fps(300);
 
         Self {
             window,
             device,
-            renderer,
+            //renderer,
             fps_manager,
             keyboard_pool: Keyboard::new(),
             mouse_pool: Mouse::new(),

@@ -1,5 +1,4 @@
 pub mod pipeline;
-pub mod renderer;
 pub mod shader;
 pub mod types;
 

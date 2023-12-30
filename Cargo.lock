@@ -1214,7 +1214,6 @@ dependencies = [
  "lumina_core",
  "lumina_data",
  "lumina_object",
- "lumina_render",
 ]
 
 [[package]]
@@ -1262,6 +1261,7 @@ dependencies = [
  "lumina_bundle",
  "lumina_core",
  "lumina_data",
+ "lumina_graphic",
  "lumina_object",
 ]
 

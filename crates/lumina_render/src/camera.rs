@@ -1,15 +1,19 @@
+use std::rc::Rc;
+
 use ash::vk;
-use lumina_bundle::CameraBundle;
+use lumina_bundle::RendererBundle;
 use lumina_core::{
     device::Device, framebuffer::Framebuffer, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT,
     texture::Texture,
 };
 
+use crate::renderer::{Renderer, self};
+
 struct RenderTexture {
     images: Vec<Image>,
     depth_images: Vec<Image>,
     framebuffers: Vec<Framebuffer>,
-    max_extent: vk::Extent2D,
+    extent: vk::Extent2D,
 }
 
 pub enum CameraDirection {
@@ -40,62 +44,17 @@ pub struct Camera {
     aspect_ratio: f32,
     rotation: glam::Vec3,
     translation: glam::Vec3,
-    camera_data: RenderTexture,
-    max_extent:vk::Extent2D
+    renderer: Renderer,
 }
 
 impl Camera {
     pub fn new(
-        device: &Device,
+        device: Rc<Device>,
         aspect_ratio: f32,
         ortho_mode: bool,
         extent: vk::Extent2D,
-        camera_bundle: &CameraBundle,
+        renderer_bundle: &RendererBundle,
     ) -> Self {
-        let mut camera_data = RenderTexture {
-            images: Vec::new(),
-            depth_images: Vec::new(),
-            framebuffers: Vec::new(),
-            max_extent: camera_bundle.max_extent,
-        };
-
-        for i in 0..MAX_FRAMES_IN_FLIGHT {
-            let mut image = Image::new_2d(
-                device,
-                camera_bundle.image_format,
-                vk::ImageUsageFlags::COLOR_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL
-                    | vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
-                extent.width,
-                extent.height,
-            );
-            image.new_image_view(device, vk::ImageAspectFlags::COLOR);
-            camera_data.images.push(image);
-
-            let mut depth_image = Image::new_2d(
-                device,
-                camera_bundle.depth_format,
-                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL
-                    | vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
-                extent.width,
-                extent.height,
-            );
-
-            depth_image.new_image_view(device, vk::ImageAspectFlags::DEPTH);
-            camera_data.depth_images.push(depth_image);
-        }
-
-        for i in 0..MAX_FRAMES_IN_FLIGHT {
-            let attachments = [camera_data.images[i].get_image_view(),camera_data.depth_images[i].get_image_view()];
-
-            let framebuffer = Framebuffer::new(device, attachments, camera_bundle.render_pass, extent.width, extent.height);
-            
-            camera_data.framebuffers.push(framebuffer);
-        }
-
         return Self {
             background: Background::SKYBOX,
             projection_matrix: [[1.0; 4]; 4],
@@ -108,10 +67,21 @@ impl Camera {
             aspect_ratio,
             rotation: glam::Vec3::ZERO,
             translation: glam::Vec3::ZERO,
-            camera_data,
-            max_extent: camera_bundle.max_extent
+            renderer: Renderer::new(device, extent, renderer_bundle),
         };
     }
+
+    pub fn create_command_buffers(&mut self, device: &Device) {
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_pool: device.get_command_pool(),
+            command_buffer_count: MAX_FRAMES_IN_FLIGHT as u32,
+        };
+    }
+
+    pub fn begin_camera(&mut self) {}
 
     fn create_orthographic_projection(
         left: f32,

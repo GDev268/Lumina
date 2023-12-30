@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use lumina_core::{device::Device, window::Window};
-use lumina_graphic::renderer::Renderer;
+use lumina_render::{system_renderer::SystemRenderer, camera::Camera};
+//use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;
 
 fn main() {
@@ -15,8 +16,9 @@ fn main() {
     let device = Rc::new(Device::new(&window));
 
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
-    let mut renderer = Renderer::new(&window, &device, None);
+    let mut renderer = SystemRenderer::new(&window, &device, None);
 
+    let mut camera = Camera::new();
     window._window.set_icon(window_icon);
 
     'running: loop {

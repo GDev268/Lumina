@@ -1,6 +1,6 @@
 use ash::vk;
 
-pub struct CameraBundle{
+pub struct RendererBundle{
     pub image_format:vk::Format,
     pub depth_format:vk::Format,
     pub max_extent:vk::Extent2D,
@@ -8,5 +8,5 @@ pub struct CameraBundle{
 }
 
 struct GlobalBundles {
-    camera:CameraBundle
+    camera:RendererBundle
 }
