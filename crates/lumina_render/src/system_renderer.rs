@@ -65,6 +65,10 @@ impl SystemRenderer {
         return self.current_frame_index;
     }
 
+    pub fn get_main_wait_semaphore(&self) -> vk::Semaphore {
+        return self.swapchain.get_wait_semaphore(self.current_image_index as usize);
+    }
+
     pub fn begin_frame(&mut self, device: &Device, window: &Window) -> Option<vk::CommandBuffer> {
         assert!(
             !self.is_frame_started,

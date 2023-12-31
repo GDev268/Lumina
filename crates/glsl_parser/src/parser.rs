@@ -139,7 +139,7 @@ impl Parser {
             if !line.trim().is_empty() {
                 if line.contains("//") || line.contains("*/") || line.contains("/*") {
                 } else {
-                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler") {
+                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler2D") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
@@ -147,7 +147,7 @@ impl Parser {
                             .expect("Failed to get the position");
 
                         self.descriptor_data.insert(
-                            words[uniform_pos + 1].to_owned(),
+                            words[uniform_pos + 2].to_owned(),
                             DescriptorData{
                                 size: 0,
                                 binding: Parser::get_descriptor_binding(&words),
@@ -155,7 +155,7 @@ impl Parser {
                             },
                         );
                     }
-                    if !line.contains("sampler") && line.contains("uniform") && !line.contains("push_constant") {
+                    if !line.contains("sampler2D") && line.contains("uniform") && !line.contains("push_constant") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()

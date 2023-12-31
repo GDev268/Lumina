@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
-use lumina_core::{device::Device, window::Window};
-use lumina_render::{system_renderer::SystemRenderer, camera::Camera};
+use ash::vk;
+use lumina_bundle::RendererBundle;
+use lumina_core::{device::Device, window::Window, texture::Texture};
+use lumina_render::{camera::Camera, system_renderer::SystemRenderer};
 //use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;
 
@@ -18,13 +20,51 @@ fn main() {
     let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
     let mut renderer = SystemRenderer::new(&window, &device, None);
 
-    let mut camera = Camera::new();
+    let renderer_bundle = RendererBundle {
+        image_format: renderer.swapchain.get_swapchain_image_format(),
+        depth_format: renderer.swapchain.get_swapchain_depth_format(),
+        max_extent: vk::Extent2D {
+            width: 800,
+            height: 640,
+        },
+        render_pass: renderer.get_swapchain_renderpass(),
+    };
+
+    let mut camera = Camera::new(
+        Rc::clone(&device),
+        renderer.get_aspect_ratio(),
+        false,
+        vk::Extent2D {
+            width: 800,
+            height: 640,
+        },
+        &renderer_bundle,
+    );
     window._window.set_icon(window_icon);
 
     'running: loop {
         let command_buffer = renderer.begin_frame(&device, &window).unwrap();
 
         renderer.begin_swapchain_renderpass(command_buffer, &device);
+
+        camera.renderer.begin_frame(&device);
+        camera.renderer.end_frame(&device,renderer.get_main_wait_semaphore());
+
+
+        /*camera.renderer.canvas.update(
+            camera.renderer.current_frame_index as u32,
+            vk::Extent2D {
+                width: 800,
+                height: 640,
+            },
+            camera.renderer.renderer_data.images[camera.renderer.current_frame_index].get_image(),
+            camera.renderer.renderer_data.depth_images[camera.renderer.current_frame_index].get_image(),
+        );*/
+
+        let texture = Texture::new(String::default(), Rc::clone(&device));
+        
+        camera.renderer.canvas.shader.descriptor_manager.change_image_value("imageTexture".to_string(), camera.renderer.current_frame_index as u32, texture);
+        camera.renderer.canvas.render(&device, command_buffer,renderer.get_frame_index() as u32);
 
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);

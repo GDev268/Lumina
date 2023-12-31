@@ -97,6 +97,10 @@ impl Swapchain {
         return self.swapchain_image_format.unwrap();
     }
 
+    pub fn get_swapchain_depth_format(&self) -> vk::Format {
+        return self.swapchain_depth_format.unwrap();
+    }
+
     pub fn get_swapchain_extent(&self) -> vk::Extent2D {
         return self.swapchain_extent.unwrap();
     }
@@ -104,6 +108,10 @@ impl Swapchain {
     pub fn extent_aspect_ratio(&self) -> f32 {
         return self.swapchain_extent.unwrap().width as f32
             / self.swapchain_extent.unwrap().height as f32;
+    }
+
+    pub fn get_wait_semaphore(&self,index:usize) -> vk::Semaphore {
+        return self.image_available_semaphores[index];
     }
 
     pub fn find_depth_format(&self, device: &Device) -> vk::Format {

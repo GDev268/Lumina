@@ -8,35 +8,29 @@ use lumina_core::{
 };
 
 use ash::vk;
+use lumina_graphic::pipeline::PipelineConfiguration;
 
-use crate::canvas::Canvas;
+use crate::canvas::{Canvas, self};
 
 pub struct RenderTexture {
-    images: Vec<Image>,
-    depth_images: Vec<Image>,
+    pub images: Vec<Image>,
+    pub depth_images: Vec<Image>,
     framebuffers: Vec<Framebuffer>,
     extent: vk::Extent2D,
 }
 
 pub struct Renderer {
-    renderer_data: RenderTexture,
+    pub renderer_data: RenderTexture,
     camera_render_pass: vk::RenderPass,
     command_buffers: Vec<vk::CommandBuffer>,
-    current_frame_index: usize,
-    canvas:Canvas,
-    image_available_semaphores: Vec<vk::Semaphore>,
-    render_finished_semaphores: Vec<vk::Semaphore>,
+    pub current_frame_index: usize,
+    pub canvas:Canvas,
     in_flight_fences: Vec<vk::Fence>,
     images_in_flight: Vec<vk::Fence>,
 }
 
 impl Renderer {
     pub fn new(device: Rc<Device>, extent: vk::Extent2D, renderer_bundle: &RendererBundle) -> Self {
-        let mut image_available_semaphores = Vec::new();
-        image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::null());
-
-        let mut render_finished_semaphores = Vec::new();
-        render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT, vk::Semaphore::null());
 
         let mut in_flight_fences = Vec::new();
         in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::null());
@@ -54,28 +48,27 @@ impl Renderer {
 
         for i in 0..MAX_FRAMES_IN_FLIGHT {
             unsafe {
-                image_available_semaphores[i] = device
-                    .device()
-                    .create_semaphore(&semaphore_info, None)
-                    .unwrap();
-                render_finished_semaphores[i] = device
-                    .device()
-                    .create_semaphore(&semaphore_info, None)
-                    .unwrap();
                 in_flight_fences[i] = device.device().create_fence(&fence_info, None).unwrap();
             }
         }
+
+        let mut canvas = Canvas::new(Rc::clone(&device));
+
+        let mut pipeline_config = PipelineConfiguration::default();
+        pipeline_config.attribute_descriptions = canvas.mesh.get_attribute_descriptions().clone();
+        pipeline_config.binding_descriptions = canvas.mesh.get_binding_descriptions().clone();
+
+        canvas.shader.create_pipeline_layout( false);
+        canvas.shader.create_pipeline(renderer_bundle.render_pass,pipeline_config);
 
         Self {
             renderer_data: Renderer::create_renderer_data(&device, renderer_bundle, extent),
             command_buffers: Renderer::create_command_buffers(&device),
             current_frame_index: 0,
-            image_available_semaphores,
-            render_finished_semaphores,
             in_flight_fences,
             images_in_flight,
             camera_render_pass: renderer_bundle.render_pass,
-            canvas: Canvas::new(Rc::clone(&device))
+            canvas
         }
     }
 
@@ -104,9 +97,7 @@ impl Renderer {
                 device,
                 renderer_bundle.image_format,
                 vk::ImageUsageFlags::COLOR_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL
-                    | vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 extent.width,
                 extent.height,
             );
@@ -117,9 +108,7 @@ impl Renderer {
                 device,
                 renderer_bundle.depth_format,
                 vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL
-                    | vk::MemoryPropertyFlags::HOST_VISIBLE
-                    | vk::MemoryPropertyFlags::HOST_COHERENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 extent.width,
                 extent.height,
             );
@@ -170,8 +159,6 @@ impl Renderer {
     pub fn begin_frame(&mut self, device: &Device) {
         let command_buffer = self.get_command_buffer();
 
-        self.begin_rendering(device, command_buffer);
-
         let begin_info = vk::CommandBufferBeginInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
@@ -185,9 +172,12 @@ impl Renderer {
                 .begin_command_buffer(command_buffer, &begin_info)
                 .expect("Failed to begin recording command buffer");
         }
+
+        self.begin_rendering(device, command_buffer);
+
     }
 
-    pub fn end_frame(&mut self, device: &Device) {
+    pub fn end_frame(&mut self, device: &Device,wait_semaphore:vk::Semaphore) {
         let command_buffer = self.get_command_buffer();
 
         self.end_rendering(device, command_buffer);
@@ -196,10 +186,10 @@ impl Renderer {
             device.device().end_command_buffer(command_buffer).unwrap();
         }
 
-        self.submit_command_buffers(device, command_buffer, self.current_frame_index);
+        self.submit_command_buffers(device, command_buffer, wait_semaphore,self.current_frame_index);
     }
 
-    pub fn begin_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
+    fn begin_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
         let mut clear_values: [vk::ClearValue; 2] =
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
@@ -256,7 +246,7 @@ impl Renderer {
         }
     }
 
-    pub fn end_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
+    fn end_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
         unsafe {
             device.device().cmd_end_render_pass(command_buffer);
         }
@@ -266,6 +256,7 @@ impl Renderer {
         &mut self,
         device: &Device,
         cmd_buffer: vk::CommandBuffer,
+        wait_semaphore:vk::Semaphore,
         frame_index: usize,
     ) {
         if self.images_in_flight[frame_index] != vk::Fence::null() {
@@ -278,23 +269,13 @@ impl Renderer {
         }
 
         self.images_in_flight[frame_index] = self.in_flight_fences[frame_index];
-
-        let wait_semaphores = [self.image_available_semaphores[frame_index]];
-
-        let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
-
-        let signal_semaphores = [self.render_finished_semaphores[self.current_frame_index]];
+        
 
         let submit_info = vk::SubmitInfo {
             s_type: vk::StructureType::SUBMIT_INFO,
-            p_next: std::ptr::null(),
-            wait_semaphore_count: 1,
-            p_wait_semaphores: wait_semaphores.as_ptr(),
-            p_wait_dst_stage_mask: wait_stages.as_ptr(),
             command_buffer_count: 1,
             p_command_buffers: &cmd_buffer,
-            signal_semaphore_count: signal_semaphores.len() as u32,
-            p_signal_semaphores: signal_semaphores.as_ptr(),
+            ..Default::default()
         };
 
         unsafe {
@@ -302,7 +283,7 @@ impl Renderer {
                 .device()
                 .reset_fences(&[self.in_flight_fences[frame_index]])
                 .unwrap();
-
+            
             device
                 .device()
                 .queue_submit(
@@ -310,7 +291,8 @@ impl Renderer {
                     &[submit_info],
                     self.in_flight_fences[frame_index],
                 )
-                .unwrap()
+                .unwrap();
+
         }
 
         self.current_frame_index = (self.current_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;

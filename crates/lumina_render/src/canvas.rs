@@ -11,8 +11,8 @@ use crate::{
 };
 
 pub struct Canvas {
-    mesh: Quad,
-    shader: Shader,
+    pub mesh: Quad,
+    pub shader: Shader,
 }
 
 impl Canvas {
@@ -51,17 +51,19 @@ impl Canvas {
 
     pub fn update(
         &mut self,
-        framebuffer: vk::Framebuffer,
         cur_frame: u32,
         extent: vk::Extent2D,
-        device: &Device,
         color_image: vk::Image,
         depth_image: vk::Image,
     ) {
+        for (name, _) in self.shader.descriptor_manager.descriptor_table.iter() {
+            println!("{:?}", name);
+        }
+
         self.shader
             .descriptor_manager
             .change_image_value_with_images(
-                "ImageTexture".to_string(),
+                "imageTexture".to_string(),
                 cur_frame,
                 extent,
                 color_image,
@@ -69,7 +71,29 @@ impl Canvas {
             )
     }
 
-    pub fn render(&mut self,device: &Device,command_buffer:vk::CommandBuffer) {
+    pub fn render(&mut self, device: &Device, command_buffer: vk::CommandBuffer, cur_frame: u32) {
+        unsafe {
+            device.device().cmd_bind_pipeline(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.shader
+                    .pipeline
+                    .as_ref()
+                    .unwrap()
+                    .graphics_pipeline
+                    .unwrap(),
+            );
+
+            device.device().cmd_bind_descriptor_sets(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.shader.pipeline_layout.unwrap(),
+                0,
+                &[self.shader.descriptor_manager.get_descriptor_set(cur_frame)],
+                &[],
+            )
+        }
+        self.mesh.bind(command_buffer, device);
         self.mesh.draw(command_buffer, device);
     }
 }

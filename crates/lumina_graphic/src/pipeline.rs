@@ -205,38 +205,7 @@ impl Pipeline {
         shader_stages[1].p_next = std::ptr::null();
         shader_stages[1].p_specialization_info = std::ptr::null();
 
-        pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
-
-        pipeline_config.binding_descriptions[0].binding = 0;
-        pipeline_config.binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
-        pipeline_config.binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
-
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 0,
-                binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, position),
-            });
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 1,
-                binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, normal),
-            });
-
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 2,
-                binding: 0,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, uv),
-            });
-
+    
         let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
             vk::PipelineVertexInputStateCreateInfo {
                 flags: vk::PipelineVertexInputStateCreateFlags::empty(),

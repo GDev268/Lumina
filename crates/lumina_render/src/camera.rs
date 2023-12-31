@@ -44,7 +44,7 @@ pub struct Camera {
     aspect_ratio: f32,
     rotation: glam::Vec3,
     translation: glam::Vec3,
-    renderer: Renderer,
+    pub renderer: Renderer,
 }
 
 impl Camera {

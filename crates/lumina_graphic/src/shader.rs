@@ -7,7 +7,12 @@ use lumina_core::device::Device;
 use lumina_data::{descriptor::PoolConfig, descriptor_manager::DescriptorManager};
 use lumina_object::game_object::Component;
 
-use crate::pipeline::Pipeline;
+use crate::pipeline::{Pipeline, PipelineConfiguration};
+
+pub struct PushConstantData {
+    pub model_matrix: glam::Mat4,
+    pub normal_matrix: glam::Mat4,
+}
 
 pub struct Shader {
     device: Rc<Device>,
@@ -53,11 +58,79 @@ impl Shader {
         return Self {
             device: Rc::clone(&device),
             descriptor_manager,
-            vert_module: Shader::create_shader_module(Shader::read_file(&(vert_file_path.to_string() + ".spv")), &device),
-            frag_module: Shader::create_shader_module(Shader::read_file(&(frag_file_path.to_string() + ".spv")), &device),
+            vert_module: Shader::create_shader_module(
+                Shader::read_file(&(vert_file_path.to_string() + ".spv")),
+                &device,
+            ),
+            frag_module: Shader::create_shader_module(
+                Shader::read_file(&(frag_file_path.to_string() + ".spv")),
+                &device,
+            ),
             pipeline: None,
-            pipeline_layout: None
+            pipeline_layout: None,
         };
+    }
+
+    pub fn create_pipeline_layout(&mut self, contains_push_constants: bool) {
+        let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
+            stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+            offset: 0,
+            size: std::mem::size_of::<PushConstantData>() as u32,
+        };
+
+        let descriptor_set_layouts = vec![self
+            .descriptor_manager
+            .get_descriptor_layout()
+            .get_descriptor_set_layout()];
+
+        let pipeline_layout_info: vk::PipelineLayoutCreateInfo = if contains_push_constants {
+            let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
+                stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                offset: 0,
+                size: std::mem::size_of::<PushConstantData>() as u32,
+            };
+
+            vk::PipelineLayoutCreateInfo {
+                s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
+                p_next: std::ptr::null(),
+                flags: vk::PipelineLayoutCreateFlags::empty(),
+                set_layout_count: descriptor_set_layouts.len() as u32,
+                p_set_layouts: descriptor_set_layouts.as_ptr(),
+                push_constant_range_count: 1,
+                p_push_constant_ranges: &push_constant_range,
+            }
+        } else {
+            vk::PipelineLayoutCreateInfo {
+                s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
+                p_next: std::ptr::null(),
+                flags: vk::PipelineLayoutCreateFlags::empty(),
+                set_layout_count: descriptor_set_layouts.len() as u32,
+                p_set_layouts: descriptor_set_layouts.as_ptr(),
+                push_constant_range_count: 0,
+                p_push_constant_ranges: std::ptr::null(),
+            }
+        };
+
+        unsafe {
+            self.pipeline_layout = Some(
+                self.device
+                    .device()
+                    .create_pipeline_layout(&pipeline_layout_info, None)
+                    .expect("Failed to create pipeline layout!"),
+            );
+        }
+    }
+
+    pub fn create_pipeline(&mut self, render_pass: vk::RenderPass,mut pipeline_config:PipelineConfiguration) {
+        pipeline_config.renderpass = Some(render_pass);
+        pipeline_config.pipeline_layout = self.pipeline_layout;
+
+        self.pipeline = Some(Pipeline::new(
+            &self.device,
+            self.vert_module,
+            self.frag_module,
+            &mut pipeline_config,
+        ));
     }
 
     pub fn read_file(file_path: &str) -> Vec<u8> {

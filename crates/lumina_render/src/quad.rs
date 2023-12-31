@@ -26,9 +26,10 @@ impl Quad {
     pub fn new(device: Rc<Device>) -> Self {
         let (attributes, bindings) = Quad::setup();
 
+        let indices: Vec<u32> = vec![0, 1, 2, 2, 3, 0];
         let (vertex_buffer, vertex_count) = Quad::create_vertex_buffers(Quad::QUAD_VERTICES.to_vec(), Rc::clone(&device));
         let (index_count, has_index_buffer, index_buffer) =
-            Quad::create_index_buffers(Quad::QUAD_INDICES.to_vec(), Rc::clone(&device));
+            Quad::create_index_buffers(indices, Rc::clone(&device));
 
         return Self {
             vertex_buffer: vertex_buffer,
@@ -123,6 +124,7 @@ impl Quad {
     fn create_index_buffers(indices: Vec<u32>, device: Rc<Device>) -> (u32, bool, Option<Buffer>) {
         let index_count = indices.len() as u32;
         let has_index_buffer = index_count > 0;
+        println!("{:?}",indices);
 
         if !has_index_buffer {
             return (0, false, None);
