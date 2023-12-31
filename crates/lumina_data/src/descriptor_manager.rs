@@ -470,7 +470,15 @@ impl DescriptorManager {
                 depth: 1,
             },
         };
-    
+
+        DescriptorManager::transition_image_layout(
+            Rc::clone(&self.device),
+            cur_struct.images[cur_frame as usize].get_image(),
+            cur_struct.images[cur_frame as usize].get_format(),
+            vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            vk::ImageLayout::GENERAL,
+        );
+        
         unsafe {
             self.device.device().cmd_copy_image(
                 command_buffer,
@@ -480,15 +488,8 @@ impl DescriptorManager {
                 vk::ImageLayout::TRANSFER_DST_OPTIMAL,
                 &[color_image_copy],
             );
-    
-            self.device.device().cmd_copy_image(
-                command_buffer,
-                depth_image,
-                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
-                cur_struct.images[cur_frame as usize].get_image(),
-                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                &[depth_image_copy],
-            );
+
+   
     
             self.device
                 .device()
@@ -512,6 +513,7 @@ impl DescriptorManager {
                 .expect("Failed to submit data");
         }
     
+ 
         // Free the command buffer when it's no longer needed
         unsafe {
             self.device

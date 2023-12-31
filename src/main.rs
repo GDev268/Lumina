@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use ash::vk;
 use lumina_bundle::RendererBundle;
-use lumina_core::{device::Device, window::Window, texture::Texture};
-use lumina_render::{camera::Camera, system_renderer::SystemRenderer};
+use lumina_core::{device::Device, texture::Texture, window::Window};
+use lumina_graphic::{shader::Shader, pipeline::PipelineConfiguration};
+use lumina_render::{camera::Camera, system_renderer::SystemRenderer, quad::Quad};
 //use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;
 
@@ -42,29 +43,81 @@ fn main() {
     );
     window._window.set_icon(window_icon);
 
+    let quad = Quad::new(Rc::clone(&device));
+
+    let mut shader = Shader::new(
+        Rc::clone(&device),
+        "shaders/canvas/canvas_shader.vert",
+        "shaders/canvas/canvas_shader.frag",
+    );
+
+    let mut pipeline_config = PipelineConfiguration::default();
+    pipeline_config.attribute_descriptions = quad.get_attribute_descriptions().clone();
+    pipeline_config.binding_descriptions = quad.get_binding_descriptions().clone();
+
+    shader.create_pipeline_layout(false);
+    shader.create_pipeline(renderer_bundle.render_pass, pipeline_config);
+
+
     'running: loop {
         let command_buffer = renderer.begin_frame(&device, &window).unwrap();
 
         renderer.begin_swapchain_renderpass(command_buffer, &device);
 
         camera.renderer.begin_frame(&device);
-        camera.renderer.end_frame(&device,renderer.get_main_wait_semaphore());
+
+        let texture: Texture = Texture::new(String::default(), Rc::clone(&device));
+
+        shader.descriptor_manager.change_image_value(
+            "imageTexture".to_string(),
+            camera.renderer.current_frame_index as u32,
+            texture,
+        );
+
+        unsafe {
+            device.device().cmd_bind_pipeline(
+                camera.renderer.get_command_buffer(),
+                vk::PipelineBindPoint::GRAPHICS,
+                shader.pipeline.as_ref().unwrap().graphics_pipeline.unwrap(),
+            );
+
+            device.device().cmd_bind_descriptor_sets(
+                camera.renderer.get_command_buffer(),
+                vk::PipelineBindPoint::GRAPHICS,
+                shader.pipeline_layout.unwrap(),
+                0,
+                &[shader
+                    .descriptor_manager
+                    .get_descriptor_set(camera.renderer.current_frame_index as u32)],
+                &[],
+            );
+
+            quad.bind(camera.renderer.get_command_buffer(), &device);
+            quad.draw(camera.renderer.get_command_buffer(), &device);
+            
+        };
 
 
-        /*camera.renderer.canvas.update(
+        camera
+            .renderer
+            .end_frame(&device, renderer.get_main_wait_semaphore());
+
+        camera.renderer.canvas.update(
             camera.renderer.current_frame_index as u32,
             vk::Extent2D {
                 width: 800,
                 height: 640,
             },
             camera.renderer.renderer_data.images[camera.renderer.current_frame_index].get_image(),
-            camera.renderer.renderer_data.depth_images[camera.renderer.current_frame_index].get_image(),
-        );*/
+            camera.renderer.renderer_data.depth_images[camera.renderer.current_frame_index]
+                .get_image(),
+        );
 
-        let texture = Texture::new(String::default(), Rc::clone(&device));
-        
-        camera.renderer.canvas.shader.descriptor_manager.change_image_value("imageTexture".to_string(), camera.renderer.current_frame_index as u32, texture);
-        camera.renderer.canvas.render(&device, command_buffer,renderer.get_frame_index() as u32);
+        //camera.renderer.canvas.shader.descriptor_manager.change_image_value("imageTexture".to_string(), camera.renderer.current_frame_index as u32, texture);
+        camera
+            .renderer
+            .canvas
+            .render(&device, command_buffer, renderer.get_frame_index() as u32);
 
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);

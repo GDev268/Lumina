@@ -96,7 +96,7 @@ impl Renderer {
             let mut image = Image::new_2d(
                 device,
                 renderer_bundle.image_format,
-                vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC,
                 vk::MemoryPropertyFlags::DEVICE_LOCAL,
                 extent.width,
                 extent.height,
@@ -194,7 +194,7 @@ impl Renderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.01, 0.01, 0.01, 1.0],
+            float32: [0.1, 0.1, 0.0, 1.0],
         };
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
