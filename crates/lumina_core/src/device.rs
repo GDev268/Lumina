@@ -498,7 +498,8 @@ impl Device {
                 self.instance.as_ref().unwrap(),
             ),
             _surface: window.create_window_surface(
-                self.instance.as_ref().unwrap()
+                self.instance.as_ref().unwrap(),
+                self.entry.as_ref().unwrap(),
             ),
         };
         return Some(surface);
@@ -771,23 +772,19 @@ impl Device {
     }
 
     fn get_required_extensions(&self,window:&Window) -> Vec<*const i8> {
-        let raw_extensions = window._window.vulkan_instance_extensions().expect("Failed to get extensions");
-
-        println!("{:?}",raw_extensions);
-        let mut extensions = Vec::new();
-
-        for name in raw_extensions.iter() {
-            let c_name = name.as_ptr() as *const i8;
-            extensions.push(c_name);
-        }
-        
+        let mut extensions = ash_window::enumerate_required_extensions(
+            window._window.raw_display_handle(),
+        )
+        .unwrap()
+        .to_vec();
 
         if self.enable_validation_layers {
             extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
         }
-        
+
         return extensions;
     }
+
 
     fn find_queue_families(self: &Device, physical_device: &vk::PhysicalDevice) -> QueueFamily {
         let mut indices: QueueFamily = QueueFamily {
@@ -887,6 +884,8 @@ impl Device {
         }
     }
 
+
+    //Remake to rust from the Sasha Willems vulkan.gpuinfo.org project. (Link: https://github.com/SaschaWillems/vulkan.gpuinfo.org/blob/1e6ca6e3c0763daabd6a101b860ab4354a07f5d3/functions.php#L294)
     #[cfg(all(unix, not(target_os = "windows")))]
     fn get_driver_version(version_raw: u32, vendor_id: u32) -> String {
         //FOR NVIDIA GRAPHICS CARDS

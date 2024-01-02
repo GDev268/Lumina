@@ -313,6 +313,10 @@ impl Renderer {
                 .free_command_buffers(device.get_command_pool(), &self.command_buffers);
         }
     }
+
+    pub fn resize_camera_renderer(&mut self,renderer_bundle: &RendererBundle) {
+        self.camera_render_pass = renderer_bundle.render_pass;
+    }
 }
 
 /* pub fn render_game_objects(

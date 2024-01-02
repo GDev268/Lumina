@@ -13,6 +13,7 @@ lumina_object = {path="../lumina_object",version = "0.1.0"}
 lumina_render = {path="../lumina_render",version = "0.1.0"}
 
 num_cpus = "1.16.0"
+winit = "0.28.7"
 
 
 [dependencies.sdl2]

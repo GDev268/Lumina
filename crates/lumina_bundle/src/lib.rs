@@ -1,4 +1,4 @@
-use ash::vk;
+use ash::vk::{self,};
 
 pub struct RendererBundle{
     pub image_format:vk::Format,
@@ -7,6 +7,6 @@ pub struct RendererBundle{
     pub render_pass:vk::RenderPass
 }
 
-struct GlobalBundles {
-    camera:RendererBundle
+pub struct ResourcesBundle {
+    pub command_buffer:vk::CommandBuffer
 }

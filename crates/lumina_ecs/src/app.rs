@@ -1,18 +1,20 @@
 struct ClearColor([f32; 3]);
-use std::{rc::Rc, thread, time::Instant};
+use std::{rc::Rc, thread, time::Instant, f32::consts::E};
 
 use lumina_core::{device::Device, fps_manager::FPS, window::Window};
 //use lumina_graphic::renderer::Renderer;
 use lumina_input::{keyboard::Keyboard, mouse::Mouse};
+use lumina_render::system_renderer::SystemRenderer;
 use num_cpus;
 use sdl2::Sdl;
+use winit::event_loop::{EventLoop, EventLoopBuilder};
 
 use crate::{query::Query, stage::Stage};
 
 struct App {
     window: Window,
     device: Device,
-    //renderer: Renderer,
+    renderer:SystemRenderer,
     fps_manager: FPS,
     keyboard_pool: Keyboard,
     mouse_pool: Mouse,
@@ -24,16 +26,17 @@ struct App {
 
 impl App {
     pub fn new(sdl: &Sdl) -> Self {
-        let window = Window::new(sdl, "Lumina", 1920, 1080);
+        let event_loop = App::create_event_loop();
+        let window = Window::new(&event_loop, "Lumina", 1920, 1080);
         let device = Device::new(&window);
-        //let renderer = Renderer::new(&window, &device, None);
+        let renderer = SystemRenderer::new(&window, &device, None);
         let mut fps_manager = FPS::new();
         fps_manager.set_max_fps(300);
 
         Self {
             window,
             device,
-            //renderer,
+            renderer,
             fps_manager,
             keyboard_pool: Keyboard::new(),
             mouse_pool: Mouse::new(),
@@ -75,47 +78,30 @@ impl App {
         }
     }
 
-    /*pub fn update(&mut self) {
-        let num_cpus = num_cpus::get().max(1);
+    pub fn create_event_loop() -> EventLoop<()> {
+        let mut event_loop_builder = EventLoopBuilder::new();
 
-        let chunk_size = self.query.entities.lock().as_ref().borrow().unwrap().len() / num_cpus;
-
-
-        let entity_clone = Arc::clone(&self.entities);
-        let start = i * chunk_size;
-        let end = if i == num_cpus - 1 {
-            self.entities.lock().as_ref().borrow().unwrap().len()
-        } else {
-            (i + 1) * chunk_size
-        };
-        let mut cloned_entities = Arc::clone(&self.entities);
-
-        let handles: Vec<_> = (0..num_cpus)
-            .map(|i| {
-                let entity_clone = Arc::clone(&self.entities);
-                let start = i * chunk_size;
-                let end = if i == num_cpus - 1 {
-                    self.entities.lock().as_ref().borrow().unwrap().len()
-                } else {
-                    (i + 1) * chunk_size
-                };
-                let mut cloned_entities = Arc::clone(&self.entities);
-
-                thread::spawn(move || {
-                    for entity in cloned_entities
-                        .borrow_mut()
-                        .lock()
-                        .unwrap()
-                        .values()
-                        .skip(start)
-                        .take(end - start)
-                    {}
-                })
-            })
-            .collect();
-
-        for handle in handles {
-            handle.join().unwrap();
+        #[cfg(target_os = "windows")]
+        {
+            use winit::platform::windows::EventLoopBuilderExtWindows;
+            event_loop_builder.with_any_thread(true);
         }
-    }*/
+
+        #[cfg(target_os = "linux")]
+        {
+            //Need to find a way to check the support between wayland/x11
+            //Wayland
+            {
+                use winit::platform::wayland::EventLoopBuilderExtWayland;
+                event_loop_builder.with_any_thread(true);
+            }
+            //X11
+            {
+                use winit::platform::wayland::EventLoopBuilderExtX11;
+                event_loop_builder.with_any_thread(true);
+            }
+        }
+
+        return event_loop_builder.build();
+    }
 }

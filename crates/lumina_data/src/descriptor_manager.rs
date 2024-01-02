@@ -386,7 +386,7 @@ impl DescriptorManager {
             .descriptor_table
             .get_mut(&label)
             .expect("Failed to get the value!");
-    
+
         DescriptorManager::transition_image_layout(
             Rc::clone(&self.device),
             cur_struct.images[cur_frame as usize].get_image(),
@@ -394,9 +394,9 @@ impl DescriptorManager {
             vk::ImageLayout::UNDEFINED,
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
         );
-    
+
         let command_buffer: vk::CommandBuffer;
-    
+
         let alloc_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
             p_next: std::ptr::null(),
@@ -404,7 +404,7 @@ impl DescriptorManager {
             level: vk::CommandBufferLevel::PRIMARY,
             command_buffer_count: 1,
         };
-    
+
         // Allocate a new command buffer for each submission
         command_buffer = unsafe {
             self.device
@@ -412,21 +412,21 @@ impl DescriptorManager {
                 .allocate_command_buffers(&alloc_info)
                 .unwrap()[0]
         };
-    
+
         let begin_info = vk::CommandBufferBeginInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
             p_next: std::ptr::null(),
             flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
             ..Default::default()
         };
-    
+
         unsafe {
             self.device
                 .device()
                 .begin_command_buffer(command_buffer, &begin_info)
                 .expect("Failed to begin command buffer!");
         }
-    
+
         let color_image_copy = vk::ImageCopy {
             src_subresource: vk::ImageSubresourceLayers {
                 aspect_mask: vk::ImageAspectFlags::COLOR,
@@ -448,7 +448,7 @@ impl DescriptorManager {
                 depth: 1,
             },
         };
-    
+
         let depth_image_copy = vk::ImageCopy {
             src_subresource: vk::ImageSubresourceLayers {
                 aspect_mask: vk::ImageAspectFlags::DEPTH,
@@ -478,7 +478,7 @@ impl DescriptorManager {
             vk::ImageLayout::TRANSFER_DST_OPTIMAL,
             vk::ImageLayout::GENERAL,
         );
-        
+
         unsafe {
             self.device.device().cmd_copy_image(
                 command_buffer,
@@ -489,20 +489,18 @@ impl DescriptorManager {
                 &[color_image_copy],
             );
 
-   
-    
             self.device
                 .device()
                 .end_command_buffer(command_buffer)
                 .expect("Failed to end command buffer!");
-    
+
             let submit_info = vk::SubmitInfo {
                 s_type: vk::StructureType::SUBMIT_INFO,
                 command_buffer_count: 1,
                 p_command_buffers: &command_buffer,
                 ..Default::default()
             };
-    
+
             self.device
                 .device()
                 .queue_submit(
@@ -511,17 +509,17 @@ impl DescriptorManager {
                     vk::Fence::null(),
                 )
                 .expect("Failed to submit data");
-        }
-    
- 
-        // Free the command buffer when it's no longer needed
-        unsafe {
+
+            self.device
+                .device()
+                .queue_wait_idle(self.device.graphics_queue())
+                .unwrap();
             self.device
                 .device()
                 .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
         }
+
     }
-    
 
     fn transition_image_layout(
         device: Rc<Device>,

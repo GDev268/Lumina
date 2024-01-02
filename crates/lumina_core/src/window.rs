@@ -10,7 +10,7 @@ use winit::{
 use sdl2::video;
 
 pub struct Window {
-    pub _window: video::Window,
+    pub _window: window::Window,
     pub width: u32,
     pub height: u32,
     pub framebuffer_resized: bool,
@@ -18,10 +18,8 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(sdl:&sdl2::Sdl, title: &str, width: u32, height: u32) -> Self {
-        let window_subsystem = sdl.video().unwrap();
-
-        let window = window_subsystem.window(title, width, height).resizable().vulkan().build().expect("Failed to create sdl2 window!");
+    pub fn new(event_loop:&EventLoop<()>, title: &str, width: u32, height: u32) -> Self {
+        let mut window = WindowBuilder::new().with_title(title).with_inner_size(winit::dpi::LogicalSize::new(width as f64,height as f64)).with_resizable(true).build(&event_loop).unwrap();
 
         return Self {
             _window: window,
@@ -47,19 +45,17 @@ impl Window {
         self.framebuffer_resized = false;
     }
 
-    pub fn get_window(&mut self) -> &mut video::Window {
+    pub fn get_window(&mut self) -> &mut window::Window {
         return &mut self._window;
     }
 
     pub fn create_window_surface(
         &self,
         instance: &ash::Instance,
+        entry: &ash::Entry,
     ) -> vk::SurfaceKHR {
-        let raw_instance = instance.handle().as_raw() as usize;
 
-        let raw_surface = self._window.vulkan_create_surface(raw_instance).expect("Failed to create vulkan surface");
-        
-        return vk::SurfaceKHR::from_raw(raw_surface);
+        return unsafe { ash_window::create_surface(entry, instance, self._window.raw_display_handle(), self._window.raw_window_handle(), None).unwrap() };
     }
 
     pub fn framebuffer_resize_callback(window: &mut Window, width: u32, height: u32) {

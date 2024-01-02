@@ -1,18 +1,19 @@
 use std::rc::Rc;
 
 use ash::vk;
-use lumina_core::{device::Device, texture::Texture};
+use lumina_core::{device::Device, texture::Texture, Vertex2D};
 use lumina_graphic::shader::Shader;
 
 use crate::{
     mesh::Mesh,
     offset_of,
-    quad::{Quad, Vertex},
+    quad::{Quad},
 };
 
 pub struct Canvas {
     pub mesh: Quad,
     pub shader: Shader,
+
 }
 
 impl Canvas {
@@ -23,20 +24,20 @@ impl Canvas {
             location: 0,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex, position),
+            offset: offset_of!(Vertex2D, position),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 1,
             binding: 0,
             format: vk::Format::R32G32_SFLOAT,
-            offset: offset_of!(Vertex, uv),
+            offset: offset_of!(Vertex2D, uv),
         });
-
+        
         let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
             vec![vk::VertexInputBindingDescription::default()];
 
         binding_descriptions[0].binding = 0;
-        binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex2D>() as u32;
         binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
 
         Self {

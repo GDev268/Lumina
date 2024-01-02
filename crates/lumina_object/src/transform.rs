@@ -1,8 +1,11 @@
+use std::rc::Rc;
+
 use super::game_object::Component;
 
 #[derive(Debug)]
 pub struct Transform {
     pub translation: glam::Vec3,
+    parent_transform:Option<Rc<Transform>>,
     pub scale: glam::Vec3,
     pub rotation: glam::Vec3, // Rotation angles for X, Y, and Z axes
 }
@@ -79,6 +82,7 @@ impl Transform {
     pub fn default() -> Self {
         return Self {
             translation: glam::Vec3::default(),
+            parent_transform: None,
             scale: glam::Vec3::default(),
             rotation: glam::Vec3::default(),
         };

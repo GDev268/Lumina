@@ -5,12 +5,6 @@ use std::ffi::CString;
 
 use crate::offset_of;
 
-#[derive(Clone, Copy)]
-pub struct Vertex {
-    pub position: glam::Vec3,
-    pub normal: glam::Vec3,
-    pub uv: glam::Vec2,
-}
 
 pub struct PipelineConfiguration {
     pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,

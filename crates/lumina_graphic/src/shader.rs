@@ -176,10 +176,4 @@ impl Drop for Shader {
     }
 }
 
-impl Component for Shader {
-    fn max_component_count() -> Option<usize> {
-        Some(1)
-    }
-}
-
 unsafe impl Send for Shader {}

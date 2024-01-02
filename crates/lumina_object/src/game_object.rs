@@ -1,4 +1,5 @@
 use ash::vk;
+use lumina_bundle::ResourcesBundle;
 use rand::Rng;
 use std::{
     any::{Any, TypeId},
@@ -17,11 +18,13 @@ pub trait Component: Any {
 }
 
 #[derive(Debug)]
-pub struct GameObject {
+pub struct GameObject{
     id: u32,
     tag: String,
     layer: String,
     name: String,
+    parent:Option<u32>,
+    children:Vec<u32>
 }
 
 impl GameObject {
@@ -34,7 +37,9 @@ impl GameObject {
             id,
             layer,
             tag,
+            parent: None,
             name,
+            children:Vec::new()
         };
     }
 
@@ -58,6 +63,11 @@ impl GameObject {
 
     pub fn get_id(&self) -> u32 {
         return self.id;
+    }
+
+    pub fn push_to_gameobject(&mut self,game_object:&mut GameObject) {
+        self.parent = Some(game_object.get_id());
+        game_object.children.push(self.get_id());
     }
 }
 

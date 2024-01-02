@@ -1,9 +1,11 @@
 pub mod camera;
 pub mod mesh;
+pub mod model;
 pub mod quad;
 pub mod renderer;
 pub mod canvas;
 pub mod system_renderer;
+
 
 #[macro_export]
 macro_rules! offset_of {

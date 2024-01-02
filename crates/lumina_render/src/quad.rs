@@ -3,14 +3,9 @@ use std::rc::Rc;
 use ash::vk;
 
 use lumina_data::buffer::Buffer;
-use lumina_core::device::Device;
+use lumina_core::{device::Device, Vertex2D};
 use crate::offset_of;
 
-#[derive(Clone, Copy)]
-pub struct Vertex {
-    pub position: [f32; 3],
-    pub uv: [f32; 2],
-}
 
 pub struct Quad {
     vertex_buffer: Buffer,
@@ -85,12 +80,12 @@ impl Quad {
         return &self.binding_descriptions;
     }
 
-    fn create_vertex_buffers(vertices: Vec<Vertex>, device: Rc<Device>) -> (Buffer, u32) {
+    fn create_vertex_buffers(vertices: Vec<Vertex2D>, device: Rc<Device>) -> (Buffer, u32) {
         let vertex_count = vertices.len() as u32;
-        assert!(vertex_count >= 3, "Vertex must be at least 3");
+        assert!(vertex_count >= 2, "Vertex must be at least 3");
         let buffer_size: vk::DeviceSize =
-            (std::mem::size_of::<Vertex>() * vertex_count as usize) as u64;
-        let vertex_size = std::mem::size_of::<Vertex>() as vk::DeviceSize;
+            (std::mem::size_of::<Vertex2D>() * vertex_count as usize) as u64;
+        let vertex_size = std::mem::size_of::<Vertex2D>() as vk::DeviceSize;
 
         let mut staging_buffer: Buffer = Buffer::new(
             Rc::clone(&device),
@@ -172,41 +167,41 @@ impl Quad {
             location: 0,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex, position),
+            offset: offset_of!(Vertex2D, position),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 1,
             binding: 0,
             format: vk::Format::R32G32_SFLOAT,
-            offset: offset_of!(Vertex, uv),
+            offset: offset_of!(Vertex2D, uv),
         });
 
         let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
             vec![vk::VertexInputBindingDescription::default()];
 
         binding_descriptions[0].binding = 0;
-        binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex2D>() as u32;
         binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
 
         return (attribute_descriptions, binding_descriptions);
     }
 
-    const QUAD_VERTICES: [Vertex;4] = [
-        Vertex {
-            position: [-1.0, -1.0, 0.0],
-            uv: [0.0, 0.0],
+    const QUAD_VERTICES: [Vertex2D;4] = [
+        Vertex2D {
+            position: glam::vec3(-1.0, -1.0, 0.0),
+            uv: glam::vec2(0.0, 0.0),
         },
-        Vertex {
-            position: [1.0, -1.0, 0.0],
-            uv: [1.0, 0.0],
+        Vertex2D {
+            position: glam::vec3(1.0, -1.0, 0.0),
+            uv: glam::vec2(1.0, 0.0),
         },
-        Vertex {
-            position: [1.0, 1.0, 0.0],
-            uv: [1.0, 1.0],
+        Vertex2D {
+            position: glam::vec3(1.0, 1.0, 0.0),
+            uv: glam::vec2(1.0, 1.0),
         },
-        Vertex {
-            position: [-1.0, 1.0, 0.0],
-            uv: [0.0, 1.0],
+        Vertex2D {
+            position: glam::vec3(-1.0, 1.0, 0.0),
+            uv: glam::vec2(0.0, 1.0),
         },
     ];
 

@@ -3,22 +3,33 @@ use std::rc::Rc;
 use ash::vk;
 use lumina_bundle::RendererBundle;
 use lumina_core::{device::Device, texture::Texture, window::Window};
-use lumina_graphic::{shader::Shader, pipeline::PipelineConfiguration};
-use lumina_render::{camera::Camera, system_renderer::SystemRenderer, quad::Quad};
+use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
+use lumina_render::{camera::Camera, quad::Quad, system_renderer::SystemRenderer};
 //use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;
+use winit::{event_loop::{EventLoop, EventLoopBuilder}, event::{WindowEvent, Event}};
 
 fn main() {
-    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+    /*if std::env::var("WAYLAND_DISPLAY").is_ok() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
-    }
+    }*/
 
-    let sdl_context = sdl2::init().unwrap();
+    let event_loop = create_event_loop();
 
-    let mut window = Window::new(&sdl_context, "Lumina Dev App", 800, 640);
+    let mut window = Window::new(&event_loop, "Lumina Dev App", 800, 640);
     let device = Rc::new(Device::new(&window));
 
-    let window_icon = sdl2::surface::Surface::from_file("icons/LuminaLogoMain.png").unwrap();
+    let icon_data = image::open("icons/LuminaLogoMain.png").unwrap();
+
+    window._window.set_window_icon(Some(
+        winit::window::Icon::from_rgba(
+            icon_data.to_rgba8().into_raw(),
+            icon_data.width(),
+            icon_data.height(),
+        )
+        .unwrap(),
+    ));
+
     let mut renderer = SystemRenderer::new(&window, &device, None);
 
     let renderer_bundle = RendererBundle {
@@ -41,7 +52,6 @@ fn main() {
         },
         &renderer_bundle,
     );
-    window._window.set_icon(window_icon);
 
     let quad = Quad::new(Rc::clone(&device));
 
@@ -58,8 +68,24 @@ fn main() {
     shader.create_pipeline_layout(false);
     shader.create_pipeline(renderer_bundle.render_pass, pipeline_config);
 
+    event_loop.run(move |event, _, control_flow| {
+        control_flow.set_wait();    
 
-    'running: loop {
+
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                window_id,
+            } if window_id == window._window.id() => control_flow.set_exit(),
+            Event::MainEventsCleared => {
+                &window._window.request_redraw();
+            }
+            Event::RedrawRequested(_) => {
+            }
+            _ => (),
+            
+        }
+
         let command_buffer = renderer.begin_frame(&device, &window).unwrap();
 
         renderer.begin_swapchain_renderpass(command_buffer, &device);
@@ -73,6 +99,7 @@ fn main() {
             camera.renderer.current_frame_index as u32,
             texture,
         );
+
 
         unsafe {
             device.device().cmd_bind_pipeline(
@@ -94,9 +121,7 @@ fn main() {
 
             quad.bind(camera.renderer.get_command_buffer(), &device);
             quad.draw(camera.renderer.get_command_buffer(), &device);
-            
         };
-
 
         camera
             .renderer
@@ -113,6 +138,7 @@ fn main() {
                 .get_image(),
         );
 
+
         //camera.renderer.canvas.shader.descriptor_manager.change_image_value("imageTexture".to_string(), camera.renderer.current_frame_index as u32, texture);
         camera
             .renderer
@@ -121,7 +147,35 @@ fn main() {
 
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);
+
+    });
+}
+
+pub fn create_event_loop() -> EventLoop<()> {
+    let mut event_loop_builder = EventLoopBuilder::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        use winit::platform::windows::EventLoopBuilderExtWindows;
+        event_loop_builder.with_any_thread(true);
     }
+
+    #[cfg(target_os = "linux")]
+    {
+        //Need to find a way to check the support between wayland/x11
+        //Wayland
+        {
+            use winit::platform::wayland::EventLoopBuilderExtWayland;
+            event_loop_builder.with_any_thread(true);
+        }
+        //X11
+        {
+            use winit::platform::wayland::EventLoopBuilderExtX11;
+            event_loop_builder.with_any_thread(true);
+        }
+    }
+
+    return event_loop_builder.build();
 }
 
 /*use core::panic;

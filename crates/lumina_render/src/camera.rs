@@ -7,14 +7,9 @@ use lumina_core::{
     texture::Texture,
 };
 
-use crate::renderer::{Renderer, self};
+use lumina_object::game_object::Component;
 
-struct RenderTexture {
-    images: Vec<Image>,
-    depth_images: Vec<Image>,
-    framebuffers: Vec<Framebuffer>,
-    extent: vk::Extent2D,
-}
+use crate::renderer::{Renderer, self};
 
 pub enum CameraDirection {
     NONE,
@@ -284,3 +279,5 @@ impl Camera {
         };
     }
 }
+
+impl Component for Camera {}
