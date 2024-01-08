@@ -7,7 +7,7 @@ use lumina_core::{
     texture::Texture,
 };
 
-use lumina_object::game_object::Component;
+use lumina_object::{game_object::Component, create_component_id, delete_component_id};
 
 use crate::renderer::{Renderer, self};
 
@@ -21,6 +21,7 @@ pub enum CameraDirection {
     DOWN,
 }
 
+#[derive(Clone)]
 pub enum Background {
     SOLID_COLOR([f32; 3]),
     SKYBOX,
@@ -40,6 +41,7 @@ pub struct Camera {
     rotation: glam::Vec3,
     translation: glam::Vec3,
     pub renderer: Renderer,
+    component_id: u32
 }
 
 impl Camera {
@@ -63,6 +65,7 @@ impl Camera {
             rotation: glam::Vec3::ZERO,
             translation: glam::Vec3::ZERO,
             renderer: Renderer::new(device, extent, renderer_bundle),
+            component_id: create_component_id()
         };
     }
 
@@ -280,4 +283,50 @@ impl Camera {
     }
 }
 
-impl Component for Camera {}
+impl Component for Camera {
+    fn get_id(&self) -> u32{
+        self.component_id
+    }
+
+    fn clone(&self) -> Box<dyn Component> {
+        let camera = Camera{
+            background: self.background.clone(),
+            projection_matrix: self.projection_matrix,
+            view_matrix: self.view_matrix,
+            inverse_view_matrix: self.inverse_view_matrix,
+            ortho_mode: self.ortho_mode,
+            fov: self.fov,
+            speed: self.speed,
+            sensivity: self.sensivity,
+            aspect_ratio: self.aspect_ratio,
+            rotation: self.rotation,
+            translation: self.translation,
+            renderer: self.renderer.clone(),
+            component_id: self.component_id
+        };
+
+        Box::new(camera)
+    }
+
+    fn update(&mut self) {
+        todo!()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        todo!()
+    }
+    
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+unsafe impl Send for Camera {}
+
+unsafe impl Sync for Camera {}
+
+impl Drop for Camera {
+    fn drop(&mut self) {
+        delete_component_id(self.component_id)
+    }
+}

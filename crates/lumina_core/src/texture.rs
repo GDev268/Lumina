@@ -4,6 +4,7 @@ use ash::vk;
 use image::{DynamicImage, Rgba, GenericImage};
 use crate::{device::Device, ImageValue};
 
+#[derive(Clone)]
 pub struct Texture {
     texture_path: String,
     texture: DynamicImage,

@@ -6,6 +6,7 @@ use lumina_data::buffer::Buffer;
 use lumina_core::{device::Device, Vertex3D};
 use crate::offset_of;
 
+#[derive(Clone)]
 pub struct Mesh {
     vertex_buffer: Buffer,
     vertex_count: u32,

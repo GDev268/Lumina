@@ -2,6 +2,7 @@ use ash::vk;
 
 use crate::device::Device;
 
+#[derive(Clone)]
 pub struct Framebuffer{
     framebuffer:vk::Framebuffer,
     extent:vk::Extent2D

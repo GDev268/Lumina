@@ -1,4 +1,4 @@
-struct ClearColor([f32; 3]);
+/*struct ClearColor([f32; 3]);
 use std::{rc::Rc, thread, time::Instant, f32::consts::E};
 
 use lumina_core::{device::Device, fps_manager::FPS, window::Window};
@@ -11,7 +11,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder};
 
 use crate::{query::Query, stage::Stage};
 
-struct App {
+pub struct App {
     window: Window,
     device: Device,
     renderer:SystemRenderer,
@@ -104,4 +104,4 @@ impl App {
 
         return event_loop_builder.build();
     }
-}
+}*/

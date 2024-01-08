@@ -4,6 +4,7 @@ use ash::vk;
 use std::{ffi::c_void, rc::Rc};
 
 
+#[derive(Clone)]
 pub struct Buffer {
     device: Option<Rc<Device>>,
     buffer: vk::Buffer,

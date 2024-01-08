@@ -1,10 +1,23 @@
-use std::{any::Any, collections::HashMap};
+use std::{any::{Any, TypeId}, collections::HashMap, sync::{Arc, Mutex, RwLock}};
 
 use lumina_object::{
     game_object::{Component, GameObject},
     transform::Transform,
     entity::Entity
 };
+
+pub struct ThreadSafeQuery {
+    pub query: Arc<RwLock<Query>>,
+}
+
+impl ThreadSafeQuery {
+    pub fn new(query: Query) -> Self {
+        ThreadSafeQuery {
+            query: Arc::new(RwLock::new(query)),
+        }
+    }
+}
+
 
 pub struct Query {
     pub entities: HashMap<u32, Entity>,
@@ -74,5 +87,4 @@ impl Query {
             .and_then(|entity| Some(entity.get_mut_components::<T>()))
             .unwrap()
     }
-
 }

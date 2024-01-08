@@ -14,6 +14,7 @@ pub struct PushConstantData {
     pub normal_matrix: glam::Mat4,
 }
 
+#[derive(Clone)]
 pub struct Shader {
     device: Rc<Device>,
     pub descriptor_manager: DescriptorManager,

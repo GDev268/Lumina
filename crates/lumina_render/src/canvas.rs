@@ -10,10 +10,10 @@ use crate::{
     quad::{Quad},
 };
 
+#[derive(Clone)]
 pub struct Canvas {
     pub mesh: Quad,
     pub shader: Shader,
-
 }
 
 impl Canvas {

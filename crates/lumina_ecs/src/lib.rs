@@ -1,6 +1,7 @@
 pub mod app;
 pub mod stage;
 pub mod query;
+pub mod component_manager;
 
 /*struct PointLight{
     position:glam::Vec4,

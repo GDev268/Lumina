@@ -4,6 +4,7 @@ use ash::vk;
 use lumina_bundle::RendererBundle;
 use lumina_core::{device::Device, texture::Texture, window::Window};
 use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
+use lumina_object::game_object::Component;
 use lumina_render::{camera::Camera, quad::Quad, system_renderer::SystemRenderer};
 //use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;

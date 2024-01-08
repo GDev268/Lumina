@@ -4,7 +4,7 @@ use crate::game_object::Component;
 
 #[derive(Debug)]
 pub struct Entity {
-    components: HashMap<TypeId, Box<dyn Any + Send>>,
+    components: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl Entity {
@@ -47,6 +47,10 @@ impl Entity {
             .values_mut()
             .filter_map(|component| component.downcast_mut::<T>())
             .collect();
+    }
+
+    pub fn get_all_components(&mut self) -> &mut HashMap<TypeId, Box<dyn Any + Send + Sync>> {
+        return &mut self.components;
     }
 
     pub fn new() -> Self{

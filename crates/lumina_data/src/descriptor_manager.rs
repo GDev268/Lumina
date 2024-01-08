@@ -18,6 +18,7 @@ use crate::{
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, LayoutConfig},
 };
 
+#[derive(Clone)]
 pub struct DescriptorInformation {
     type_id: Option<std::any::TypeId>,
     buffers: Vec<Buffer>,
@@ -27,6 +28,7 @@ pub struct DescriptorInformation {
     was_created: bool,
 }
 
+#[derive(Clone)]
 pub struct DescriptorManager {
     device: Rc<Device>,
     pub descriptor_table: HashMap<String, DescriptorInformation>,

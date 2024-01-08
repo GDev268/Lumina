@@ -11,10 +11,17 @@ use lazy_static::lazy_static;
 
 static mut EXISTING_IDS: Vec<u32> = vec![];
 
-pub trait Component: Any {
-    fn max_component_count() -> Option<usize> {
+pub trait Component: Any + Send + Sync
+{
+    fn max_component_count(&self) -> Option<usize> {
         return None;
     }
+
+    fn get_id(&self) -> u32;
+    fn clone(&self) -> Box<dyn Component>; 
+    fn update(&mut self);
+    fn as_any(&self) -> &dyn Any;
+    fn as_mut_any(&mut self) -> &mut dyn Any;
 }
 
 #[derive(Debug)]

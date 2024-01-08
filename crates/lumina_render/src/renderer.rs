@@ -12,6 +12,7 @@ use lumina_graphic::pipeline::PipelineConfiguration;
 
 use crate::canvas::{Canvas, self};
 
+#[derive(Clone)]
 pub struct RenderTexture {
     pub images: Vec<Image>,
     pub depth_images: Vec<Image>,
@@ -19,6 +20,7 @@ pub struct RenderTexture {
     extent: vk::Extent2D,
 }
 
+#[derive(Clone)]
 pub struct Renderer {
     pub renderer_data: RenderTexture,
     camera_render_pass: vk::RenderPass,

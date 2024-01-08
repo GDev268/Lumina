@@ -7,6 +7,7 @@ use lumina_core::{device::Device, Vertex2D};
 use crate::offset_of;
 
 
+#[derive(Clone)]
 pub struct Quad {
     vertex_buffer: Buffer,
     vertex_count: u32,

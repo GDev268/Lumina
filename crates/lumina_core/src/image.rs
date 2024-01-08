@@ -2,7 +2,7 @@ use crate::device::Device;
 use ash::vk;
 use image::{DynamicImage, GenericImage, Rgb, Rgba};
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Image {
     _image: vk::Image,
     format: vk::Format,

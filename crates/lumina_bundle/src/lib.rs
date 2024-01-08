@@ -8,5 +8,5 @@ pub struct RendererBundle{
 }
 
 pub struct ResourcesBundle {
-    pub command_buffer:vk::CommandBuffer
+    pub command_buffer:vk::CommandBuffer,
 }

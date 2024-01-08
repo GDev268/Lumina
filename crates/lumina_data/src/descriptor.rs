@@ -3,7 +3,7 @@ use lumina_core::device::Device;
 use ash::vk;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct DescriptorSetLayout {
     pub bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
     pub descriptor_set_layout: vk::DescriptorSetLayout,
@@ -48,6 +48,8 @@ impl Default for DescriptorSetLayout {
         return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
     }
 }
+
+#[derive(Clone)]
 
 pub struct LayoutConfig {
     bindings: HashMap<u32, vk::DescriptorSetLayoutBinding>,
@@ -125,6 +127,7 @@ impl PoolConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct DescriptorPool {
     pub descriptor_pool: vk::DescriptorPool,
 }

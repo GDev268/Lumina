@@ -149,6 +149,7 @@ impl PipelineConfiguration {
     }
 }
 
+#[derive(Clone)]
 pub struct Pipeline {
     pub graphics_pipeline: Option<vk::Pipeline>,
     pub vert_shader_module: Option<vk::ShaderModule>,
