@@ -53,8 +53,8 @@ impl Shader {
             descriptor_manager.build_descriptor(name, values.size as u64);
         }
 
-        descriptor_manager.print_weege();
-        descriptor_manager.preload_we();
+        descriptor_manager.preload_descriptors();
+        
 
         return Self {
             device: Rc::clone(&device),
@@ -155,6 +155,20 @@ impl Shader {
                 .create_shader_module(&create_info, None)
                 .expect("Failed to create shader module!");
         }
+    }
+
+    pub fn renovate_pipeline(&mut self,render_pass: vk::RenderPass,pipeline_config:PipelineConfiguration) {
+        if self.pipeline.is_some() && self.pipeline_layout.is_none(){
+            unsafe{
+                self.device.device().device_wait_idle().unwrap();
+                self.device.device().destroy_pipeline(self.pipeline.as_mut().unwrap().graphics_pipeline.unwrap(), None);
+                self.device.device().destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
+            }
+        }
+
+        self.create_pipeline_layout(true);
+        self.create_pipeline(render_pass, pipeline_config);
+
     }
 }
 

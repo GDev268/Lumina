@@ -12,47 +12,18 @@ layout(push_constant) uniform Push {
   mat4 normalMatrix;
 } push;
 
-struct DirectionalLight {
-  vec3 direction;
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
-};
 
-struct PointLight {
+struct Light{
   vec3 position;
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
+  vec3 rotation;  
 
-  float constant;
-  float linear;
-  float quadratic;
-};
+  float intensity;
+  float range;
+  float spot_size;
 
-struct SpotLight {
-  vec3 position;
-  vec3 direction;
+  uint type;
+}
 
-  float cut_off;
-  float outer_cut_off;
-
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;
-
-  float constant;
-  float linear;
-  float quadratic;
-};
-
-
-struct Material {
-  vec3 ambient;
-  vec3 diffuse;
-  vec3 specular;    
-  float shininess;
-}; 
 
 //64
 layout(set = 0,binding = 1) uniform MaterialInfo {
@@ -61,8 +32,8 @@ layout(set = 0,binding = 1) uniform MaterialInfo {
 } object;
 
 //128
-layout(std430,binding = 2) uniform LightInfo {
-  SpotLight light;
+layout(set = 0,binding = 2) uniform LightInfo {
+  SpotLight light[];
 } object_light;
 
 layout(set = 0,binding = 3) uniform sampler2D normalMap;

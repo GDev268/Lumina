@@ -3,10 +3,10 @@ use std::rc::Rc;
 use ash::vk;
 use lumina_bundle::RendererBundle;
 use lumina_core::{device::Device, texture::Texture, window::Window};
+use lumina_ecs::{app::App, stage::Stage};
 use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
 use lumina_object::game_object::Component;
 use lumina_render::{camera::Camera, quad::Quad, system_renderer::SystemRenderer};
-//use lumina_graphic::renderer::Renderer;
 use sdl2::image::LoadSurface;
 use winit::{event_loop::{EventLoop, EventLoopBuilder}, event::{WindowEvent, Event}};
 
@@ -15,7 +15,20 @@ fn main() {
         std::env::set_var("SDL_VIDEODRIVER", "wayland");
     }*/
 
-    let event_loop = create_event_loop();
+    let event_loop = App::create_event_loop();
+
+    let mut app = App::new(&event_loop);
+
+    let stage = Stage::new("weege".to_owned());
+    app.switch_stage(stage);
+
+    event_loop.run(move |event, _, control_flow| {
+        control_flow.set_wait();    
+
+
+    });
+
+    /*let event_loop = create_event_loop();
 
     let mut window = Window::new(&event_loop, "Lumina Dev App", 800, 640);
     let device = Rc::new(Device::new(&window));
@@ -139,8 +152,6 @@ fn main() {
                 .get_image(),
         );
 
-
-        //camera.renderer.canvas.shader.descriptor_manager.change_image_value("imageTexture".to_string(), camera.renderer.current_frame_index as u32, texture);
         camera
             .renderer
             .canvas
@@ -149,10 +160,10 @@ fn main() {
         renderer.end_swapchain_renderpass(command_buffer, &device);
         renderer.end_frame(&device, &mut window);
 
-    });
+    });*/
 }
 
-pub fn create_event_loop() -> EventLoop<()> {
+/*pub fn create_event_loop() -> EventLoop<()> {
     let mut event_loop_builder = EventLoopBuilder::new();
 
     #[cfg(target_os = "windows")]
@@ -177,7 +188,7 @@ pub fn create_event_loop() -> EventLoop<()> {
     }
 
     return event_loop_builder.build();
-}
+}*/
 
 /*use core::panic;
 use std::{

@@ -1,8 +1,13 @@
+use lumina_core::RawLight;
+use lumina_object::{transform::Transform, component_manager::ComponentManager};
+
+#[derive(Debug,Clone, Copy)]
 pub enum LightType {
-    DIRECTIONAL,
-    POINT,
-    SPOT,
+    DIRECTIONAL = 0,
+    POINT = 1,
+    SPOT = 2,
 }
+
 
 pub enum ShadowType {
     NO_SHADOW = 0,
@@ -46,10 +51,17 @@ impl DirectionalLight {
         }
     }
 
-    pub fn create_raw_light(&self) -> RawDirectionalLight {
-        RawDirectionalLight {
+    pub fn create_raw_light(&self,id:&u32,transform:&Transform) -> RawLight {
+        RawLight {
             color: self.color,
-            intensity: self.intensity
+            position: transform.translation.to_array(),
+            rotation: transform.rotation.to_array(),
+            range: 0.0,
+            intensity: self.intensity,
+            spot_size: 0.0,
+            light_type: self.light_type as u32,
+            _padding1: 0,
+            _padding2: 0
         }
     }
 }
@@ -87,22 +99,6 @@ impl Light for DirectionalLight {
         return &self.light_type;
     }
 }
-
-//ADD THE REST LATER
-pub struct RawDirectionalLight {
-    color: [f32; 3],
-    intensity: f32,
-}
-
-impl Default for RawDirectionalLight {
-    fn default() -> Self {
-        Self {
-            color: [0.0; 3],
-            intensity: 0.0,
-        }
-    }
-}
-
 pub struct PointLight {
     light_type:LightType,
     color: [f32; 3],
@@ -126,8 +122,18 @@ impl PointLight {
         }
     }
 
-    pub fn create_raw_light(&self) -> RawPointLight {
-        RawPointLight { color: self.color,intensity: self.intensity, range: self.range,..Default::default() }
+    pub fn create_raw_light(&self,id:&u32,transform:&Transform) -> RawLight {
+        RawLight {
+            color: self.color,
+            position: transform.translation.to_array(),
+            rotation: transform.rotation.to_array(),
+            range: self.range,
+            intensity: self.intensity,
+            spot_size: 0.0,
+            light_type: self.light_type as u32,
+            _padding1: 0,
+            _padding2: 0
+        }
     }
 }
 
@@ -169,26 +175,6 @@ impl Light for PointLight {
     }
 }
 
-pub struct RawPointLight {
-    color: [f32; 3],
-    _padding1: f32,
-    intensity: f32,
-    _padding2: f32,
-    range: f32,
-}
-
-impl Default for RawPointLight {
-    fn default() -> Self {
-        Self {
-            color: [0.0; 3],
-            intensity: 0.0,
-            range: 0.0,
-            _padding1: 0.0,
-            _padding2: 0.0,
-        }
-    }
-}
-
 pub struct SpotLight {
     light_type:LightType,
     color: [f32; 3],
@@ -211,6 +197,20 @@ impl SpotLight {
             shadow_type: ShadowType::LIGHT_SHADOW,
             culling_mask: vec![],
             light_type: LightType::SPOT,
+        }
+    }
+
+    pub fn create_raw_light(&self,id:&u32,transform:&Transform) -> RawLight {
+        RawLight {
+            color: self.color,
+            position: transform.translation.to_array(),
+            rotation: transform.rotation.to_array(),
+            range: self.range,
+            intensity: self.intensity,
+            spot_size: self.spot_size,
+            light_type: self.light_type as u32,
+            _padding1: 0,
+            _padding2: 0
         }
     }
 }
@@ -254,29 +254,5 @@ impl Light for SpotLight {
 
     fn get_light_type(&self) -> &LightType {
         return &self.light_type;
-    }
-}
-
-struct RawSpotLight {
-    color: [f32; 3],
-    _padding1: f32,
-    intensity: f32,
-    _padding2: f32,
-    range: f32,
-    _padding3: f32,
-    spot_size: f32,
-}
-
-impl Default for RawSpotLight {
-    fn default() -> Self {
-        Self {
-            color: [0.0; 3],
-            intensity: 0.0,
-            range: 0.0,
-            spot_size: 0.0,
-            _padding1: 0.0,
-            _padding2: 0.0,
-            _padding3: 0.0,
-        }
     }
 }

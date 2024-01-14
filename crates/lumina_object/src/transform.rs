@@ -118,10 +118,6 @@ impl Component for Transform {
         Box::new(transform)
     }
 
-    
-    fn update(&mut self) {
-        todo!()
-    }
 }
 
 unsafe impl Send for Transform {}

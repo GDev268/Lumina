@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+lumina_core = {path="../lumina_core",version = "0.1.0"}
 lumina_graphic = {path="../lumina_graphic",version = "0.1.0"}
 lumina_object = {path="../lumina_object", version = "0.1.0"}
-
 
 glam = "0.24.1"
 

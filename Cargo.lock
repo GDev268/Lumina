@@ -1171,6 +1171,7 @@ name = "lumina_bundle"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "lumina_core",
 ]
 
 [[package]]
@@ -1209,10 +1210,13 @@ dependencies = [
 name = "lumina_ecs"
 version = "0.1.0"
 dependencies = [
+ "ash",
+ "lumina_bundle",
  "lumina_core",
  "lumina_graphic",
  "lumina_input",
  "lumina_object",
+ "lumina_pbr",
  "lumina_render",
  "num_cpus",
  "sdl2",
@@ -1269,6 +1273,7 @@ dependencies = [
  "lazy_static",
  "lumina_bundle",
  "lumina_core",
+ "num_cpus",
  "rand",
 ]
 
@@ -1277,6 +1282,7 @@ name = "lumina_pbr"
 version = "0.1.0"
 dependencies = [
  "glam",
+ "lumina_core",
  "lumina_graphic",
  "lumina_object",
 ]

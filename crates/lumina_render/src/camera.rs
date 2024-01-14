@@ -1,7 +1,7 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use ash::vk;
-use lumina_bundle::RendererBundle;
+use lumina_bundle::{RendererBundle, ResourcesBundle};
 use lumina_core::{
     device::Device, framebuffer::Framebuffer, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT,
     texture::Texture,
@@ -308,10 +308,6 @@ impl Component for Camera {
         Box::new(camera)
     }
 
-    fn update(&mut self) {
-        todo!()
-    }
-
     fn as_any(&self) -> &dyn std::any::Any {
         todo!()
     }
@@ -319,6 +315,8 @@ impl Component for Camera {
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+
 }
 
 unsafe impl Send for Camera {}

@@ -1,17 +1,30 @@
-use std::rc::Rc;
+use std::{
+    any::TypeId,
+    collections::HashMap,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
+use ash::vk;
 use lumina_bundle::ResourcesBundle;
 use lumina_core::{device::Device, Vertex3D};
-use lumina_graphic::shader::Shader;
-use lumina_object::{game_object::Component, delete_component_id, create_component_id};
+use lumina_graphic::{shader::Shader, pipeline::PipelineConfiguration};
+use lumina_object::{
+    create_component_id, delete_component_id, game_object::Component, transform::Transform,
+};
 
 use crate::mesh::Mesh;
 
-struct Model {
+pub struct PushConstantData {
+    pub model_matrix: glam::Mat4,
+    pub normal_matrix: glam::Mat4,
+}
+
+pub struct Model {
     device: Rc<Device>,
     mesh: Mesh,
     shader: Shader,
-    component_id:u32
+    component_id: u32,
 }
 
 impl Model {
@@ -21,7 +34,7 @@ impl Model {
         index_array: Vec<u32>,
     ) -> Self {
         let mesh = Mesh::new(Rc::clone(&device), vertex_array, index_array);
-        let shader = Shader::new(
+        let mut shader = Shader::new(
             Rc::clone(&device),
             "shaders/default/default_shader.vert",
             "shaders/default/default_shader.frag",
@@ -31,37 +44,106 @@ impl Model {
             device: Rc::clone(&device),
             mesh,
             shader,
-            component_id: create_component_id()
+            component_id: create_component_id(),
         }
     }
 }
 
 impl Component for Model {
-    fn get_id(&self) -> u32{
-       self.component_id
+    fn get_id(&self) -> u32 {
+        self.component_id
     }
 
     fn clone(&self) -> Box<dyn Component> {
-        let model = Model{
+        let model = Model {
             device: Rc::clone(&self.device),
             mesh: self.mesh.clone(),
             shader: self.shader.clone(),
-            component_id: self.component_id
+            component_id: self.component_id,
         };
 
         Box::new(model)
     }
 
-    fn update(&mut self) {
-        todo!()
-    }
-
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    
+
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn update(
+        &mut self,
+        id: u32,
+        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        resources_bundle: &Arc<RwLock<ResourcesBundle>>,
+    ) {
+        let component_group = component.read().unwrap().get(&id).unwrap();
+
+        //self.shader.descriptor_manager.change_buffer_value("LightInfo".to, resources_bundle.cur_frame, &resources_bundle.raw_lights);
+
+        /*for (type_id,component) in component_group {
+
+        }*/
+    }
+
+    fn render(
+        &mut self,
+        id: u32,
+        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        resources_bundle: &Arc<RwLock<ResourcesBundle>>,
+    ) {
+        let resources = resources_bundle.write().unwrap();
+
+        let mut pipeline_config = PipelineConfiguration::default();
+        pipeline_config.attribute_descriptions = self.mesh.get_attribute_descriptions().clone();
+        pipeline_config.binding_descriptions = self.mesh.get_binding_descriptions().clone();
+
+
+        self.shader.create_pipeline_layout(true);
+        self.shader.create_pipeline(resources.cur_render_pass, pipeline_config);
+
+        
+        self.shader.descriptor_manager.change_buffer_value(
+            "ProjectionViewMatrix",
+            resources.cur_frame,
+            &[resources.cur_projection],
+        );
+
+        let components_lock = component.read().unwrap();
+        let transform = components_lock
+            .get(&id)
+            .unwrap()
+            .get(&TypeId::of::<Transform>())
+            .unwrap()
+            .as_any()
+            .downcast_ref::<Transform>()
+            .unwrap();
+
+        let constant_data = PushConstantData {
+            model_matrix: transform.get_mat4(),
+            normal_matrix: transform.get_normal_matrix(),
+        };
+
+        let push_bytes: &[u8] = unsafe {
+            let struct_ptr = &constant_data as *const _ as *const u8;
+            std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+        };
+
+        unsafe {
+            self.device.device().cmd_push_constants(
+                resources.command_buffer,
+                self.shader.pipeline_layout.unwrap(),
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                push_bytes,
+            );
+        }
+
+        self.mesh.bind(resources.command_buffer, &self.device);
+        self.mesh.draw(resources.command_buffer, &self.device);
+
     }
 }
 

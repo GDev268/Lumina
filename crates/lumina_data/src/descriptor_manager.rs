@@ -25,7 +25,6 @@ pub struct DescriptorInformation {
     images: Vec<Image>,
     binding: u32,
     is_uniform: bool,
-    was_created: bool,
 }
 
 #[derive(Clone)]
@@ -80,7 +79,6 @@ impl DescriptorManager {
                     images: Vec::new(),
                     binding: binding.clone(),
                     is_uniform,
-                    was_created: false,
                 },
             );
 
@@ -144,12 +142,10 @@ impl DescriptorManager {
 
                 values.images.push(image);
             }
-
-            values.was_created = true;
         }
     }
 
-    pub fn preload_we(&mut self) {
+    pub fn preload_descriptors(&mut self) {
         self.descriptor_set_layout = self.layout_config.build(&self.device);
         let descriptor_set = self.descriptor_pool.allocate_descriptor(
             &self.device,
@@ -235,10 +231,47 @@ impl DescriptorManager {
         println!("{:?}", self.descriptor_positions);
     }
 
-    pub fn change_buffer_value<T: Any>(&mut self, label: String, cur_frame: u32, values: &[T]) {
+    fn change_buffer(&mut self, label: String, value_size: usize, num_values: usize) {
         let cur_struct = self
             .descriptor_table
             .get_mut(&label)
+            .expect("Failed to get the value!");
+
+        for i in 0..MAX_FRAMES_IN_FLIGHT {
+            let mut buffer = Buffer::new(
+                Rc::clone(&self.device),
+                value_size as u64,
+                num_values as u64,
+                vk::BufferUsageFlags::UNIFORM_BUFFER,
+                vk::MemoryPropertyFlags::HOST_VISIBLE,
+            );
+
+            buffer.map(None, None);
+            cur_struct.buffers[i] = buffer;
+        }
+
+        self.preload_descriptors()
+    }
+
+    pub fn change_buffer_value<T: Any>(&mut self, label: &str, cur_frame: u32, values: &[T]) {
+        let cur_max_size = self
+            .descriptor_table
+            .get_mut(&label.to_string())
+            .expect("Failed to get the value!")
+            .buffers[cur_frame as usize]
+            .get_buffer_size();
+
+        let value_size = std::mem::size_of::<T>();
+
+        let max_size = (value_size * values.len()) as u64;
+
+        if max_size == cur_max_size {
+            self.change_buffer(label.to_string().clone(), value_size, values.len())
+        }
+
+        let cur_struct = self
+            .descriptor_table
+            .get_mut(&label.to_string())
             .expect("Failed to get the value!");
 
         let value_size = std::mem::size_of::<T>();
@@ -520,7 +553,6 @@ impl DescriptorManager {
                 .device()
                 .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
         }
-
     }
 
     fn transition_image_layout(

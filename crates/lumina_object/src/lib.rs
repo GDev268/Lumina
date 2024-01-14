@@ -3,6 +3,7 @@ use rand::Rng;
 pub mod entity;
 pub mod game_object;
 pub mod transform;
+pub mod component_manager;
 
 static mut COMPONENT_IDS: Vec<u32> = vec![];
 

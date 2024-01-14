@@ -16,3 +16,4 @@ ash = {version="0.37.3",features = ["linked", "debug"]}
 glam = "0.24.1"
 rand = "0.6.5"
 lazy_static = "1.4.0"
+num_cpus = "1.16.0"

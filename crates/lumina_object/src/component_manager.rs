@@ -6,13 +6,11 @@ use std::{
     thread,
 };
 
-use lumina_object::{
-    game_object::{self, Component, GameObject},
-    transform::Transform,
-};
+use crate::{game_object::{Component, GameObject}, transform::Transform};
+use num_cpus::*;
 
 pub struct ComponentManager {
-    components: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+    pub components: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
     query_mut_components: HashMap<u32, Vec<Box<dyn Component>>>,
     query_components: Vec<Box<dyn Component>>,
 }
@@ -41,6 +39,18 @@ impl ComponentManager {
 
         game_object
     }
+
+    pub fn kill(&mut self,game_object:&GameObject) {
+        self.components.write().unwrap().remove_entry(&game_object.get_id());
+    }
+
+    pub fn push<T: Component + Send + 'static>(&mut self, game_object: &GameObject, component: T) {
+        self.components.write().unwrap()
+            .get_mut(&game_object.get_id())
+            .unwrap()
+            .insert(TypeId::of::<T>(), Box::new(component));
+    }
+
 
     pub fn query<'a, T: Component>(&'a mut self, id: u32) -> &'a T {
         let index = self.query_components.len();
