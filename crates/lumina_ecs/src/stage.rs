@@ -21,7 +21,6 @@ pub struct Stage {
     name: String,
     members: ComponentManager,
     cameras: Arc<RwLock<Vec<GameObject>>>,
-
 }
 
 impl Stage {
@@ -53,19 +52,22 @@ impl Stage {
         self.members.push(&camera, camera_component);
 
         self.cameras.write().unwrap().push(camera);
+
+        println!("{:?}",self.cameras);
     }
 
-    pub fn update_components(
-        members: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
-        camera_id: u32,
+    pub fn update(
+        &mut self,
         resources: Arc<RwLock<ResourcesBundle>>,
-        delta_time: f32,
+        fps: f32,
     ) {
+        let delta_time = 1.0 / fps;
+        
         let num_cpus = num_cpus::get().max(1);
 
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
-                let members_read_lock = Arc::clone(&members);
+                let members_read_lock = Arc::clone(&self.members.components);
                 let locked_resources = Arc::clone(&resources);
 
                 thread::spawn(move || {
@@ -97,7 +99,7 @@ impl Stage {
         }
     }
 
-    pub fn update(&mut self, resources: Arc<RwLock<ResourcesBundle>>, fps: f32) {
+    pub fn draw(&mut self, resources: Arc<RwLock<ResourcesBundle>>, fps: f32) {
         let delta_time = 1.0 / fps;
 
         let num_cpus = num_cpus::get().max(1);
@@ -120,7 +122,6 @@ impl Stage {
                     };
 
                     for camera in cameras_lock.iter_mut().skip(start).take(end - start) {
-
                         resources_clone.write().unwrap().cur_projection = components
                             .read()
                             .unwrap()
@@ -133,13 +134,37 @@ impl Stage {
                             .unwrap()
                             .get_matrix();
 
-
-                        Stage::update_components(
+                        Stage::draw_components(
                             Arc::clone(&components),
-                            camera.get_id(),
                             Arc::clone(&resources_clone),
-                            delta_time,
                         )
+                    }
+                })
+            })
+            .collect();
+    }
+
+    pub fn draw_components(members:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources: Arc<RwLock<ResourcesBundle>>){
+        let num_cpus = num_cpus::get().max(1);
+
+        let handles: Vec<JoinHandle<()>> = (0..num_cpus)
+            .map(|i| {
+                let components_clone = Arc::clone(&members);
+                let resources_clone = Arc::clone(&resources);
+
+                thread::spawn(move || {
+                    let size = components_clone.read().unwrap().len();
+                    let start = i * size / num_cpus;
+                    let end = if i == num_cpus - 1 {
+                        size
+                    } else {
+                        (i + 1) * size / num_cpus
+                    };
+
+                    for (id,components) in components_clone.write().unwrap().iter_mut().skip(start).take(end - start) {
+                        for (_,component) in components.iter_mut() {
+                            component.render(*id, components_clone.write().unwrap().get_mut(id).unwrap(), &resources_clone);
+                        }
                     }
                 })
             })

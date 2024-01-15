@@ -24,8 +24,8 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();    
-
-
+        app.update();
+        app.render();
     });
 
     /*let event_loop = create_event_loop();

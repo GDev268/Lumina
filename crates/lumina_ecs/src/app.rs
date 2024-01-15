@@ -74,6 +74,10 @@ impl App {
             .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);
     }
 
+    pub fn render(&mut self) {
+        self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.fps_manager._fps as f32);
+    }
+
     pub fn run(&mut self) {
         'running: loop {
             if self.running {

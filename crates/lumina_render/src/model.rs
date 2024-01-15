@@ -8,7 +8,7 @@ use std::{
 use ash::vk;
 use lumina_bundle::ResourcesBundle;
 use lumina_core::{device::Device, Vertex3D};
-use lumina_graphic::{shader::Shader, pipeline::PipelineConfiguration};
+use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
 use lumina_object::{
     create_component_id, delete_component_id, game_object::Component, transform::Transform,
 };
@@ -91,7 +91,7 @@ impl Component for Model {
     fn render(
         &mut self,
         id: u32,
-        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        component: &mut HashMap<TypeId, Box<dyn Component>>,
         resources_bundle: &Arc<RwLock<ResourcesBundle>>,
     ) {
         let resources = resources_bundle.write().unwrap();
@@ -100,21 +100,17 @@ impl Component for Model {
         pipeline_config.attribute_descriptions = self.mesh.get_attribute_descriptions().clone();
         pipeline_config.binding_descriptions = self.mesh.get_binding_descriptions().clone();
 
-
         self.shader.create_pipeline_layout(true);
-        self.shader.create_pipeline(resources.cur_render_pass, pipeline_config);
+        self.shader
+            .create_pipeline(resources.cur_render_pass, pipeline_config);
 
-        
         self.shader.descriptor_manager.change_buffer_value(
             "ProjectionViewMatrix",
             resources.cur_frame,
             &[resources.cur_projection],
         );
 
-        let components_lock = component.read().unwrap();
-        let transform = components_lock
-            .get(&id)
-            .unwrap()
+        let transform = component
             .get(&TypeId::of::<Transform>())
             .unwrap()
             .as_any()
@@ -143,7 +139,6 @@ impl Component for Model {
 
         self.mesh.bind(resources.command_buffer, &self.device);
         self.mesh.draw(resources.command_buffer, &self.device);
-
     }
 }
 

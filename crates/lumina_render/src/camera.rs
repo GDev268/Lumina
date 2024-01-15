@@ -309,7 +309,7 @@ impl Component for Camera {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        todo!()
+        self
     }
     
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
