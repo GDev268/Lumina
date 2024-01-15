@@ -53,7 +53,6 @@ impl Stage {
 
         self.cameras.write().unwrap().push(camera);
 
-        println!("{:?}",self.cameras);
     }
 
     pub fn update(
@@ -69,6 +68,8 @@ impl Stage {
             .map(|i| {
                 let members_read_lock = Arc::clone(&self.members.components);
                 let locked_resources = Arc::clone(&resources);
+
+                locked_resources.write().unwrap().raw_lights = self.get_raw_lights();
 
                 thread::spawn(move || {
                     let len = members_read_lock.read().unwrap().len();
@@ -112,6 +113,7 @@ impl Stage {
 
                 thread::spawn(move || {
                     let mut cameras_lock = cameras_clone.write().unwrap();
+                    let mut components_lock = components.write().unwrap();
 
                     let size = cameras_lock.len();
                     let start = i * size / num_cpus;
@@ -133,7 +135,22 @@ impl Stage {
                             .downcast_ref::<Camera>()
                             .unwrap()
                             .get_matrix();
+                        
+                        resources_clone.write().unwrap().command_buffer = components
+                        .read()
+                        .unwrap()
+                        .get(&camera.get_id())
+                        .unwrap()
+                        .get(&TypeId::of::<Camera>())
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref::<Camera>()
+                        .unwrap()
+                        .get_command_buffer();
 
+                        let camera_component = components_lock.get_mut(&camera.get_id()).unwrap().get_mut(&TypeId::of::<Camera>()).unwrap().as_mut_any().downcast_mut::<Camera>().unwrap();
+
+                        camera_component.begin_camera();
                         Stage::draw_components(
                             Arc::clone(&components),
                             Arc::clone(&resources_clone),

@@ -7,9 +7,9 @@ use lumina_core::{
     texture::Texture,
 };
 
-use lumina_object::{game_object::Component, create_component_id, delete_component_id};
+use lumina_object::{create_component_id, delete_component_id, game_object::Component};
 
-use crate::renderer::{Renderer, self};
+use crate::renderer::{self, Renderer};
 
 pub enum CameraDirection {
     NONE,
@@ -29,6 +29,7 @@ pub enum Background {
 }
 
 pub struct Camera {
+    device: Rc<Device>,
     background: Background,
     projection_matrix: [[f32; 4]; 4],
     view_matrix: [[f32; 4]; 4],
@@ -41,7 +42,8 @@ pub struct Camera {
     rotation: glam::Vec3,
     translation: glam::Vec3,
     pub renderer: Renderer,
-    component_id: u32
+    component_id: u32,
+    extent: vk::Extent2D,
 }
 
 impl Camera {
@@ -64,8 +66,10 @@ impl Camera {
             aspect_ratio,
             rotation: glam::Vec3::ZERO,
             translation: glam::Vec3::ZERO,
-            renderer: Renderer::new(device, extent, renderer_bundle),
-            component_id: create_component_id()
+            renderer: Renderer::new(Rc::clone(&device), extent, renderer_bundle),
+            component_id: create_component_id(),
+            device,
+            extent,
         };
     }
 
@@ -79,7 +83,19 @@ impl Camera {
         };
     }
 
-    pub fn begin_camera(&mut self) {}
+    pub fn begin_camera(&mut self) {
+        self.renderer.begin_frame(&self.device);
+    }
+
+    pub fn end_camera(&mut self, wait_semaphore: vk::Semaphore, cur_frame: u32) {
+        self.renderer.end_frame(&self.device, wait_semaphore);
+        self.renderer.canvas.update(
+            cur_frame,
+            self.extent,
+            self.renderer.renderer_data.images[cur_frame as usize].get_image(),
+            self.renderer.renderer_data.depth_images[cur_frame as usize].get_image(),
+        );
+    }
 
     fn create_orthographic_projection(
         left: f32,
@@ -281,15 +297,19 @@ impl Camera {
             z: self.translation.z,
         };
     }
+
+    pub fn get_command_buffer(&self) -> vk::CommandBuffer {
+        self.renderer.get_command_buffer()
+    }
 }
 
 impl Component for Camera {
-    fn get_id(&self) -> u32{
+    fn get_id(&self) -> u32 {
         self.component_id
     }
 
     fn clone(&self) -> Box<dyn Component> {
-        let camera = Camera{
+        let camera = Camera {
             background: self.background.clone(),
             projection_matrix: self.projection_matrix,
             view_matrix: self.view_matrix,
@@ -302,7 +322,9 @@ impl Component for Camera {
             rotation: self.rotation,
             translation: self.translation,
             renderer: self.renderer.clone(),
-            component_id: self.component_id
+            component_id: self.component_id,
+            device: Rc::clone(&self.device),
+            extent: self.extent,
         };
 
         Box::new(camera)
@@ -311,12 +333,10 @@ impl Component for Camera {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    
+
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
-
-
 }
 
 unsafe impl Send for Camera {}

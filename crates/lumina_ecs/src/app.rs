@@ -44,6 +44,7 @@ impl App {
                 height: 640,
             },
             render_pass: renderer.get_swapchain_renderpass(),
+            wait_semaphore: renderer.get_main_wait_semaphore()
         });
 
         Self {

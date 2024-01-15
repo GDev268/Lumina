@@ -6,6 +6,7 @@ pub struct RendererBundle {
     pub depth_format: vk::Format,
     pub max_extent: vk::Extent2D,
     pub render_pass: vk::RenderPass,
+    pub wait_semaphore: vk::Semaphore
 }
 
 pub struct ResourcesBundle {

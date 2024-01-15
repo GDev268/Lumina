@@ -1,4 +1,4 @@
-use std::{cell::RefCell, ops::Deref, rc::Rc};
+use std::{cell::RefCell, ops::Deref, rc::Rc, sync::{RwLock, Arc}, collections::HashMap, any::TypeId, mem};
 
 use lumina_core::{
     device::Device,
@@ -7,6 +7,9 @@ use lumina_core::{
 };
 
 use ash::vk;
+use lumina_object::game_object::{Component, GameObject};
+
+use crate::camera::{self, Camera};
 
 
 pub struct SystemRenderer {
@@ -217,60 +220,20 @@ impl SystemRenderer {
         }
     }
 
-/*    pub fn create_pipeline_layout(
-        device: &Device,
-        global_set_layout: vk::DescriptorSetLayout,
-    ) -> vk::PipelineLayout {
-        let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
-            stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-            offset: 0,
-            size: std::mem::size_of::<PushConstantData>() as u32,
-        };
-
-        let descriptor_set_layouts = vec![global_set_layout];
-
-        let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
-            s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::PipelineLayoutCreateFlags::empty(),
-            set_layout_count: descriptor_set_layouts.len() as u32,
-            p_set_layouts: descriptor_set_layouts.as_ptr(),
-            push_constant_range_count: 1,
-            p_push_constant_ranges: &push_constant_range,
-        };
-
-        unsafe {
-            return device
-                .device()
-                .create_pipeline_layout(&pipeline_layout_info, None)
-                .expect("Failed to create pipeline layout!");
-        }
-    }
-
-    pub fn create_pipeline(
-        render_pass: vk::RenderPass,
-        shader: &Shader,
-        device: &Device,
-    ) -> Pipeline {
-        let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
-        pipeline_config.renderpass = Some(render_pass);
-        pipeline_config.pipeline_layout = shader.pipeline_layout;
-
-        return Pipeline::new(
-            device,
-            shader.vert_module,
-            shader.frag_module,
-            &mut pipeline_config,
-        );
-    }
-
-    pub fn render_game_objects(
+    pub fn present_cameras(
         &mut self,
         device: &Device,
-        frame_info: &FrameInfo,
-        scene: &mut Query,
+        members:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        camera_ids: Vec<GameObject>
     ) {
-        for (id, entity) in scene.entities.iter_mut() {
+        let mut members_locked = members.write().unwrap();
+
+        for id in camera_ids {
+            let camera = members_locked.get_mut(&id.get_id()).unwrap().get_mut(&TypeId::of::<Camera>()).unwrap().as_mut_any().downcast_mut::<Camera>().unwrap();
+
+        }
+
+        /*for (id, entity) in scene.entities.iter_mut() {
             if let Some(shader) = entity.get_mut_component::<Shader>() {
                 if shader.pipeline_layout.is_none() && shader.pipeline.is_none() {
                     shader.pipeline_layout = Some(SystemRenderer::create_pipeline_layout(
@@ -345,9 +308,9 @@ impl SystemRenderer {
                         .render(device, frame_info.command_buffer);
                 }
             }
-        }
+        }*/
     }
-*/
+
     fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
