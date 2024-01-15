@@ -6,6 +6,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+use ash::vk;
 use lumina_bundle::{RendererBundle, ResourcesBundle};
 use lumina_core::{device::Device, window::Window, RawLight};
 use lumina_object::{
@@ -100,9 +101,7 @@ impl Stage {
         }
     }
 
-    pub fn draw(&mut self, resources: Arc<RwLock<ResourcesBundle>>, fps: f32) {
-        let delta_time = 1.0 / fps;
-
+    pub fn draw(&mut self, resources: Arc<RwLock<ResourcesBundle>>, cur_frame:u32, wait_semaphore:vk::Semaphore) {
         let num_cpus = num_cpus::get().max(1);
 
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
@@ -154,7 +153,10 @@ impl Stage {
                         Stage::draw_components(
                             Arc::clone(&components),
                             Arc::clone(&resources_clone),
-                        )
+                        );
+
+                        camera_component.end_camera(wait_semaphore,cur_frame);
+
                     }
                 })
             })

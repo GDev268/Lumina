@@ -24,6 +24,23 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_wait();    
+
+
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                window_id,
+            } if window_id == app.window._window.id() => control_flow.set_exit(),
+            Event::MainEventsCleared => {
+                app.window._window.request_redraw();
+            }
+            Event::RedrawRequested(_) => {
+
+            }
+            _ => (),
+            
+        }
+
         app.update();
         app.render();
     });

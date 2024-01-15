@@ -230,7 +230,8 @@ impl SystemRenderer {
 
         for id in camera_ids {
             let camera = members_locked.get_mut(&id.get_id()).unwrap().get_mut(&TypeId::of::<Camera>()).unwrap().as_mut_any().downcast_mut::<Camera>().unwrap();
-
+            
+            
         }
 
         /*for (id, entity) in scene.entities.iter_mut() {
