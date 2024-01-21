@@ -158,7 +158,7 @@ impl Renderer {
         return command_buffers;
     }
 
-    pub fn begin_frame(&mut self, device: &Device) {
+    pub fn  begin_frame(&mut self, device: &Device) {
         let command_buffer = self.get_command_buffer();
 
         let begin_info = vk::CommandBufferBeginInfo {
@@ -196,8 +196,9 @@ impl Renderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.1, 0.1, 0.0, 1.0],
+            float32: [1.0, 1.0, 1.0, 1.0],
         };
+        
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
             stencil: 0,

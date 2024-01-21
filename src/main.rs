@@ -35,17 +35,27 @@ fn main() {
 fn main_program(window:winit::window::Window,event_receiver:Receiver<EventHandler>) {
     let mut app = App::new(window);
 
-    let stage = Stage::new("weege".to_owned());
+    let mut stage = Stage::new("weege".to_owned());
+    let manager = stage.get_component_manager();
+
+    shapes::cube(manager.lock().unwrap().borrow_mut(), app.get_device());
+
     app.switch_stage(stage);
 
-    'running: loop {
-        println!("A");
-        for event in event_receiver.recv() {
-            println!("{:?}",event);
+    let mut custom_events: Vec<EventHandler> = Vec::new();
+
+    loop {
+        while let Ok(custom_event) = event_receiver.try_recv() {
+            custom_events.push(custom_event);
         }
 
-        //app.update();
-        //app.render();
+        if !custom_events.is_empty() {
+            println!("Accumulated Custom Events: {:?}", custom_events);
+            custom_events.clear();
+        }
+
+        app.update();
+        app.render();
     }
 }
 
@@ -57,6 +67,7 @@ enum EventHandler {
     WindowResized(u32, u32),
     WindowClosed,
     WindowFocused,
+    WasResized(bool)
 }
 
 fn event_handler(event_loop:EventLoop<()>,event_sender:Sender<EventHandler>) {
@@ -78,6 +89,8 @@ fn event_handler(event_loop:EventLoop<()>,event_sender:Sender<EventHandler>) {
                 // Send a custom event to the heavy logic thread
                 let _ =
                     event_sender.send(EventHandler::WindowResized(size.width, size.height));
+
+                let _ = event_sender.send(EventHandler::WasResized(true));
             }
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
@@ -88,7 +101,9 @@ fn event_handler(event_loop:EventLoop<()>,event_sender:Sender<EventHandler>) {
                     let _ = event_sender.send(EventHandler::KeyPressed(keycode));
                 }
             }
-            // Handle other events as needed
+            Event::RedrawRequested(window_id) => {
+                
+            }
             _ => {
                 // Process other events
             }

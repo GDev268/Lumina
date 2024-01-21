@@ -1,9 +1,10 @@
 use std::{
     any::TypeId,
+    borrow::BorrowMut,
     collections::HashMap,
     rc::Rc,
     sync::{Arc, Mutex, RwLock},
-    thread::{self, JoinHandle}, borrow::BorrowMut,
+    thread::{self, JoinHandle},
 };
 
 use ash::vk;
@@ -16,7 +17,7 @@ use lumina_object::{
     transform::Transform,
 };
 use lumina_pbr::light::{DirectionalLight, PointLight, SpotLight};
-use lumina_render::camera::Camera;
+use lumina_render::{camera::Camera, model::Model};
 use rand::Rng;
 
 pub struct Stage {
@@ -51,28 +52,27 @@ impl Stage {
             renderer_bundle,
         );
 
-        self.manager.lock().unwrap().borrow_mut().push(&camera, camera_component);
+        self.manager
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .push(&camera, camera_component);
 
         self.cameras.write().unwrap().push(camera);
-
     }
-
-    pub fn update(
-        &mut self,
-        resources: Arc<RwLock<ResourcesBundle>>,
-        fps: f32,
-    ) {
+    
+    pub fn update(&self, resources: Arc<RwLock<ResourcesBundle>>, fps: f32) {
         let delta_time = 1.0 / fps;
-        
+    
         let num_cpus = num_cpus::get().max(1);
-
+    
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
                 let manager_read_lock = Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
                 let locked_resources = Arc::clone(&resources);
-
+    
                 locked_resources.write().unwrap().raw_lights = self.get_raw_lights();
-
+    
                 thread::spawn(move || {
                     let len = manager_read_lock.read().unwrap().len();
                     let start = i * len / num_cpus;
@@ -81,36 +81,55 @@ impl Stage {
                     } else {
                         (i + 1) * len / num_cpus
                     };
-                    
+    
                     for (id, component_group) in manager_read_lock
-                        .write()
+                        .read()
                         .unwrap()
                         .iter_mut()
                         .skip(start)
                         .take(end - start)
                     {
                         for (type_id, component) in component_group.iter_mut() {
-                            component.update(*id, Arc::clone(&manager_read_lock), &locked_resources);
-                            println!("asdsad");
+                            if let Ok(manager_lock) = manager_read_lock.try_write() {
+                                component.update(
+                                    *id,
+                                    Arc::clone(&manager_lock),
+                                    &locked_resources,
+                                );
+                            } else {
+                                // Handle the case where the lock cannot be acquired
+                                // This might involve retrying, skipping the component, or other strategies
+                            }
                         }
                     }
                 })
             })
             .collect();
+    
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
+    
 
-    pub fn draw(&mut self, resources: Arc<RwLock<ResourcesBundle>>, cur_frame:u32, wait_semaphore:vk::Semaphore) {
+    pub fn draw(
+        &mut self,
+        resources: Arc<RwLock<ResourcesBundle>>,
+        cur_frame: u32,
+        wait_semaphore: vk::Semaphore,
+        command_buffer:vk::CommandBuffer
+    ) {
         let num_cpus = num_cpus::get().max(1);
 
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
             .map(|i| {
                 let cameras_clone = Arc::clone(&self.cameras);
-                let components = Arc::clone(&self.manager.lock().unwrap().components);
+                let components_clone = Arc::clone(&self.manager.lock().unwrap().components);
                 let resources_clone = Arc::clone(&resources);
 
                 thread::spawn(move || {
                     let mut cameras_lock = cameras_clone.write().unwrap();
-                    let mut components_lock = components.write().unwrap();
+                    let mut resources_lock = resources_clone.write().unwrap();
 
                     let size = cameras_lock.len();
                     let start = i * size / num_cpus;
@@ -121,9 +140,9 @@ impl Stage {
                     };
 
                     for camera in cameras_lock.iter_mut().skip(start).take(end - start) {
-                        resources_clone.write().unwrap().cur_projection = components
-                            .read()
-                            .unwrap()
+                        let mut components_lock = components_clone.write().unwrap();
+
+                        resources_lock.cur_projection = components_lock
                             .get(&camera.get_id())
                             .unwrap()
                             .get(&TypeId::of::<Camera>())
@@ -132,36 +151,67 @@ impl Stage {
                             .downcast_ref::<Camera>()
                             .unwrap()
                             .get_matrix();
-                        
-                        resources_clone.write().unwrap().command_buffer = components
-                        .read()
-                        .unwrap()
-                        .get(&camera.get_id())
-                        .unwrap()
-                        .get(&TypeId::of::<Camera>())
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref::<Camera>()
-                        .unwrap()
-                        .get_command_buffer();
 
-                        let camera_component = components_lock.get_mut(&camera.get_id()).unwrap().get_mut(&TypeId::of::<Camera>()).unwrap().as_mut_any().downcast_mut::<Camera>().unwrap();
+                        resources_lock.command_buffer = components_lock
+                            .get(&camera.get_id())
+                            .unwrap()
+                            .get(&TypeId::of::<Camera>())
+                            .unwrap()
+                            .as_any()
+                            .downcast_ref::<Camera>()
+                            .unwrap()
+                            .get_command_buffer();
+
+                        let camera_component = components_lock
+                            .get_mut(&camera.get_id())
+                            .unwrap()
+                            .get_mut(&TypeId::of::<Camera>())
+                            .unwrap()
+                            .as_mut_any()
+                            .downcast_mut::<Camera>()
+                            .unwrap();
 
                         camera_component.begin_camera();
+
+                        drop(camera_component);
+                        drop(components_lock);
+
                         Stage::draw_components(
-                            Arc::clone(&components),
+                            Arc::clone(&components_clone),
                             Arc::clone(&resources_clone),
                         );
 
-                        camera_component.end_camera(wait_semaphore,cur_frame);
+                        let mut components_lock = components_clone.write().unwrap();
+
+                        let camera_component = components_lock
+                            .get_mut(&camera.get_id())
+                            .unwrap()
+                            .get_mut(&TypeId::of::<Camera>())
+                            .unwrap()
+                            .as_mut_any()
+                            .downcast_mut::<Camera>()
+                            .unwrap();
+
+                        camera_component.end_camera(wait_semaphore, cur_frame,command_buffer);
+
+                        
+                        drop(camera_component);
+                        drop(components_lock);
 
                     }
                 })
             })
             .collect();
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 
-    pub fn draw_components(manager:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources: Arc<RwLock<ResourcesBundle>>){
+    pub fn draw_components(
+        manager: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        resources: Arc<RwLock<ResourcesBundle>>,
+    ) {
         let num_cpus = num_cpus::get().max(1);
 
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
@@ -170,6 +220,7 @@ impl Stage {
                 let resources_clone = Arc::clone(&resources);
 
                 thread::spawn(move || {
+
                     let size = components_clone.read().unwrap().len();
                     let start = i * size / num_cpus;
                     let end = if i == num_cpus - 1 {
@@ -178,14 +229,27 @@ impl Stage {
                         (i + 1) * size / num_cpus
                     };
 
-                    for (id,components) in components_clone.write().unwrap().iter_mut().skip(start).take(end - start) {
-                        for (_,component) in components.iter_mut() {
-                            component.render(*id, components_clone.write().unwrap().get_mut(id).unwrap(), &resources_clone);
+                    for (id, components) in components_clone.write().unwrap()
+                        .iter_mut()
+                        .skip(start)
+                        .take(end - start)
+                    {
+                        for (type_id, component) in components.iter_mut() {
+                            component.render(
+                                *id,
+                                Arc::clone(&components_clone),
+                                Arc::clone(&resources_clone),
+                            );
                         }
                     }
                 })
             })
             .collect();
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
     }
 
     pub fn get_raw_lights(&self) -> Vec<RawLight> {
@@ -195,7 +259,8 @@ impl Stage {
 
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
-                let manager_read_lock = Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
+                let manager_read_lock =
+                    Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
                 thread::spawn(move || {
                     let len = manager_read_lock.read().unwrap().len();
                     let start = i * len / num_cpus;
@@ -297,9 +362,7 @@ impl Stage {
         Arc::clone(&self.manager)
     }
 
-    pub async fn adfsasd(&self) {
-        
-    }
+    pub async fn adfsasd(&self) {}
 }
 
 unsafe impl Send for Stage {}

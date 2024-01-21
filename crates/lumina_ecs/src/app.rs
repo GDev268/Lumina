@@ -30,6 +30,7 @@ pub struct App {
 
 impl App {
     pub fn new(window:winit::window::Window) -> Self {
+        window.request_redraw();
         let window = Window::new(window, "Lumina", 800, 640);
         let device = Rc::new(Device::new(&window));
         let renderer = SystemRenderer::new(&window, &device, None);
@@ -79,8 +80,8 @@ impl App {
         let command_buffer = self.renderer.begin_frame(&self.device, &self.window).unwrap();
         self.renderer.begin_swapchain_renderpass(command_buffer, &self.device);
 
-        println!("{:?}",self.window.get_extent());
-        self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.fps_manager._fps,self.renderer.get_main_wait_semaphore());
+        println!("imagine if ninja got a low taper fade...");
+        //self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.renderer.current_image_index,self.renderer.get_main_wait_semaphore(),self.renderer.get_current_command_buffer());
 
         self.renderer.end_swapchain_renderpass(command_buffer, &self.device);
         self.renderer.end_frame(&self.device, &mut self.window);

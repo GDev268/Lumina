@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use ash::vk;
+use ash::vk::{self, CommandBuffer};
 use lumina_bundle::{RendererBundle, ResourcesBundle};
 use lumina_core::{
     device::Device, framebuffer::Framebuffer, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT,
@@ -87,7 +87,7 @@ impl Camera {
         self.renderer.begin_frame(&self.device);
     }
 
-    pub fn end_camera(&mut self, wait_semaphore: vk::Semaphore, cur_frame: u32) {
+    pub fn end_camera(&mut self, wait_semaphore: vk::Semaphore, cur_frame: u32,command_buffer:CommandBuffer) {
         self.renderer.end_frame(&self.device, wait_semaphore);
         self.renderer.canvas.update(
             cur_frame,
@@ -95,6 +95,7 @@ impl Camera {
             self.renderer.renderer_data.images[cur_frame as usize].get_image(),
             self.renderer.renderer_data.depth_images[cur_frame as usize].get_image(),
         );
+        self.renderer.canvas.render(&self.device, command_buffer, cur_frame);
     }
 
     fn create_orthographic_projection(

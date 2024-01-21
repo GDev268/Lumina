@@ -73,33 +73,36 @@ impl Component for Model {
         self
     }
 
-    /*fn update(
+    fn update(
         &mut self,
         id: u32,
         component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
         resources_bundle: &Arc<RwLock<ResourcesBundle>>,
     ) {
-        //let binding = component.read().unwrap();
-        //et component_group = binding.get(&id).unwrap();
+        let binding = component.read().unwrap();
+        let component_group = binding.get(&id).unwrap();
 
-        //self.shader.descriptor_manager.change_buffer_value("LightInfo".to, resources_bundle.cur_frame, &resources_bundle.raw_lights);
+        //self.shader.descriptor_manager.change_buffer_value("LightInfo".to, resources_bundle.read().unwrap().cur_frame, &resources_bundle.raw_lights);
 
-        /*for (type_id,component) in component_group {
+        for (type_id,component) in component_group {
 
-        }*/
+        }
 
-        //drop(component_group);
-        //drop(binding);
-        //drop(resources_bundle);
-    }*/
+        drop(component_group);
+        drop(binding);
+        drop(resources_bundle);
+    }
 
     fn render(
         &mut self,
         id: u32,
-        component: &mut HashMap<TypeId, Box<dyn Component>>,
-        resources_bundle: &Arc<RwLock<ResourcesBundle>>,
+        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
+        resources_bundle: Arc<RwLock<ResourcesBundle>>
     ) {
-        let resources = resources_bundle.write().unwrap();
+        panic!("a");
+
+        let binding = component.read().unwrap();
+        let components = binding.get(&self.component_id).unwrap();
 
         let mut pipeline_config = PipelineConfiguration::default();
         pipeline_config.attribute_descriptions = self.mesh.get_attribute_descriptions().clone();
@@ -107,15 +110,15 @@ impl Component for Model {
 
         self.shader.create_pipeline_layout(true);
         self.shader
-            .create_pipeline(resources.cur_render_pass, pipeline_config);
+            .create_pipeline(resources_bundle.read().unwrap().cur_render_pass, pipeline_config);
 
         self.shader.descriptor_manager.change_buffer_value(
             "ProjectionViewMatrix",
-            resources.cur_frame,
-            &[resources.cur_projection],
+            resources_bundle.read().unwrap().cur_frame,
+            &[resources_bundle.read().unwrap().cur_projection],
         );
 
-        let transform = component
+        let transform = components
             .get(&TypeId::of::<Transform>())
             .unwrap()
             .as_any()
@@ -134,7 +137,7 @@ impl Component for Model {
 
         unsafe {
             self.device.device().cmd_push_constants(
-                resources.command_buffer,
+                resources_bundle.read().unwrap().command_buffer,
                 self.shader.pipeline_layout.unwrap(),
                 vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
                 0,
@@ -142,8 +145,8 @@ impl Component for Model {
             );
         }
 
-        self.mesh.bind(resources.command_buffer, &self.device);
-        self.mesh.draw(resources.command_buffer, &self.device);
+        self.mesh.bind(resources_bundle.read().unwrap().command_buffer, &self.device);
+        self.mesh.draw(resources_bundle.read().unwrap().command_buffer, &self.device);
     }
 }
 

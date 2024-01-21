@@ -57,10 +57,6 @@ impl Canvas {
         color_image: vk::Image,
         depth_image: vk::Image,
     ) {
-        for (name, _) in self.shader.descriptor_manager.descriptor_table.iter() {
-            println!("{:?}", name);
-        }
-
         self.shader
             .descriptor_manager
             .change_image_value_with_images(
@@ -96,5 +92,6 @@ impl Canvas {
         }
         self.mesh.bind(command_buffer, device);
         self.mesh.draw(command_buffer, device);
+
     }
 }

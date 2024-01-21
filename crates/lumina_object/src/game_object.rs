@@ -22,8 +22,11 @@ pub trait Component: Any + Send + Sync
     fn update(&mut self,id:u32,component:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle:&Arc<RwLock<ResourcesBundle>>) {
 
     }
-    fn render(&mut self,id:u32,component:&mut HashMap<TypeId, Box<dyn Component>>,resources_bundle:&Arc<RwLock<ResourcesBundle>>) {
+    fn render(&mut self,id:u32,component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle:Arc<RwLock<ResourcesBundle>>) {
 
+    }
+    fn lock_test(&mut self,id:u32,component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle: Arc<RwLock<ResourcesBundle>>) {
+        println!("adgsdgd");
     }
     fn as_any(&self) -> &dyn Any;
     fn as_mut_any(&mut self) -> &mut dyn Any;
