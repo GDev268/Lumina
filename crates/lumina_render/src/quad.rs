@@ -120,7 +120,6 @@ impl Quad {
     fn create_index_buffers(indices: Vec<u32>, device: Rc<Device>) -> (u32, bool, Option<Buffer>) {
         let index_count = indices.len() as u32;
         let has_index_buffer = index_count > 0;
-        println!("{:?}",indices);
 
         if !has_index_buffer {
             return (0, false, None);

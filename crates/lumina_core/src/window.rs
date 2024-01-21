@@ -18,11 +18,12 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(event_loop:&EventLoop<()>, title: &str, width: u32, height: u32) -> Self {
-        let mut window = WindowBuilder::new().with_title(title).with_inner_size(winit::dpi::LogicalSize::new(width as f64,height as f64)).with_resizable(true).build(&event_loop).unwrap();
+    pub fn new(_window:window::Window, title: &str, width: u32, height: u32) -> Self {
+        _window.set_title(title);
+        _window.set_inner_size(winit::dpi::PhysicalSize::new(width, height));
 
         return Self {
-            _window: window,
+            _window,
             width: width,
             height: height,
             framebuffer_resized: false,

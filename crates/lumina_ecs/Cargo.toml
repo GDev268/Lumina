@@ -18,6 +18,8 @@ lumina_bundle = {path="../lumina_bundle",version = "0.1.0"}
 num_cpus = "1.16.0"
 winit = "0.28.7"
 ash = {version="0.37.3",features = ["linked", "debug"]}
+async-std = "1.12.0"
+rand = "0.6.5"
 
 
 [dependencies.sdl2]

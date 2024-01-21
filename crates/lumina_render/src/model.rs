@@ -73,20 +73,25 @@ impl Component for Model {
         self
     }
 
-    fn update(
+    /*fn update(
         &mut self,
         id: u32,
         component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
         resources_bundle: &Arc<RwLock<ResourcesBundle>>,
     ) {
-        let component_group = component.read().unwrap().get(&id).unwrap();
+        //let binding = component.read().unwrap();
+        //et component_group = binding.get(&id).unwrap();
 
         //self.shader.descriptor_manager.change_buffer_value("LightInfo".to, resources_bundle.cur_frame, &resources_bundle.raw_lights);
 
         /*for (type_id,component) in component_group {
 
         }*/
-    }
+
+        //drop(component_group);
+        //drop(binding);
+        //drop(resources_bundle);
+    }*/
 
     fn render(
         &mut self,

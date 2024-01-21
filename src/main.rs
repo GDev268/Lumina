@@ -1,184 +1,234 @@
-use std::rc::Rc;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    rc::Rc,
+    sync::{Arc, Mutex, mpsc::{Sender, Receiver,channel}}, thread,
+};
 
 use ash::vk;
+use async_std::task;
 use lumina_bundle::RendererBundle;
 use lumina_core::{device::Device, texture::Texture, window::Window};
 use lumina_ecs::{app::App, stage::Stage};
+use lumina_geometry::shapes;
 use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
 use lumina_object::game_object::Component;
 use lumina_render::{camera::Camera, quad::Quad, system_renderer::SystemRenderer};
 use sdl2::image::LoadSurface;
-use winit::{event_loop::{EventLoop, EventLoopBuilder}, event::{WindowEvent, Event}};
+use winit::{
+    event::{Event, WindowEvent, VirtualKeyCode},
+    event_loop::{EventLoop, EventLoopBuilder, ControlFlow}, window::WindowBuilder,
+};
+
 
 fn main() {
-    /*if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        std::env::set_var("SDL_VIDEODRIVER", "wayland");
-    }*/
-
     let event_loop = App::create_event_loop();
 
-    let mut app = App::new(&event_loop);
+    let (event_sender,event_receiver): (Sender<EventHandler>, Receiver<EventHandler>) = channel();
+  
+    let window = WindowBuilder::new().build(&event_loop).unwrap();
+
+    thread::spawn(|| main_program(window, event_receiver));
+
+    event_handler(event_loop, event_sender);
+}
+
+fn main_program(window:winit::window::Window,event_receiver:Receiver<EventHandler>) {
+    let mut app = App::new(window);
 
     let stage = Stage::new("weege".to_owned());
     app.switch_stage(stage);
 
+    'running: loop {
+        println!("A");
+        for event in event_receiver.recv() {
+            println!("{:?}",event);
+        }
+
+        //app.update();
+        //app.render();
+    }
+}
+
+
+#[derive(Debug)]
+enum EventHandler {
+    KeyPressed(VirtualKeyCode),
+    MouseMoved,
+    WindowResized(u32, u32),
+    WindowClosed,
+    WindowFocused,
+}
+
+fn event_handler(event_loop:EventLoop<()>,event_sender:Sender<EventHandler>) {
     event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();    
-
-
         match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 window_id,
-            } if window_id == app.window._window.id() => control_flow.set_exit(),
-            Event::MainEventsCleared => {
-                app.window._window.request_redraw();
+            } => {
+                println!("Window {:?} close requested", window_id);
+                // Perform cleanup or other actions on window close
+                *control_flow = ControlFlow::Exit;
             }
-            Event::RedrawRequested(_) => {
-
+            // Handle other events as needed
+            Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => {
+                // Send a custom event to the heavy logic thread
+                let _ =
+                    event_sender.send(EventHandler::WindowResized(size.width, size.height));
             }
-            _ => (),
-            
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput { input, .. },
+                ..
+            } => {
+                // Send a custom event to the heavy logic thread
+                if let Some(keycode) = input.virtual_keycode {
+                    let _ = event_sender.send(EventHandler::KeyPressed(keycode));
+                }
+            }
+            // Handle other events as needed
+            _ => {
+                // Process other events
+            }
         }
-
-        app.update();
-        app.render();
     });
+}
 
-    /*let event_loop = create_event_loop();
+/*let event_loop = create_event_loop();
 
-    let mut window = Window::new(&event_loop, "Lumina Dev App", 800, 640);
-    let device = Rc::new(Device::new(&window));
+let mut window = Window::new(&event_loop, "Lumina Dev App", 800, 640);
+let device = Rc::new(Device::new(&window));
 
-    let icon_data = image::open("icons/LuminaLogoMain.png").unwrap();
+let icon_data = image::open("icons/LuminaLogoMain.png").unwrap();
 
-    window._window.set_window_icon(Some(
-        winit::window::Icon::from_rgba(
-            icon_data.to_rgba8().into_raw(),
-            icon_data.width(),
-            icon_data.height(),
-        )
-        .unwrap(),
-    ));
+window._window.set_window_icon(Some(
+    winit::window::Icon::from_rgba(
+        icon_data.to_rgba8().into_raw(),
+        icon_data.width(),
+        icon_data.height(),
+    )
+    .unwrap(),
+));
 
-    let mut renderer = SystemRenderer::new(&window, &device, None);
+let mut renderer = SystemRenderer::new(&window, &device, None);
 
-    let renderer_bundle = RendererBundle {
-        image_format: renderer.swapchain.get_swapchain_image_format(),
-        depth_format: renderer.swapchain.get_swapchain_depth_format(),
-        max_extent: vk::Extent2D {
-            width: 800,
-            height: 640,
-        },
-        render_pass: renderer.get_swapchain_renderpass(),
+let renderer_bundle = RendererBundle {
+    image_format: renderer.swapchain.get_swapchain_image_format(),
+    depth_format: renderer.swapchain.get_swapchain_depth_format(),
+    max_extent: vk::Extent2D {
+        width: 800,
+        height: 640,
+    },
+    render_pass: renderer.get_swapchain_renderpass(),
+};
+
+let mut camera = Camera::new(
+    Rc::clone(&device),
+    renderer.get_aspect_ratio(),
+    false,
+    vk::Extent2D {
+        width: 800,
+        height: 640,
+    },
+    &renderer_bundle,
+);
+
+let quad = Quad::new(Rc::clone(&device));
+
+let mut shader = Shader::new(
+    Rc::clone(&device),
+    "shaders/canvas/canvas_shader.vert",
+    "shaders/canvas/canvas_shader.frag",
+);
+
+let mut pipeline_config = PipelineConfiguration::default();
+pipeline_config.attribute_descriptions = quad.get_attribute_descriptions().clone();
+pipeline_config.binding_descriptions = quad.get_binding_descriptions().clone();
+
+shader.create_pipeline_layout(false);
+shader.create_pipeline(renderer_bundle.render_pass, pipeline_config);
+
+event_loop.run(move |event, _, control_flow| {
+    control_flow.set_wait();
+
+
+    match event {
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            window_id,
+        } if window_id == window._window.id() => control_flow.set_exit(),
+        Event::MainEventsCleared => {
+            &window._window.request_redraw();
+        }
+        Event::RedrawRequested(_) => {
+        }
+        _ => (),
+
+    }
+
+    let command_buffer = renderer.begin_frame(&device, &window).unwrap();
+
+    renderer.begin_swapchain_renderpass(command_buffer, &device);
+
+    camera.renderer.begin_frame(&device);
+
+    let texture: Texture = Texture::new(String::default(), Rc::clone(&device));
+
+    shader.descriptor_manager.change_image_value(
+        "imageTexture".to_string(),
+        camera.renderer.current_frame_index as u32,
+        texture,
+    );
+
+
+    unsafe {
+        device.device().cmd_bind_pipeline(
+            camera.renderer.get_command_buffer(),
+            vk::PipelineBindPoint::GRAPHICS,
+            shader.pipeline.as_ref().unwrap().graphics_pipeline.unwrap(),
+        );
+
+        device.device().cmd_bind_descriptor_sets(
+            camera.renderer.get_command_buffer(),
+            vk::PipelineBindPoint::GRAPHICS,
+            shader.pipeline_layout.unwrap(),
+            0,
+            &[shader
+                .descriptor_manager
+                .get_descriptor_set(camera.renderer.current_frame_index as u32)],
+            &[],
+        );
+
+        quad.bind(camera.renderer.get_command_buffer(), &device);
+        quad.draw(camera.renderer.get_command_buffer(), &device);
     };
 
-    let mut camera = Camera::new(
-        Rc::clone(&device),
-        renderer.get_aspect_ratio(),
-        false,
+    camera
+        .renderer
+        .end_frame(&device, renderer.get_main_wait_semaphore());
+
+    camera.renderer.canvas.update(
+        camera.renderer.current_frame_index as u32,
         vk::Extent2D {
             width: 800,
             height: 640,
         },
-        &renderer_bundle,
+        camera.renderer.renderer_data.images[camera.renderer.current_frame_index].get_image(),
+        camera.renderer.renderer_data.depth_images[camera.renderer.current_frame_index]
+            .get_image(),
     );
 
-    let quad = Quad::new(Rc::clone(&device));
+    camera
+        .renderer
+        .canvas
+        .render(&device, command_buffer, renderer.get_frame_index() as u32);
 
-    let mut shader = Shader::new(
-        Rc::clone(&device),
-        "shaders/canvas/canvas_shader.vert",
-        "shaders/canvas/canvas_shader.frag",
-    );
+    renderer.end_swapchain_renderpass(command_buffer, &device);
+    renderer.end_frame(&device, &mut window);
 
-    let mut pipeline_config = PipelineConfiguration::default();
-    pipeline_config.attribute_descriptions = quad.get_attribute_descriptions().clone();
-    pipeline_config.binding_descriptions = quad.get_binding_descriptions().clone();
-
-    shader.create_pipeline_layout(false);
-    shader.create_pipeline(renderer_bundle.render_pass, pipeline_config);
-
-    event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();    
-
-
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } if window_id == window._window.id() => control_flow.set_exit(),
-            Event::MainEventsCleared => {
-                &window._window.request_redraw();
-            }
-            Event::RedrawRequested(_) => {
-            }
-            _ => (),
-            
-        }
-
-        let command_buffer = renderer.begin_frame(&device, &window).unwrap();
-
-        renderer.begin_swapchain_renderpass(command_buffer, &device);
-
-        camera.renderer.begin_frame(&device);
-
-        let texture: Texture = Texture::new(String::default(), Rc::clone(&device));
-
-        shader.descriptor_manager.change_image_value(
-            "imageTexture".to_string(),
-            camera.renderer.current_frame_index as u32,
-            texture,
-        );
-
-
-        unsafe {
-            device.device().cmd_bind_pipeline(
-                camera.renderer.get_command_buffer(),
-                vk::PipelineBindPoint::GRAPHICS,
-                shader.pipeline.as_ref().unwrap().graphics_pipeline.unwrap(),
-            );
-
-            device.device().cmd_bind_descriptor_sets(
-                camera.renderer.get_command_buffer(),
-                vk::PipelineBindPoint::GRAPHICS,
-                shader.pipeline_layout.unwrap(),
-                0,
-                &[shader
-                    .descriptor_manager
-                    .get_descriptor_set(camera.renderer.current_frame_index as u32)],
-                &[],
-            );
-
-            quad.bind(camera.renderer.get_command_buffer(), &device);
-            quad.draw(camera.renderer.get_command_buffer(), &device);
-        };
-
-        camera
-            .renderer
-            .end_frame(&device, renderer.get_main_wait_semaphore());
-
-        camera.renderer.canvas.update(
-            camera.renderer.current_frame_index as u32,
-            vk::Extent2D {
-                width: 800,
-                height: 640,
-            },
-            camera.renderer.renderer_data.images[camera.renderer.current_frame_index].get_image(),
-            camera.renderer.renderer_data.depth_images[camera.renderer.current_frame_index]
-                .get_image(),
-        );
-
-        camera
-            .renderer
-            .canvas
-            .render(&device, command_buffer, renderer.get_frame_index() as u32);
-
-        renderer.end_swapchain_renderpass(command_buffer, &device);
-        renderer.end_frame(&device, &mut window);
-
-    });*/
-}
+});*/
 
 /*pub fn create_event_loop() -> EventLoop<()> {
     let mut event_loop_builder = EventLoopBuilder::new();

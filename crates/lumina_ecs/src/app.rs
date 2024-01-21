@@ -14,7 +14,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder};
 use crate::{query::Query, stage::Stage};
 
 pub struct App {
-    pub window: Window,
+    window: Window,
     device: Rc<Device>,
     renderer:SystemRenderer,
     fps_manager: FPS,
@@ -29,8 +29,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(event_loop:&EventLoop<()>) -> Self {
-        let window = Window::new(event_loop, "Lumina", 800, 640);
+    pub fn new(window:winit::window::Window) -> Self {
+        let window = Window::new(window, "Lumina", 800, 640);
         let device = Rc::new(Device::new(&window));
         let renderer = SystemRenderer::new(&window, &device, None);
         let mut fps_manager = FPS::new();
@@ -79,8 +79,9 @@ impl App {
         let command_buffer = self.renderer.begin_frame(&self.device, &self.window).unwrap();
         self.renderer.begin_swapchain_renderpass(command_buffer, &self.device);
 
-        self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.renderer.get_frame_index() as u32, self.renderer.get_main_wait_semaphore());
-        
+        println!("{:?}",self.window.get_extent());
+        self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.fps_manager._fps,self.renderer.get_main_wait_semaphore());
+
         self.renderer.end_swapchain_renderpass(command_buffer, &self.device);
         self.renderer.end_frame(&self.device, &mut self.window);
     }

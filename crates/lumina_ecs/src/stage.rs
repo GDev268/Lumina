@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     rc::Rc,
     sync::{Arc, Mutex, RwLock},
-    thread::{self, JoinHandle},
+    thread::{self, JoinHandle}, borrow::BorrowMut,
 };
 
 use ash::vk;
@@ -17,10 +17,11 @@ use lumina_object::{
 };
 use lumina_pbr::light::{DirectionalLight, PointLight, SpotLight};
 use lumina_render::camera::Camera;
+use rand::Rng;
 
 pub struct Stage {
     name: String,
-    members: ComponentManager,
+    manager: Arc<Mutex<ComponentManager>>,
     cameras: Arc<RwLock<Vec<GameObject>>>,
 }
 
@@ -28,7 +29,7 @@ impl Stage {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            members: ComponentManager::new(),
+            manager: Arc::new(Mutex::new(ComponentManager::new())),
             cameras: Arc::new(RwLock::new(Vec::new())),
         }
     }
@@ -40,7 +41,7 @@ impl Stage {
         window: &Window,
         renderer_bundle: &RendererBundle,
     ) {
-        let camera = self.members.spawn();
+        let camera = self.manager.lock().unwrap().borrow_mut().spawn();
 
         let camera_component = Camera::new(
             device,
@@ -50,7 +51,7 @@ impl Stage {
             renderer_bundle,
         );
 
-        self.members.push(&camera, camera_component);
+        self.manager.lock().unwrap().borrow_mut().push(&camera, camera_component);
 
         self.cameras.write().unwrap().push(camera);
 
@@ -67,21 +68,21 @@ impl Stage {
 
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
-                let members_read_lock = Arc::clone(&self.members.components);
+                let manager_read_lock = Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
                 let locked_resources = Arc::clone(&resources);
 
                 locked_resources.write().unwrap().raw_lights = self.get_raw_lights();
 
                 thread::spawn(move || {
-                    let len = members_read_lock.read().unwrap().len();
+                    let len = manager_read_lock.read().unwrap().len();
                     let start = i * len / num_cpus;
                     let end = if i == num_cpus - 1 {
                         len
                     } else {
                         (i + 1) * len / num_cpus
                     };
-
-                    for (id, component_group) in members_read_lock
+                    
+                    for (id, component_group) in manager_read_lock
                         .write()
                         .unwrap()
                         .iter_mut()
@@ -89,16 +90,13 @@ impl Stage {
                         .take(end - start)
                     {
                         for (type_id, component) in component_group.iter_mut() {
-                            component.update(*id, Arc::clone(&members_read_lock), &locked_resources)
+                            component.update(*id, Arc::clone(&manager_read_lock), &locked_resources);
+                            println!("asdsad");
                         }
                     }
                 })
             })
             .collect();
-
-        for handle in handles {
-            handle.join().unwrap();
-        }
     }
 
     pub fn draw(&mut self, resources: Arc<RwLock<ResourcesBundle>>, cur_frame:u32, wait_semaphore:vk::Semaphore) {
@@ -107,7 +105,7 @@ impl Stage {
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
             .map(|i| {
                 let cameras_clone = Arc::clone(&self.cameras);
-                let components = Arc::clone(&self.members.components);
+                let components = Arc::clone(&self.manager.lock().unwrap().components);
                 let resources_clone = Arc::clone(&resources);
 
                 thread::spawn(move || {
@@ -163,12 +161,12 @@ impl Stage {
             .collect();
     }
 
-    pub fn draw_components(members:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources: Arc<RwLock<ResourcesBundle>>){
+    pub fn draw_components(manager:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources: Arc<RwLock<ResourcesBundle>>){
         let num_cpus = num_cpus::get().max(1);
 
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
             .map(|i| {
-                let components_clone = Arc::clone(&members);
+                let components_clone = Arc::clone(&manager);
                 let resources_clone = Arc::clone(&resources);
 
                 thread::spawn(move || {
@@ -197,9 +195,9 @@ impl Stage {
 
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
-                let members_read_lock = Arc::clone(&self.members.components);
+                let manager_read_lock = Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
                 thread::spawn(move || {
-                    let len = members_read_lock.read().unwrap().len();
+                    let len = manager_read_lock.read().unwrap().len();
                     let start = i * len / num_cpus;
                     let end = if i == num_cpus - 1 {
                         len
@@ -209,7 +207,7 @@ impl Stage {
 
                     let mut local_raw_lights: Vec<RawLight> = Vec::new();
 
-                    for (id, component_group) in members_read_lock
+                    for (id, component_group) in manager_read_lock
                         .write()
                         .unwrap()
                         .iter_mut()
@@ -226,7 +224,7 @@ impl Stage {
                                             .unwrap()
                                             .create_raw_light(
                                                 id,
-                                                members_read_lock
+                                                manager_read_lock
                                                     .read()
                                                     .unwrap()
                                                     .get(&id)
@@ -246,7 +244,7 @@ impl Stage {
                                         .unwrap()
                                         .create_raw_light(
                                             id,
-                                            members_read_lock
+                                            manager_read_lock
                                                 .read()
                                                 .unwrap()
                                                 .get(&id)
@@ -266,7 +264,7 @@ impl Stage {
                                         .unwrap()
                                         .create_raw_light(
                                             id,
-                                            members_read_lock
+                                            manager_read_lock
                                                 .read()
                                                 .unwrap()
                                                 .get(&id)
@@ -294,4 +292,14 @@ impl Stage {
 
         raw_lights
     }
+
+    pub fn get_component_manager(&mut self) -> Arc<Mutex<ComponentManager>> {
+        Arc::clone(&self.manager)
+    }
+
+    pub async fn adfsasd(&self) {
+        
+    }
 }
+
+unsafe impl Send for Stage {}
