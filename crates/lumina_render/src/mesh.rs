@@ -1,12 +1,18 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use ash::vk;
 
 use lumina_data::buffer::Buffer;
-use lumina_core::{device::Device, Vertex3D};
+use lumina_core::device::Device;
 use crate::offset_of;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
+pub struct Vertex {
+    pub position: glam::Vec3,
+    pub normal: glam::Vec3,
+    pub uv: glam::Vec2,
+}
+
 pub struct Mesh {
     vertex_buffer: Buffer,
     vertex_count: u32,
@@ -18,12 +24,12 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(device: Rc<Device>, vertices: Vec<Vertex3D>, indices: Vec<u32>) -> Self {
+    pub fn new(device: Arc<Device>, vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         let (attributes, bindings) = Mesh::setup();
 
-        let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices, Rc::clone(&device));
+        let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices, Arc::clone(&device));
         let (index_count, has_index_buffer, index_buffer) =
-            Mesh::create_index_buffers(indices, Rc::clone(&device));
+            Mesh::create_index_buffers(indices, Arc::clone(&device));
 
         return Self {
             vertex_buffer: vertex_buffer,
@@ -79,15 +85,15 @@ impl Mesh {
         return &self.binding_descriptions;
     }
 
-    fn create_vertex_buffers(vertices: Vec<Vertex3D>, device: Rc<Device>) -> (Buffer, u32) {
+    fn create_vertex_buffers(vertices: Vec<Vertex>, device: Arc<Device>) -> (Buffer, u32) {
         let vertex_count = vertices.len() as u32;
         assert!(vertex_count >= 3, "Vertex must be at least 3");
         let buffer_size: vk::DeviceSize =
-            (std::mem::size_of::<Vertex3D>() * vertex_count as usize) as u64;
-        let vertex_size = std::mem::size_of::<Vertex3D>() as vk::DeviceSize;
+            (std::mem::size_of::<Vertex>() * vertex_count as usize) as u64;
+        let vertex_size = std::mem::size_of::<Vertex>() as vk::DeviceSize;
 
         let mut staging_buffer: Buffer = Buffer::new(
-            Rc::clone(&device),
+            Arc::clone(&device),
             vertex_size,
             vertex_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
@@ -99,7 +105,7 @@ impl Mesh {
         staging_buffer.write_to_buffer(&vertices,None,None);
 
         let vertex_buffer = Buffer::new(
-            Rc::clone(&device),
+            Arc::clone(&device),
             vertex_size,
             vertex_count as u64,
             vk::BufferUsageFlags::VERTEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
@@ -115,7 +121,7 @@ impl Mesh {
         return (vertex_buffer, vertex_count);
     }
 
-    fn create_index_buffers(indices: Vec<u32>, device: Rc<Device>) -> (u32, bool, Option<Buffer>) {
+    fn create_index_buffers(indices: Vec<u32>, device: Arc<Device>) -> (u32, bool, Option<Buffer>) {
         let index_count = indices.len() as u32;
         let has_index_buffer = index_count > 0;
 
@@ -128,7 +134,7 @@ impl Mesh {
         let index_size = std::mem::size_of::<u32>() as u64;
 
         let mut staging_buffer = Buffer::new(
-            Rc::clone(&device),
+            Arc::clone(&device),
             index_size,
             index_count as u64,
             vk::BufferUsageFlags::TRANSFER_SRC,
@@ -139,7 +145,7 @@ impl Mesh {
         staging_buffer.write_to_buffer(&indices,None,None);
 
         let index_buffer = Buffer::new(
-            Rc::clone(&device),
+            Arc::clone(&device),
             index_size,
             index_count as u64,
             vk::BufferUsageFlags::INDEX_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
@@ -165,26 +171,26 @@ impl Mesh {
             location: 0,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex3D, position),
+            offset: offset_of!(Vertex, position),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 1,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex3D, normal),
+            offset: offset_of!(Vertex, normal),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 2,
             binding: 0,
             format: vk::Format::R32G32_SFLOAT,
-            offset: offset_of!(Vertex3D, uv),
+            offset: offset_of!(Vertex, uv),
         });
 
         let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
             vec![vk::VertexInputBindingDescription::default()];
 
         binding_descriptions[0].binding = 0;
-        binding_descriptions[0].stride = std::mem::size_of::<Vertex3D>() as u32;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
         binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
 
         return (attribute_descriptions, binding_descriptions);

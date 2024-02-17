@@ -1,16 +1,9 @@
-use std::rc::Rc;
-
-use crate::{create_component_id, delete_component_id};
-
 use super::game_object::Component;
 
-#[derive(Debug, Clone)]
 pub struct Transform {
     pub translation: glam::Vec3,
-    parent_transform: Option<Rc<Transform>>,
     pub scale: glam::Vec3,
     pub rotation: glam::Vec3, // Rotation angles for X, Y, and Z axes
-    component_id:u32
 }
 
 impl Transform {
@@ -85,48 +78,10 @@ impl Transform {
     pub fn default() -> Self {
         return Self {
             translation: glam::Vec3::default(),
-            parent_transform: None,
             scale: glam::Vec3::default(),
             rotation: glam::Vec3::default(),
-            component_id: create_component_id()
         };
     }
 }
 
-impl Component for Transform {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn get_id(&self) -> u32 {
-        self.component_id
-    }
-
-    fn clone(&self) -> Box<dyn Component> {
-        let transform = Transform {
-            translation: self.translation,
-            parent_transform: Some(self.parent_transform.as_ref().unwrap().clone()),
-            scale: self.scale,
-            rotation: self.rotation,
-            component_id: self.component_id,
-        };
-    
-        Box::new(transform)
-    }
-
-}
-
-unsafe impl Send for Transform {}
-
-unsafe impl Sync for Transform {}
-
-
-impl Drop for Transform {
-    fn drop(&mut self) {
-        delete_component_id(self.component_id)
-    }
-}
+impl Component for Transform {}

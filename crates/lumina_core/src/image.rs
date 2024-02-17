@@ -2,7 +2,7 @@ use crate::device::Device;
 use ash::vk;
 use image::{DynamicImage, GenericImage, Rgb, Rgba};
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Image {
     _image: vk::Image,
     format: vk::Format,
@@ -33,17 +33,13 @@ impl Image {
             p_next: std::ptr::null(),
             flags: vk::ImageCreateFlags::empty(),
             image_type: vk::ImageType::TYPE_2D,
-            format: format,
-            extent: vk::Extent3D {
-                width: width,
-                height: height,
-                depth: 1,
-            },
+            format,
+            extent,
             mip_levels: 1,
             array_layers: 1,
             samples: vk::SampleCountFlags::TYPE_1,
             tiling: vk::ImageTiling::OPTIMAL,
-            usage: usage,
+            usage,
             sharing_mode: vk::SharingMode::EXCLUSIVE,
             queue_family_index_count: 0,
             p_queue_family_indices: std::ptr::null(),
@@ -78,6 +74,88 @@ impl Image {
         }
     }
 
+    pub fn new_3d(
+        device: &Device,
+        format: vk::Format,
+        usage: vk::ImageUsageFlags,
+        properties: vk::MemoryPropertyFlags,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let extent = vk::Extent3D {
+            width,
+            height,
+            depth: 1,
+        };
+
+        let image_info = vk::ImageCreateInfo {
+            s_type: vk::StructureType::IMAGE_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::ImageCreateFlags::CUBE_COMPATIBLE,
+            image_type: vk::ImageType::TYPE_2D,
+            format,
+            extent,
+            mip_levels: 1,
+            array_layers: 6,
+            samples: vk::SampleCountFlags::TYPE_1,
+            tiling: vk::ImageTiling::OPTIMAL,
+            usage,
+            sharing_mode: vk::SharingMode::EXCLUSIVE,
+            queue_family_index_count: 0,
+            p_queue_family_indices: std::ptr::null(),
+            initial_layout: vk::ImageLayout::default(),
+        };
+
+        let sampler_info = vk::SamplerCreateInfo {
+            mag_filter: vk::Filter::LINEAR,
+            min_filter: vk::Filter::LINEAR,
+            ..Default::default()
+        };
+
+        let sampler = unsafe {
+            device
+                .device()
+                .create_sampler(&sampler_info, None)
+                .expect("Failed to create image sampler")
+        };
+
+        let (image, memory) = device.create_image_with_info(&image_info, properties);
+
+        return Self {
+            _image: image,
+            memory,
+            format,
+            extent,
+            _image_view: vk::ImageView::null(),
+            sampler,
+            layout: vk::ImageLayout::GENERAL,
+        };
+    }
+
+    pub fn new_3d_image_view(&mut self,device: &Device,aspect_mask: vk::ImageAspectFlags) {
+        let view_info = vk::ImageViewCreateInfo {
+            s_type: vk::StructureType::IMAGE_VIEW_CREATE_INFO,
+            image: self._image,
+            p_next: std::ptr::null(),
+            view_type: vk::ImageViewType::CUBE,
+            format: self.format,
+            flags: vk::ImageViewCreateFlags::empty(),
+            components: vk::ComponentMapping::default(),
+            subresource_range: vk::ImageSubresourceRange {
+                aspect_mask: aspect_mask,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: 6,
+            },
+        };
+
+        self._image_view = unsafe {
+            device.device().device_wait_idle().unwrap();
+            device.device().create_image_view(&view_info, None).unwrap()
+        };
+    }
+
     pub fn new_swapchain(format: vk::Format, extent: vk::Extent2D, image: vk::Image) -> Self {
         let extent = vk::Extent3D::from(extent);
         Self {
@@ -109,7 +187,10 @@ impl Image {
             },
         };
 
-        self._image_view = unsafe { device.device().create_image_view(&view_info, None).unwrap() };
+        self._image_view = unsafe {
+            device.device().device_wait_idle().unwrap();
+            device.device().create_image_view(&view_info, None).unwrap()
+        };
     }
 
     pub fn get_image(&self) -> vk::Image {
@@ -153,8 +234,6 @@ impl Image {
             device.device().free_memory(self.memory, None);
         }
     }
-
-
 }
 
 /*let mut texture = DynamicImage::new_rgb8(64, 64);

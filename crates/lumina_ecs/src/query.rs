@@ -1,90 +1,48 @@
-use std::{any::{Any, TypeId}, collections::HashMap, sync::{Arc, Mutex, RwLock}};
-
-use lumina_object::{
-    game_object::{Component, GameObject},
-    transform::Transform,
-    entity::Entity
+use std::{
+    any::Any,
+    collections::HashMap,
+    sync::{Arc, RwLock},
 };
 
-pub struct ThreadSafeQuery {
-    pub query: Arc<RwLock<Query>>,
-}
-
-impl ThreadSafeQuery {
-    pub fn new(query: Query) -> Self {
-        ThreadSafeQuery {
-            query: Arc::new(RwLock::new(query)),
-        }
-    }
-}
-
+use lumina_object::{
+    entity::Entity,
+    game_object::{Component, GameObject},
+    transform::Transform,
+};
 
 pub struct Query {
-    pub entities: HashMap<u32, Entity>,
+    entities: Arc<RwLock<HashMap<u32, Arc<RwLock<Entity>>>>>,
 }
 
 impl Query {
     pub fn new() -> Self {
-        return Self {
-            entities: HashMap::new(),
-        };
+        Self {
+            entities: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
-    pub fn spawn(&mut self) -> GameObject {
+    pub fn spawn(&self) -> GameObject {
         let game_object = GameObject::create_game_object();
-        let mut entity = Entity::new();
+        let entity = Arc::new(RwLock::new(Entity::new()));
+        entity.write().unwrap().add_component(Transform::default());
 
-        entity.add_component(Transform::default());
+        self.entities.write().unwrap().insert(game_object.get_id(), entity.clone());
 
-        self.entities.insert(game_object.get_id(), entity);
-        return game_object;
+        game_object
     }
 
-    pub fn push<T: Component + Send + 'static>(&mut self, game_object: &GameObject, component: T) {
-        self.entities
-            .get_mut(&game_object.get_id())
-            .unwrap()
-            .add_component(component);
+    pub fn push<T: Component + 'static>(&self, game_object: &GameObject, component: T) {
+        if let Some(entity) = self.entities.read().unwrap().get(&game_object.get_id()) {
+            entity.write().unwrap().add_component(component);
+        }
     }
 
-    pub fn kill(&mut self, game_object: &GameObject) {
-        self.entities.remove_entry(&game_object.get_id());
+    pub fn kill(&self, game_object: &GameObject) {
+        self.entities.write().unwrap().remove(&game_object.get_id());
     }
 
-
-    pub fn query_entity<'a>(&'a self,game_object: &GameObject) -> Option<&'a Entity>{
-        return Some(self.entities.get(&game_object.get_id()).unwrap());
+    pub fn query_entity(&self, game_object: &GameObject) -> Option<Arc<RwLock<Entity>>> {
+        self.entities.read().unwrap().get(&game_object.get_id()).cloned()
     }
 
-    pub fn query<'a, T: Component + Send + 'static>(&'a self, game_object: &GameObject) -> Option<&'a T> {
-        self.entities
-            .get(&game_object.get_id())
-            .and_then(|entity| entity.get_component::<T>())
-    }
-
-    pub fn query_mut<'a, T: Component + Send + 'static>(
-        &'a mut self,
-        game_object: &GameObject,
-    ) -> Option<&'a mut T> {
-        self.entities
-            .get_mut(&game_object.get_id())
-            .and_then(|entity| entity.get_mut_component::<T>())
-    }
-
-    pub fn query_all<'a, T: Component + Send + 'static>(&'a self, game_object: &GameObject) -> Vec<&'a T> {
-        self.entities
-            .get(&game_object.get_id())
-            .and_then(|entity| Some(entity.get_components::<T>()))
-            .unwrap()
-    }
-
-    pub fn query_all_mut<'a, T: Component + Send + 'static>(
-        &'a mut self,
-        game_object: &GameObject,
-    ) -> Vec<&'a mut T> {
-        self.entities
-            .get_mut(&game_object.get_id())
-            .and_then(|entity| Some(entity.get_mut_components::<T>()))
-            .unwrap()
-    }
 }

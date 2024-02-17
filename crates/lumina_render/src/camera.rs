@@ -1,15 +1,4 @@
-use std::{rc::Rc, sync::Arc};
-
-use ash::vk::{self, CommandBuffer};
-use lumina_bundle::{RendererBundle, ResourcesBundle};
-use lumina_core::{
-    device::Device, framebuffer::Framebuffer, image::Image, swapchain::MAX_FRAMES_IN_FLIGHT,
-    texture::Texture,
-};
-
-use lumina_object::{create_component_id, delete_component_id, game_object::Component};
-
-use crate::renderer::{self, Renderer};
+use lumina_object::game_object::Component;
 
 pub enum CameraDirection {
     NONE,
@@ -21,16 +10,7 @@ pub enum CameraDirection {
     DOWN,
 }
 
-#[derive(Clone)]
-pub enum Background {
-    SOLID_COLOR([f32; 3]),
-    SKYBOX,
-    TEXTURE(Texture),
-}
-
 pub struct Camera {
-    device: Rc<Device>,
-    background: Background,
     projection_matrix: [[f32; 4]; 4],
     view_matrix: [[f32; 4]; 4],
     inverse_view_matrix: [[f32; 4]; 4],
@@ -41,21 +21,11 @@ pub struct Camera {
     aspect_ratio: f32,
     rotation: glam::Vec3,
     translation: glam::Vec3,
-    pub renderer: Renderer,
-    component_id: u32,
-    extent: vk::Extent2D,
 }
 
 impl Camera {
-    pub fn new(
-        device: Rc<Device>,
-        aspect_ratio: f32,
-        ortho_mode: bool,
-        extent: vk::Extent2D,
-        renderer_bundle: &RendererBundle,
-    ) -> Self {
+    pub fn new(aspect_ratio: f32, ortho_mode: bool) -> Self {
         return Self {
-            background: Background::SKYBOX,
             projection_matrix: [[1.0; 4]; 4],
             view_matrix: [[1.0; 4]; 4],
             inverse_view_matrix: [[1.0; 4]; 4],
@@ -66,39 +36,10 @@ impl Camera {
             aspect_ratio,
             rotation: glam::Vec3::ZERO,
             translation: glam::Vec3::ZERO,
-            renderer: Renderer::new(Rc::clone(&device), extent, renderer_bundle),
-            component_id: create_component_id(),
-            device,
-            extent,
         };
     }
 
-    pub fn create_command_buffers(&mut self, device: &Device) {
-        let alloc_info = vk::CommandBufferAllocateInfo {
-            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
-            p_next: std::ptr::null(),
-            level: vk::CommandBufferLevel::PRIMARY,
-            command_pool: device.get_command_pool(),
-            command_buffer_count: MAX_FRAMES_IN_FLIGHT as u32,
-        };
-    }
-
-    pub fn begin_camera(&mut self) {
-        self.renderer.begin_frame(&self.device);
-    }
-
-    pub fn end_camera(&mut self, wait_semaphore: vk::Semaphore, cur_frame: u32,command_buffer:CommandBuffer) {
-        self.renderer.end_frame(&self.device, wait_semaphore);
-        self.renderer.canvas.update(
-            cur_frame,
-            self.extent,
-            self.renderer.renderer_data.images[cur_frame as usize].get_image(),
-            self.renderer.renderer_data.depth_images[cur_frame as usize].get_image(),
-        );
-        self.renderer.canvas.render(&self.device, command_buffer, cur_frame);
-    }
-
-    fn create_orthographic_projection(
+    pub fn create_orthographic_projection(
         left: f32,
         right: f32,
         bottom: f32,
@@ -106,7 +47,8 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> glam::Mat4 {
-        let mut projection_matrix = [[1.0; 4]; 4];
+
+        let mut projection_matrix = [[1.0;4];4];
         projection_matrix[0][0] = 2.0 / (right - left);
         projection_matrix[1][1] = 2.0 / (bottom - top);
         projection_matrix[2][2] = 1.0 / (far - near);
@@ -117,15 +59,15 @@ impl Camera {
         return glam::Mat4::from_cols_array_2d(&projection_matrix);
     }
 
-    fn create_perspective_projection(fovy: f32, aspect: f32, near: f32, far: f32) -> glam::Mat4 {
+    pub fn create_perspective_projection(fovy: f32, aspect: f32, near: f32, far: f32) -> glam::Mat4 {
         assert!((aspect - f32::EPSILON) > 0.0);
 
         let (sin_fov, cos_fov) = (0.5 * fovy).sin_cos();
         let h = cos_fov / sin_fov;
         let w = h / aspect;
         let r = far / (far - near);
-
-        let mut projection_matrix = [[1.0; 4]; 4];
+        
+        let mut projection_matrix = [[1.0;4];4];
         projection_matrix = [[0.0; 4]; 4];
         projection_matrix[0][0] = w;
         projection_matrix[1][1] = h;
@@ -138,49 +80,49 @@ impl Camera {
 
     pub fn update_position(&mut self, dir: CameraDirection, dt: f32) {
         let velocity = dt * self.speed;
-
+    
         let yaw = self.rotation.y;
         let mut move_direction = glam::Vec3::ZERO;
-
+    
         match dir {
             CameraDirection::NONE => {}
-            CameraDirection::FOWARD => move_direction += glam::vec3(0.0, 0.0, 1.0),
-            CameraDirection::BACKWARD => move_direction -= glam::vec3(0.0, 0.0, 1.0),
-            CameraDirection::LEFT => move_direction -= glam::vec3(1.0, 0.0, 0.0),
-            CameraDirection::RIGHT => move_direction += glam::vec3(1.0, 0.0, 0.0),
-            CameraDirection::UP => move_direction -= glam::vec3(0.0, 1.0, 0.0),
-            CameraDirection::DOWN => move_direction += glam::vec3(0.0, 1.0, 0.0),
+            CameraDirection::FOWARD => move_direction += glam::vec3(0.0,0.0,1.0),
+            CameraDirection::BACKWARD => move_direction -= glam::vec3(0.0,0.0,1.0),
+            CameraDirection::LEFT => move_direction -= glam::vec3(1.0,0.0,0.0),
+            CameraDirection::RIGHT => move_direction += glam::vec3(1.0,0.0,0.0),
+            CameraDirection::UP => move_direction -= glam::vec3(0.0,1.0,0.0),
+            CameraDirection::DOWN => move_direction += glam::vec3(0.0,1.0,0.0),
         }
-
+    
         if move_direction.dot(move_direction) > std::f32::EPSILON {
             self.translation += self.speed * dt * move_direction;
         }
     }
-
+    
     pub fn update_direction(&mut self, dx: f64, dy: f64, dt: f32) {
         let mut rotation = glam::Vec3::ZERO;
-
+    
         if dy > 0.0 {
             rotation.x -= dy.abs() as f32;
         } else if dy < 0.0 {
             rotation.x += dy.abs() as f32;
         }
-
+    
         if dx > 0.0 {
             rotation.y += dx.abs() as f32
         } else if dx < 0.0 {
             rotation.y -= dx.abs() as f32
         }
-
+    
         if rotation.dot(rotation) > std::f32::EPSILON {
             self.rotation += self.sensivity * dt * rotation;
         }
-
+    
         self.rotation.x = self.rotation.x.clamp(-1.5, 1.5);
         self.rotation.y = self.rotation.y % (2.0 * std::f32::consts::PI);
     }
 
-    pub fn get_matrix(&self) -> [[f32; 4]; 4] {
+    pub fn get_matrix(&self) -> [[f32;4];4] {
         let perspective = if self.ortho_mode {
             Camera::create_orthographic_projection(
                 -self.aspect_ratio,
@@ -198,9 +140,9 @@ impl Camera {
                 1000.0,
             )
         };
-
+    
         let view = self.set_view_yxz(self.translation, self.rotation);
-
+    
         return (perspective * view).to_cols_array_2d();
     }
 
@@ -243,7 +185,12 @@ impl Camera {
         self.inverse_view_matrix[3][2] = position.z;
     }
 
-    pub fn set_view_target(&mut self, position: glam::Vec3, target: glam::Vec3, up: glam::Vec3) {
+    pub fn set_view_target(
+        &mut self,
+        position: glam::Vec3,
+        target: glam::Vec3,
+        up: glam::Vec3,
+    ) {
         self.set_view_direction(position, target - position, up);
     }
 
@@ -260,6 +207,7 @@ impl Camera {
         let w = glam::Vec3::new(c2 * s1, -s2, c1 * c2);
 
         let adjusted_position = glam::Vec3::new(position.x, position.y, position.z);
+
 
         let mut view_matrix: [[f32; 4]; 4] = [[0.0; 4]; 4];
         view_matrix[0][0] = u.x;
@@ -298,54 +246,6 @@ impl Camera {
             z: self.translation.z,
         };
     }
-
-    pub fn get_command_buffer(&self) -> vk::CommandBuffer {
-        self.renderer.get_command_buffer()
-    }
 }
 
-impl Component for Camera {
-    fn get_id(&self) -> u32 {
-        self.component_id
-    }
-
-    fn clone(&self) -> Box<dyn Component> {
-        let camera = Camera {
-            background: self.background.clone(),
-            projection_matrix: self.projection_matrix,
-            view_matrix: self.view_matrix,
-            inverse_view_matrix: self.inverse_view_matrix,
-            ortho_mode: self.ortho_mode,
-            fov: self.fov,
-            speed: self.speed,
-            sensivity: self.sensivity,
-            aspect_ratio: self.aspect_ratio,
-            rotation: self.rotation,
-            translation: self.translation,
-            renderer: self.renderer.clone(),
-            component_id: self.component_id,
-            device: Rc::clone(&self.device),
-            extent: self.extent,
-        };
-
-        Box::new(camera)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
-unsafe impl Send for Camera {}
-
-unsafe impl Sync for Camera {}
-
-impl Drop for Camera {
-    fn drop(&mut self) {
-        delete_component_id(self.component_id)
-    }
-}
+impl Component for Camera {}

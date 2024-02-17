@@ -2,6 +2,7 @@ use std::{
     any::TypeId,
     borrow::BorrowMut,
     collections::HashMap,
+    ops::Deref,
     rc::Rc,
     sync::{Arc, Mutex, RwLock},
     thread::{self, JoinHandle},
@@ -9,8 +10,17 @@ use std::{
 
 use ash::vk;
 use lumina_bundle::{RendererBundle, ResourcesBundle};
-use lumina_core::{device::Device, window::Window, RawLight};
-use lumina_object::{
+use lumina_core::{
+    device::Device, framebuffer::Framebuffer, image::Image, window::Window, RawLight,
+};
+use lumina_graphic::shader::{PushConstantData, Shader};
+use lumina_object::{game_object::GameObject, transform::Transform};
+use lumina_pbr::light::{DirectionalLight, Light};
+use lumina_render::{camera::Camera, model::Model, renderer::Renderer};
+
+use crate::query::Query;
+
+/*use lumina_object::{
     component_manager::{self, ComponentManager},
     entity::Entity,
     game_object::{Component, GameObject},
@@ -18,99 +28,251 @@ use lumina_object::{
 };
 use lumina_pbr::light::{DirectionalLight, PointLight, SpotLight};
 use lumina_render::{camera::Camera, model::Model};
-use rand::Rng;
+use rand::Rng;*/
 
 pub struct Stage {
     name: String,
-    manager: Arc<Mutex<ComponentManager>>,
-    cameras: Arc<RwLock<Vec<GameObject>>>,
+    pub manager: Query,
 }
 
 impl Stage {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
-            name,
-            manager: Arc::new(Mutex::new(ComponentManager::new())),
-            cameras: Arc::new(RwLock::new(Vec::new())),
+            name: name.to_string(),
+            manager: Query::new(),
         }
     }
 
-    pub fn create(
+    /*pub fn create_directional_shadow_maps(
+        &mut self,
+        dir_lights: Vec<GameObject>,
+        render_pass: vk::RenderPass,
+        renderer: &Renderer,
+        device: Arc<Device>,
+    ) {
+        let num_cpus = num_cpus::get();
+
+        let mut light_values: HashMap<u32, (glam::Vec3, f32)> = HashMap::new();
+
+        for light in dir_lights.iter() {
+        let mut position = glam::Vec3::ZERO;
+        if let Some(transform) = self.manager.query::<Transform>(light) {
+            position = transform.translation;
+        }
+
+        let projection =
+            Camera::create_orthographic_projection(-10.0, 10.0, -10.0, 10.0, 1.0, 1000.0);
+
+        let look_projection =
+            glam::Mat4::look_at_lh(position, glam::Vec3::ZERO, glam::vec3(0.0, 1.0, 0.0));
+
+        let final_projection = projection * look_projection;
+
+        let mut shader = Shader::new(
+            Arc::clone(&device),
+            "shaders/shadow_map_shader.vert",
+            "shaders/shadow_map_shader.frag",
+        );
+        shader.create_pipeline_layout(true);
+        shader.create_pipeline(render_pass);
+
+        let alloc_info = vk::CommandBufferAllocateInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+            p_next: std::ptr::null(),
+            level: vk::CommandBufferLevel::PRIMARY,
+            command_pool: device.get_command_pool(),
+            command_buffer_count: 1,
+        };
+
+        let command_buffer = unsafe {
+            device
+                .device()
+                .allocate_command_buffers(&alloc_info)
+                .expect("Failed to allocate command buffers!")[0]
+        };
+        unsafe {
+            device.device().device_wait_idle();
+        }
+
+        let mut color_image = Image::new_2d(
+            &device,
+            vk::Format::B8G8R8A8_SRGB,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            1024,
+            1024,
+        );
+
+        color_image.new_image_view(&device, vk::ImageAspectFlags::COLOR);
+
+        let mut depth_image = Image::new_2d(
+            &device,
+            vk::Format::D32_SFLOAT,
+            vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+            1024,
+            1024,
+        );
+
+        depth_image.new_image_view(&device, vk::ImageAspectFlags::DEPTH);
+
+        let framebuffer = Framebuffer::new(
+            &device,
+            [color_image.get_image_view(), depth_image.get_image_view()],
+            render_pass,
+            1024,
+            1024,
+        );
+
+        renderer.begin_frame(&device, command_buffer);
+        renderer.begin_custom_renderpass(
+            &device,
+            command_buffer,
+            vk::Extent2D {
+                width: 1024,
+                height: 1024,
+            },
+            &framebuffer
+        );
+
+        shader
+            .pipeline
+            .as_ref()
+            .unwrap()
+            .bind(&device, command_buffer);
+
+        shader.descriptor_manager.change_buffer_value(
+            "GlobalUBO",
+            0,
+            &[final_projection.to_cols_array_2d()],
+        );
+
+        for (id, entity) in self.manager.entities.read().unwrap().iter() {
+            if entity.has_component::<Model>() {
+                let model_matrix = entity.get_component::<Transform>().unwrap().get_mat4();
+                let normal_matrix = entity
+                    .get_component::<Transform>()
+                    .unwrap()
+                    .get_normal_matrix();
+
+                if let Some(model) = entity.get_component::<Model>() {
+                    unsafe {
+                        device.device().cmd_bind_descriptor_sets(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            shader.pipeline_layout.unwrap(),
+                            0,
+                            &[shader.descriptor_manager.get_descriptor_set(0)],
+                            &[],
+                        );
+
+                        let push = PushConstantData {
+                            model_matrix,
+                            normal_matrix,
+                        };
+
+                        let push_bytes: &[u8] = unsafe {
+                            let struct_ptr = &push as *const _ as *const u8;
+                            std::slice::from_raw_parts(
+                                struct_ptr,
+                                std::mem::size_of::<PushConstantData>(),
+                            )
+                        };
+
+                        unsafe {
+                            device.device().cmd_push_constants(
+                                command_buffer,
+                                shader.pipeline_layout.unwrap(),
+                                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                                0,
+                                push_bytes,
+                            );
+                        }
+                    }
+                }
+            }
+
+            unsafe {
+                device.device().cmd_end_render_pass(command_buffer);
+                device.device().end_command_buffer(command_buffer);
+
+                let submit_info: vk::SubmitInfo = vk::SubmitInfo {
+                    s_type: vk::StructureType::SUBMIT_INFO,
+                    p_next: std::ptr::null(),
+                    command_buffer_count: 1,
+                    p_command_buffers: &command_buffer,
+                    ..Default::default()
+                };
+
+                device
+                    .device()
+                    .queue_submit(device.graphics_queue(), &[submit_info], vk::Fence::null())
+                    .expect("Failed to submit draw command buffer!");
+            };
+
+            }
+        }
+    }*/
+
+    /*pub fn create(
         &mut self,
         device: Rc<Device>,
         aspect_ratio: f32,
         window: &Window,
         renderer_bundle: &RendererBundle,
     ) {
-        let camera = self.manager.lock().unwrap().borrow_mut().spawn();
+        let camera = self.manager.spawn();
 
         let camera_component = Camera::new(
-            device,
             aspect_ratio,
             false,
-            window.get_extent(),
-            renderer_bundle,
         );
 
-        self.manager
-            .lock()
-            .unwrap()
-            .borrow_mut()
-            .push(&camera, camera_component);
+        self.manager.push(&camera, camera_component);
 
         self.cameras.write().unwrap().push(camera);
-    }
-    
-    pub fn update(&self, resources: Arc<RwLock<ResourcesBundle>>, fps: f32) {
+    }*/
+
+    /*pub fn update(
+        &mut self,
+        resources: Arc<RwLock<ResourcesBundle>>,
+        fps: f32,
+    ) {
         let delta_time = 1.0 / fps;
-    
         let num_cpus = num_cpus::get().max(1);
-    
+
+        self.manager.query_all_components();
+        let components_clone_snapshot = Arc::clone(&self.manager.components_snapshot);
+        let components_clone = Arc::clone(&self.manager.components);
+
+        let resources_lock = Arc::clone(&resources);
+
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
-                let manager_read_lock = Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
-                let locked_resources = Arc::clone(&resources);
-    
-                locked_resources.write().unwrap().raw_lights = self.get_raw_lights();
-    
+                let locked_resources = Arc::clone(&resources_lock);
+                let locked_components_snapshot = Arc::clone(&components_clone_snapshot);
+                let thread_components = Arc::clone(&components_clone);
+
                 thread::spawn(move || {
-                    let len = manager_read_lock.read().unwrap().len();
-                    let start = i * len / num_cpus;
-                    let end = if i == num_cpus - 1 {
-                        len
-                    } else {
-                        (i + 1) * len / num_cpus
-                    };
-    
-                    for (id, component_group) in manager_read_lock
-                        .read()
-                        .unwrap()
-                        .iter_mut()
-                        .skip(start)
-                        .take(end - start)
-                    {
+                    for (id, component_group) in thread_components.write().unwrap().iter_mut() {
                         for (type_id, component) in component_group.iter_mut() {
-                            if let Ok(manager_lock) = manager_read_lock.try_write() {
-                                component.update(
-                                    *id,
-                                    Arc::clone(&manager_lock),
-                                    &locked_resources,
-                                );
-                            } else {
-                                // Handle the case where the lock cannot be acquired
-                                // This might involve retrying, skipping the component, or other strategies
-                            }
+                            component.update(*id,&locked_components_snapshot, &locked_resources);
                         }
                     }
                 })
             })
             .collect();
-    
+
         for handle in handles {
             handle.join().unwrap();
         }
+
+        drop(components_clone_snapshot);
     }
-    
+
+    fn test(manager: &Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<(dyn lumina_object::game_object::Component + 'static)>>>>>) {
+        println!("{:?}",manager.read().unwrap().get(&0).is_some());
+    }
 
     pub fn draw(
         &mut self,
@@ -124,7 +286,7 @@ impl Stage {
         let handles: Vec<JoinHandle<()>> = (0..num_cpus)
             .map(|i| {
                 let cameras_clone = Arc::clone(&self.cameras);
-                let components_clone = Arc::clone(&self.manager.lock().unwrap().components);
+                let components_clone = Arc::clone(&self.manager.components);
                 let resources_clone = Arc::clone(&resources);
 
                 thread::spawn(move || {
@@ -140,63 +302,6 @@ impl Stage {
                     };
 
                     for camera in cameras_lock.iter_mut().skip(start).take(end - start) {
-                        let mut components_lock = components_clone.write().unwrap();
-
-                        resources_lock.cur_projection = components_lock
-                            .get(&camera.get_id())
-                            .unwrap()
-                            .get(&TypeId::of::<Camera>())
-                            .unwrap()
-                            .as_any()
-                            .downcast_ref::<Camera>()
-                            .unwrap()
-                            .get_matrix();
-
-                        resources_lock.command_buffer = components_lock
-                            .get(&camera.get_id())
-                            .unwrap()
-                            .get(&TypeId::of::<Camera>())
-                            .unwrap()
-                            .as_any()
-                            .downcast_ref::<Camera>()
-                            .unwrap()
-                            .get_command_buffer();
-
-                        let camera_component = components_lock
-                            .get_mut(&camera.get_id())
-                            .unwrap()
-                            .get_mut(&TypeId::of::<Camera>())
-                            .unwrap()
-                            .as_mut_any()
-                            .downcast_mut::<Camera>()
-                            .unwrap();
-
-                        camera_component.begin_camera();
-
-                        drop(camera_component);
-                        drop(components_lock);
-
-                        Stage::draw_components(
-                            Arc::clone(&components_clone),
-                            Arc::clone(&resources_clone),
-                        );
-
-                        let mut components_lock = components_clone.write().unwrap();
-
-                        let camera_component = components_lock
-                            .get_mut(&camera.get_id())
-                            .unwrap()
-                            .get_mut(&TypeId::of::<Camera>())
-                            .unwrap()
-                            .as_mut_any()
-                            .downcast_mut::<Camera>()
-                            .unwrap();
-
-                        camera_component.end_camera(wait_semaphore, cur_frame,command_buffer);
-
-                        
-                        drop(camera_component);
-                        drop(components_lock);
 
                     }
                 })
@@ -260,7 +365,7 @@ impl Stage {
         let handles: Vec<_> = (0..num_cpus)
             .map(|i| {
                 let manager_read_lock =
-                    Arc::clone(&self.manager.lock().unwrap().borrow_mut().components);
+                    Arc::clone(&self.manager.components);
                 thread::spawn(move || {
                     let len = manager_read_lock.read().unwrap().len();
                     let start = i * len / num_cpus;
@@ -358,11 +463,7 @@ impl Stage {
         raw_lights
     }
 
-    pub fn get_component_manager(&mut self) -> Arc<Mutex<ComponentManager>> {
-        Arc::clone(&self.manager)
-    }
-
-    pub async fn adfsasd(&self) {}
+    pub async fn adfsasd(&self) {}*/
 }
 
 unsafe impl Send for Stage {}

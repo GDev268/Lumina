@@ -69,7 +69,7 @@ impl Parser {
 
         let vert = File::open(&vert_path).unwrap();
         let mut buf_reader = BufReader::new(vert);
-        let mut contents = String::new();
+        let mut contents = String::new();       
 
         buf_reader.read_to_string(&mut contents).unwrap();
 
@@ -82,25 +82,23 @@ impl Parser {
             if !line.trim().is_empty() {
                 if line.contains("//") || line.contains("*/") || line.contains("/*") {
                 } else {
-                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler") {
+                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler2D") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
-                            let word_size:Vec<char> = vector[index - 1].chars().collect();
-                            let size:String = word_size[2..word_size.len()].iter().collect();
                         self.descriptor_data.insert(
-                            words[uniform_pos + 1].to_owned(),
+                            words[uniform_pos + 2].to_owned(),
                             DescriptorData{
-                                size: size.parse::<u32>().unwrap(),
+                                size: 0,
                                 binding: Parser::get_descriptor_binding(&words),
                                 is_uniform: false,
                             },
                         );
                     }
-                    if !line.contains("sampler") && line.contains("uniform") && !line.contains("push_constant") {
+                    if !line.contains("sampler2D") && line.contains("uniform") && !line.contains("push_constant") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
@@ -108,15 +106,18 @@ impl Parser {
                             .expect("Failed to get the position");
 
                             let word_size:Vec<char> = vector[index - 1].chars().collect();
-                            let size:String = word_size[2..word_size.len()].iter().collect();
-                            self.descriptor_data.insert(
-                                words[uniform_pos + 1].to_owned(),
-                                DescriptorData{
-                                    size: size.parse::<u32>().unwrap(),
-                                    binding: Parser::get_descriptor_binding(&words),
-                                    is_uniform: true,
-                                },
-                            );
+                            let mut size:String = word_size[2..word_size.len()].iter().collect();
+                            size = size.replace("\r", "");
+                            Parser::get_descriptor_binding(&words);
+
+                        self.descriptor_data.insert(
+                            words[uniform_pos + 1].to_owned(),
+                            DescriptorData{
+                                size: size.parse::<u32>().unwrap(),
+                                binding: Parser::get_descriptor_binding(&words),
+                                is_uniform: true,
+                            },
+                        );
                     }
                 }
             }
@@ -163,7 +164,8 @@ impl Parser {
                             .expect("Failed to get the position");
 
                             let word_size:Vec<char> = vector[index - 1].chars().collect();
-                            let size:String = word_size[2..word_size.len()].iter().collect();
+                            let mut size:String = word_size[2..word_size.len()].iter().collect();
+                            size = size.replace("\r", "");
                             Parser::get_descriptor_binding(&words);
 
                         self.descriptor_data.insert(

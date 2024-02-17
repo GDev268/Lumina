@@ -1,21 +1,20 @@
 use lumina_core::device::Device;
 
 use ash::vk;
-use std::{ffi::c_void, rc::Rc};
+use std::{ffi::c_void, rc::Rc, sync::{Arc, Mutex}};
 
 
-#[derive(Clone)]
 pub struct Buffer {
-    device: Option<Rc<Device>>,
+    device: Option<Arc<Device>>,
     buffer: vk::Buffer,
     memory: vk::DeviceMemory,
-    mapped: *mut c_void,
+    mapped: Arc<Mutex<Option<*mut c_void>>>,
     buffer_size: u64,
 }
 
 impl Buffer {
     pub fn new(
-        device: Rc<Device>,
+        device: Arc<Device>,
         instance_size: u64,
         instance_count: u64,
         usage: vk::BufferUsageFlags,
@@ -30,13 +29,13 @@ impl Buffer {
             device: Some(device),
             buffer: vertex_buffer,
             memory: vertex_buffer_memory,
-            mapped: std::ptr::null_mut(),
+            mapped: Arc::new(Mutex::new(None)),
             buffer_size: buffer_size,
         }
     }
 
     pub fn default() -> Self{
-        return Self { device: None, buffer: vk::Buffer::null(), memory: vk::DeviceMemory::null(), mapped: std::ptr::null_mut(), buffer_size: 0 };
+        return Self { device: None, buffer: vk::Buffer::null(), memory: vk::DeviceMemory::null(), mapped: Arc::new(Mutex::new(None)), buffer_size: 0 };
     }
 
     fn get_alignment(
@@ -59,10 +58,12 @@ impl Buffer {
         let new_size = size.unwrap_or(vk::WHOLE_SIZE);
         let new_offset = offset.unwrap_or(0);
 
-        assert!(self.mapped.is_null(), "Memory is already mapped"); // Check if memory is already mapped
+        assert!(self.mapped.lock().unwrap().is_none(), "Memory is already mapped");
 
         unsafe {
-            self.mapped = self.device.as_ref().unwrap()
+            let mapped = self.device
+                .as_ref()
+                .unwrap()
                 .device()
                 .map_memory(
                     self.memory,
@@ -71,6 +72,8 @@ impl Buffer {
                     vk::MemoryMapFlags::empty(),
                 )
                 .expect("Failed to map memory on the buffer!");
+            
+            *self.mapped.lock().unwrap() = Some(mapped);
         }
     }
 
@@ -89,7 +92,7 @@ impl Buffer {
         let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
 
         unsafe {
-            let mem_offset = (self.mapped as *mut u8).offset(new_offset as isize);
+            let mem_offset = (self.mapped.lock().unwrap().unwrap() as *mut u8).offset(new_offset as isize);
             std::ptr::copy_nonoverlapping(
                 data.as_ptr() as *const c_void,
                 mem_offset as *mut c_void,

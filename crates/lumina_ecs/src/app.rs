@@ -1,12 +1,12 @@
 struct ClearColor([f32; 3]);
 use ash::vk;
+use lumina_render::renderer::Renderer;
 use std::{rc::Rc, thread, time::Instant, f32::consts::E, sync::{Arc, RwLock}};
 
 use lumina_bundle::{RendererBundle, ResourcesBundle};
 use lumina_core::{device::Device, fps_manager::FPS, window::Window};
 //use lumina_graphic::renderer::Renderer;
 use lumina_input::{keyboard::Keyboard, mouse::Mouse};
-use lumina_render::system_renderer::SystemRenderer;
 use num_cpus;
 use sdl2::Sdl;
 use winit::event_loop::{EventLoop, EventLoopBuilder};
@@ -14,9 +14,9 @@ use winit::event_loop::{EventLoop, EventLoopBuilder};
 use crate::{query::Query, stage::Stage};
 
 pub struct App {
-    window: Window,
-    device: Rc<Device>,
-    renderer:SystemRenderer,
+    pub window: Window,
+    pub device: Arc<Device>,
+    pub renderer:Renderer,
     fps_manager: FPS,
     keyboard_pool: Keyboard,
     mouse_pool: Mouse,
@@ -24,16 +24,14 @@ pub struct App {
     start_tick: Instant,
     running: bool,
     focused: bool,
-    renderer_bundle:Arc<RendererBundle>,
-    resources_bundle:Arc<RwLock<ResourcesBundle>>,
 }
 
 impl App {
-    pub fn new(window:winit::window::Window) -> Self {
-        window.request_redraw();
-        let window = Window::new(window, "Lumina", 800, 640);
-        let device = Rc::new(Device::new(&window));
-        let renderer = SystemRenderer::new(&window, &device, None);
+    pub fn new(window:&Sdl) -> Self {
+        let window = Window::new(window, "Lumina", 840, 680);
+        let device = Arc::new(Device::new(&window));
+        let renderer = Renderer::new(&window, &device,None);
+        
         let mut fps_manager = FPS::new();
         fps_manager.set_max_fps(300);
 
@@ -45,7 +43,6 @@ impl App {
                 height: 640,
             },
             render_pass: renderer.get_swapchain_renderpass(),
-            wait_semaphore: renderer.get_main_wait_semaphore()
         });
 
         Self {
@@ -59,26 +56,25 @@ impl App {
             start_tick: Instant::now(),
             running: true,
             focused: true,
-            renderer_bundle,
-            resources_bundle: Arc::new(RwLock::new(ResourcesBundle::default()))
         }
     }
 
     pub fn switch_stage(&mut self, new_stage: Stage) {
         self.stage = Some(new_stage);
-        self.stage.as_mut().unwrap().create(Rc::clone(&self.device),self.renderer.get_aspect_ratio(),&self.window,&self.renderer_bundle);
+        //self.stage.as_mut().unwrap().create(Rc::clone(&self.device),self.renderer.get_aspect_ratio(),&self.window,&self.renderer_bundle);
     }
 
     pub fn update(&mut self) {
-        self.stage
+            /*self.stage
             .as_mut()
             .unwrap()
-            .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);
+            .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);*/
     }
 
     pub fn render(&mut self) {
-        let command_buffer = self.renderer.begin_frame(&self.device, &self.window).unwrap();
-        self.renderer.begin_swapchain_renderpass(command_buffer, &self.device);
+        let command_buffer = self.renderer.begin_swapchain_command_buffer(&self.device, &self.window).unwrap();
+        self.renderer.begin_frame(&self.device, command_buffer);
+        self.renderer.begin_swapchain_renderpass(&self.device,command_buffer);
 
         println!("imagine if ninja got a low taper fade...");
         //self.stage.as_mut().unwrap().draw(Arc::clone(&self.resources_bundle), self.renderer.current_image_index,self.renderer.get_main_wait_semaphore(),self.renderer.get_current_command_buffer());
@@ -133,8 +129,8 @@ impl App {
         return event_loop_builder.build();
     }
 
-    pub fn get_device(&self) -> Rc<Device> {
-        Rc::clone(&self.device)
+    pub fn get_device(&self) -> Arc<Device> {
+        Arc::clone(&self.device)
     }
 
 }

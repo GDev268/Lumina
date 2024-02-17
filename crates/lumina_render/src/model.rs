@@ -1,19 +1,13 @@
-use std::{
-    any::TypeId,
-    collections::HashMap,
-    rc::Rc,
-    sync::{Arc, RwLock},
-};
+use std::{rc::Rc, sync::Arc};
 
 use ash::vk;
-use lumina_bundle::ResourcesBundle;
-use lumina_core::{device::Device, Vertex3D};
-use lumina_graphic::{pipeline::PipelineConfiguration, shader::Shader};
-use lumina_object::{
-    create_component_id, delete_component_id, game_object::Component, transform::Transform,
-};
 
-use crate::mesh::Mesh;
+use lumina_core::device::Device;
+use lumina_graphic::shader::Shader;
+use lumina_object::game_object::{Component, GameObject};
+use russimp::scene::{PostProcess, Scene};
+
+use crate::mesh::{Mesh, Vertex};
 
 pub struct PushConstantData {
     pub model_matrix: glam::Mat4,
@@ -21,141 +15,134 @@ pub struct PushConstantData {
 }
 
 pub struct Model {
-    device: Rc<Device>,
-    mesh: Mesh,
-    shader: Shader,
+    device: Arc<Device>,
+    pub meshes: Vec<Mesh>,
+    pub shader: Shader,
     component_id: u32,
 }
 
 impl Model {
     pub fn new_from_array(
-        device: Rc<Device>,
-        vertex_array: Vec<Vertex3D>,
+        device: Arc<Device>,
+        vertex_array: Vec<Vertex>,
         index_array: Vec<u32>,
     ) -> Self {
-        let mesh = Mesh::new(Rc::clone(&device), vertex_array, index_array);
-        let mut shader = Shader::new(
-            Rc::clone(&device),
-            "shaders/default/default_shader.vert",
-            "shaders/default/default_shader.frag",
+        let mesh = Mesh::new(Arc::clone(&device), vertex_array, index_array);
+
+        let shader = Shader::new(
+            Arc::clone(&device),
+            "shaders/default_shader.vert",
+            "shaders/default_shader.frag",
         );
 
         Self {
-            device: Rc::clone(&device),
-            mesh,
+            device: Arc::clone(&device),
+            meshes: vec![/*mesh*/],
             shader,
-            component_id: create_component_id(),
+            component_id: 0,
         }
     }
-}
 
-impl Component for Model {
-    fn get_id(&self) -> u32 {
-        self.component_id
-    }
+    pub fn new_from_model(device: Arc<Device>, file_path: &str) -> Self {
+        let scene = Scene::from_file(
+            file_path,
+            vec![
+                PostProcess::CalculateTangentSpace,
+                PostProcess::Triangulate,
+                PostProcess::JoinIdenticalVertices,
+                PostProcess::SortByPrimitiveType,
+                PostProcess::FlipUVs,
+            ],
+        )
+        .unwrap();
 
-    fn clone(&self) -> Box<dyn Component> {
-        let model = Model {
-            device: Rc::clone(&self.device),
-            mesh: self.mesh.clone(),
-            shader: self.shader.clone(),
-            component_id: self.component_id,
-        };
-
-        Box::new(model)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn update(
-        &mut self,
-        id: u32,
-        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
-        resources_bundle: &Arc<RwLock<ResourcesBundle>>,
-    ) {
-        let binding = component.read().unwrap();
-        let component_group = binding.get(&id).unwrap();
-
-        //self.shader.descriptor_manager.change_buffer_value("LightInfo".to, resources_bundle.read().unwrap().cur_frame, &resources_bundle.raw_lights);
-
-        for (type_id,component) in component_group {
-
+        let mut meshes = Vec::new();    
+        
+        for mesh in scene.meshes {
+            let mut vertex_array: Vec<Vertex> = Vec::new();
+    
+            for i in 0..mesh.vertices.len() {
+                let position = glam::vec3(
+                    mesh.vertices[i].x,
+                    mesh.vertices[i].y,
+                    mesh.vertices[i].z,
+                );
+                let normal = glam::vec3(
+                    mesh.normals[i].x,
+                    mesh.normals[i].y,
+                    mesh.normals[i].z,
+                );
+                let uv = glam::vec2(mesh.texture_coords[0].as_ref().unwrap()[i].x, mesh.texture_coords[0].as_ref().unwrap()[i].y);
+    
+                let vertex = Vertex {
+                    position,
+                    normal,
+                    uv,
+                };
+    
+                vertex_array.push(vertex);
+            }
+    
+            let mut index_array: Vec<u32> = Vec::new();
+    
+            for indices in mesh.faces.iter() {
+                for index in &indices.0 {
+                    index_array.push(*index);
+                }
+            }
+    
+            let mesh = Mesh::new(Arc::clone(&device), vertex_array, index_array);
+    
+            meshes.push(mesh);
         }
-
-        drop(component_group);
-        drop(binding);
-        drop(resources_bundle);
-    }
-
-    fn render(
-        &mut self,
-        id: u32,
-        component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,
-        resources_bundle: Arc<RwLock<ResourcesBundle>>
-    ) {
-        panic!("a");
-
-        let binding = component.read().unwrap();
-        let components = binding.get(&self.component_id).unwrap();
-
-        let mut pipeline_config = PipelineConfiguration::default();
-        pipeline_config.attribute_descriptions = self.mesh.get_attribute_descriptions().clone();
-        pipeline_config.binding_descriptions = self.mesh.get_binding_descriptions().clone();
-
-        self.shader.create_pipeline_layout(true);
-        self.shader
-            .create_pipeline(resources_bundle.read().unwrap().cur_render_pass, pipeline_config);
-
-        self.shader.descriptor_manager.change_buffer_value(
-            "ProjectionViewMatrix",
-            resources_bundle.read().unwrap().cur_frame,
-            &[resources_bundle.read().unwrap().cur_projection],
+    
+        let shader = Shader::new(
+            Arc::clone(&device),
+            "shaders/default_shader.vert",
+            "shaders/default_shader.frag",
         );
-
-        let transform = components
-            .get(&TypeId::of::<Transform>())
-            .unwrap()
-            .as_any()
-            .downcast_ref::<Transform>()
-            .unwrap();
-
-        let constant_data = PushConstantData {
-            model_matrix: transform.get_mat4(),
-            normal_matrix: transform.get_normal_matrix(),
-        };
-
-        let push_bytes: &[u8] = unsafe {
-            let struct_ptr = &constant_data as *const _ as *const u8;
-            std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
-        };
-
-        unsafe {
-            self.device.device().cmd_push_constants(
-                resources_bundle.read().unwrap().command_buffer,
-                self.shader.pipeline_layout.unwrap(),
-                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                0,
-                push_bytes,
-            );
+    
+        Self {
+            device: Arc::clone(&device),
+            meshes,
+            shader,
+            component_id: 0,
         }
+    }
 
-        self.mesh.bind(resources_bundle.read().unwrap().command_buffer, &self.device);
-        self.mesh.draw(resources_bundle.read().unwrap().command_buffer, &self.device);
+    pub fn render(&self,command_buffer:vk::CommandBuffer,device: &Device) {
+        for mesh in self.meshes.iter() {
+            mesh.bind(command_buffer, device);
+            mesh.draw(command_buffer, device);
+        }
     }
 }
+
+/*impl GameObjectTrait for Model {
+    fn render(
+        &self,
+        device: &Device,
+        game_object: &GameObject,
+        command_buffer: vk::CommandBuffer,
+    ) {
+        let _push = PushConstantData {
+            model_matrix: game_object.transform.get_mat4(),
+            normal_matrix: game_object.transform.get_normal_matrix(),
+        };
+
+        for mesh in &self.meshes {
+            mesh.bind(command_buffer, device);
+            mesh.draw(command_buffer, device);
+        }
+    }
+
+    fn game_object(&self) -> &GameObject {
+        return &self.game_object;
+    }
+}*/
+
+impl Component for Model {}
 
 unsafe impl Send for Model {}
 
 unsafe impl Sync for Model {}
-
-impl Drop for Model {
-    fn drop(&mut self) {
-        delete_component_id(self.component_id)
-    }
-}

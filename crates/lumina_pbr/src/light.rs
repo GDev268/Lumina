@@ -1,5 +1,5 @@
 use lumina_core::RawLight;
-use lumina_object::{transform::Transform, component_manager::ComponentManager};
+use lumina_object::{game_object::Component, transform::Transform};
 
 #[derive(Debug,Clone, Copy)]
 pub enum LightType {
@@ -28,7 +28,12 @@ pub trait Light {
     fn change_spot_size(&mut self, new_spot_size: f32) {
         println!("This light doesn't support spot size!");
     }
+    fn get_range(&self) -> Option<f32> {
+        println!("This light doesn't support light range!");
+        None
+    }
 }
+
 
 pub struct DirectionalLight {
     light_type:LightType,
@@ -56,14 +61,20 @@ impl DirectionalLight {
             color: self.color,
             position: transform.translation.to_array(),
             rotation: transform.rotation.to_array(),
-            range: 0.0,
+            linear: 0.0,
+            quadratic: 0.0,
             intensity: self.intensity,
             spot_size: 0.0,
             light_type: self.light_type as u32,
             _padding1: 0,
-            _padding2: 0
+            _padding2: 0,
+            _padding3: 0
         }
     }
+}
+
+impl Component for DirectionalLight {
+    
 }
 
 impl Light for DirectionalLight {
@@ -122,19 +133,25 @@ impl PointLight {
         }
     }
 
-    pub fn create_raw_light(&self,id:&u32,transform:&Transform) -> RawLight {
+    pub fn create_raw_light(&self,transform:&Transform) -> RawLight {
         RawLight {
             color: self.color,
             position: transform.translation.to_array(),
             rotation: transform.rotation.to_array(),
-            range: self.range,
+            linear: 0.0,
+            quadratic: 0.0,
             intensity: self.intensity,
             spot_size: 0.0,
             light_type: self.light_type as u32,
             _padding1: 0,
-            _padding2: 0
+            _padding2: 0,
+            _padding3: 0
         }
     }
+}
+
+impl Component for PointLight {
+    
 }
 
 impl Light for PointLight {
@@ -205,14 +222,20 @@ impl SpotLight {
             color: self.color,
             position: transform.translation.to_array(),
             rotation: transform.rotation.to_array(),
-            range: self.range,
+            linear: 0.0,
+            quadratic: 0.0,
             intensity: self.intensity,
             spot_size: self.spot_size,
             light_type: self.light_type as u32,
             _padding1: 0,
-            _padding2: 0
+            _padding2: 0,
+            _padding3: 0
         }
     }
+}
+
+impl Component for SpotLight {
+    
 }
 
 impl Light for SpotLight {

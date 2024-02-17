@@ -1,9 +1,8 @@
 use ash::vk;
-use lumina_bundle::ResourcesBundle;
 use rand::Rng;
 use std::{
     any::{Any, TypeId},
-    collections::HashMap, sync::{Arc, RwLock},
+    collections::HashMap,
 };
 
 use lumina_core::device::Device;
@@ -11,35 +10,14 @@ use lazy_static::lazy_static;
 
 static mut EXISTING_IDS: Vec<u32> = vec![];
 
-pub trait Component: Any + Send + Sync
-{
-    fn max_component_count(&self) -> Option<usize> {
-        return None;
-    }
-
-    fn get_id(&self) -> u32;
-    fn clone(&self) -> Box<dyn Component>; 
-    fn update(&mut self,id:u32,component:Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle:&Arc<RwLock<ResourcesBundle>>) {
-
-    }
-    fn render(&mut self,id:u32,component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle:Arc<RwLock<ResourcesBundle>>) {
-
-    }
-    fn lock_test(&mut self,id:u32,component: Arc<RwLock<HashMap<u32, HashMap<TypeId, Box<dyn Component>>>>>,resources_bundle: Arc<RwLock<ResourcesBundle>>) {
-        println!("adgsdgd");
-    }
-    fn as_any(&self) -> &dyn Any;
-    fn as_mut_any(&mut self) -> &mut dyn Any;
-}
+pub trait Component: Any + Send + Sync {}
 
 #[derive(Debug)]
-pub struct GameObject{
+pub struct GameObject {
     id: u32,
     tag: String,
     layer: String,
     name: String,
-    parent:Option<u32>,
-    children:Vec<u32>
 }
 
 impl GameObject {
@@ -52,9 +30,7 @@ impl GameObject {
             id,
             layer,
             tag,
-            parent: None,
             name,
-            children:Vec::new()
         };
     }
 
@@ -79,15 +55,5 @@ impl GameObject {
     pub fn get_id(&self) -> u32 {
         return self.id;
     }
-
-    pub fn push_to_gameobject(&mut self,game_object:&mut GameObject) {
-        self.parent = Some(game_object.get_id());
-        game_object.children.push(self.get_id());
-    }
 }
-
-
-unsafe impl Send for GameObject {}
-
-unsafe impl Sync for GameObject {}
 

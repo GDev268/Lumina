@@ -11,7 +11,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(texture_path: String, device: Rc<Device>) -> Self {
+    pub fn new(texture_path: String) -> Self {
         let texture = image::open(&texture_path);
 
         if texture.is_err() {
@@ -21,10 +21,21 @@ impl Texture {
             }
         }
         else{
-            Self{
-                texture_path,
-                texture: texture.unwrap()
-            } 
+            if texture.as_ref().unwrap().color() != image::ColorType::Rgba8 {
+                let texture_buffer = texture.unwrap().to_rgba8();
+                let texture = DynamicImage::ImageRgba8(texture_buffer);
+
+                Self{
+                    texture_path,
+                    texture
+                } 
+            } else{
+                Self{
+                    texture_path,
+                    texture: texture.unwrap()
+                } 
+            }
+            
         }
     }
 

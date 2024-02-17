@@ -1,145 +1,348 @@
-use std::{cell::RefCell, ops::Deref, rc::Rc};
+use std::{rc::Rc, cell::RefCell};
 
-use lumina_bundle::RendererBundle;
 use lumina_core::{
-    device::Device,
-    swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT},
-    window::Window, framebuffer::Framebuffer, image::Image,
+    device::Device, framebuffer::Framebuffer, swapchain::{self, Swapchain, MAX_FRAMES_IN_FLIGHT}, window::Window
 };
 
 use ash::vk;
-use lumina_graphic::pipeline::PipelineConfiguration;
 
-use crate::canvas::{Canvas, self};
 
-#[derive(Clone)]
-pub struct RenderTexture {
-    pub images: Vec<Image>,
-    pub depth_images: Vec<Image>,
-    framebuffers: Vec<Framebuffer>,
-    extent: vk::Extent2D,
-}
-
-#[derive(Clone)]
 pub struct Renderer {
-    pub renderer_data: RenderTexture,
-    camera_render_pass: vk::RenderPass,
-    command_buffers: Vec<vk::CommandBuffer>,
-    pub current_frame_index: usize,
-    pub canvas:Canvas,
-    in_flight_fences: Vec<vk::Fence>,
-    images_in_flight: Vec<vk::Fence>,
+    pub swapchain: Swapchain,
+    pub command_buffers: Vec<vk::CommandBuffer>,
+    pub current_image_index: u32,
+    current_frame_index: i32,
+    pub is_frame_started: bool,
 }
 
 impl Renderer {
-    pub fn new(device: Rc<Device>, extent: vk::Extent2D, renderer_bundle: &RendererBundle) -> Self {
+    pub fn new(
+        window: &Window,
+        device: &Device,
+        swapchain: Option<&Swapchain>
+    ) -> Self {
+        let swapchain = Renderer::create_swapchain(window, device, swapchain);
+        let command_buffers = Renderer::create_command_buffers(device);
 
-        let mut in_flight_fences = Vec::new();
-        in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::null());
+        return Self {
+            swapchain,
+            command_buffers,
+            current_image_index: 0,
+            current_frame_index: 0,
+            is_frame_started: false,
+        };
+    }
 
-        let mut images_in_flight = Vec::new();
-        images_in_flight.resize(MAX_FRAMES_IN_FLIGHT, vk::Fence::null());
+    pub fn get_swapchain_renderpass(&self) -> vk::RenderPass {
+        return self.swapchain.get_renderpass();
+    }
 
-        let semaphore_info = vk::SemaphoreCreateInfo::default();
+    pub fn get_aspect_ratio(&self) -> f32 {
+        return self.swapchain.extent_aspect_ratio();
+    }
 
-        let fence_info = vk::FenceCreateInfo {
-            s_type: vk::StructureType::FENCE_CREATE_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::FenceCreateFlags::SIGNALED,
+    pub fn is_frame_in_progress(&self) -> bool {
+        return self.is_frame_started;
+    }
+
+    pub fn get_current_command_buffer(&self) -> vk::CommandBuffer {
+        assert!(
+            self.is_frame_started,
+            "Cannot get command buffer when frame not in progress"
+        );
+
+        return self.command_buffers[self.current_frame_index as usize];
+    }
+
+    pub fn get_frame_index(&self) -> i32 {
+        assert!(
+            self.is_frame_started,
+            "Cannot get frame index when frame not in progress"
+        );
+
+        return self.current_frame_index;
+    }
+
+    pub fn begin_swapchain_command_buffer(&mut self,device: &Device, window: &Window) -> Option<vk::CommandBuffer> {
+        let result = self.swapchain.acquire_next_image(device);
+        if result.is_err() {
+            self.recreate_swapchain(device, window);
+            return None;
         };
 
-        for i in 0..MAX_FRAMES_IN_FLIGHT {
-            unsafe {
-                in_flight_fences[i] = device.device().create_fence(&fence_info, None).unwrap();
-            }
-        }
+        self.current_image_index = result.unwrap().0;
+        self.is_frame_started = true;
 
-        let mut canvas = Canvas::new(Rc::clone(&device));
+        let command_buffer = self.get_current_command_buffer();
 
-        let mut pipeline_config = PipelineConfiguration::default();
-        pipeline_config.attribute_descriptions = canvas.mesh.get_attribute_descriptions().clone();
-        pipeline_config.binding_descriptions = canvas.mesh.get_binding_descriptions().clone();
+        return Some(command_buffer);
+    }
 
-        canvas.shader.create_pipeline_layout( false);
-        canvas.shader.create_pipeline(renderer_bundle.render_pass,pipeline_config);
+    pub fn begin_frame(&self, device: &Device, command_buffer: vk::CommandBuffer) {
+        let begin_info = vk::CommandBufferBeginInfo {
+            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::CommandBufferUsageFlags::empty(),
+            p_inheritance_info: std::ptr::null(),
+        };
 
-        Self {
-            renderer_data: Renderer::create_renderer_data(&device, renderer_bundle, extent),
-            command_buffers: Renderer::create_command_buffers(&device),
-            current_frame_index: 0,
-            in_flight_fences,
-            images_in_flight,
-            camera_render_pass: renderer_bundle.render_pass,
-            canvas
+        unsafe {
+            device
+                .device()
+                .begin_command_buffer(command_buffer, &begin_info)
+                .expect("Failed to begin recording command buffer");
         }
     }
 
-    pub fn create_renderer_data(
-        device: &Device,
-        renderer_bundle: &RendererBundle,
-        extent: vk::Extent2D,
-    ) -> RenderTexture {
-        let extent = if extent.width > renderer_bundle.max_extent.width
-            || extent.height > renderer_bundle.max_extent.height
-        {
-            renderer_bundle.max_extent
-        } else {
-            extent
+    pub fn end_frame(&mut self, device: &Device, window: &mut Window) {
+        let command_buffer = self.get_current_command_buffer();
+
+        unsafe {
+            device
+                .device()
+                .end_command_buffer(command_buffer)
+                .expect("Failed to record command buffer!");
+        }
+
+        let result: Result<bool, vk::Result> =
+            self.swapchain
+                .submit_command_buffers(device, command_buffer, self.current_image_index);
+
+        if result.is_err() || window.was_window_resized() {
+            window.reset_window_resized_flag();
+
+            self.recreate_swapchain(device, window);
+        }
+
+        self.is_frame_started = false;
+        self.current_frame_index =
+            (self.current_frame_index + 1) % swapchain::MAX_FRAMES_IN_FLIGHT as i32;
+    }
+
+    pub fn begin_swapchain_renderpass(&self, device: &Device,command_buffer: vk::CommandBuffer) {
+       let mut clear_values: [vk::ClearValue; 2] =
+            [vk::ClearValue::default(), vk::ClearValue::default()];
+
+        clear_values[0].color = vk::ClearColorValue {
+            float32: [0.01, 0.01, 0.01,1.0],
+        };
+        clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
         };
 
-        let mut renderer_data = RenderTexture {
-            images: Vec::new(),
-            depth_images: Vec::new(),
-            framebuffers: Vec::new(),
+        let extent = self.swapchain.get_swapchain_extent();
+
+        let renderpass_info = vk::RenderPassBeginInfo {
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            render_pass: self.swapchain.get_renderpass(),
+            framebuffer: self
+                .swapchain
+                .get_framebuffer(self.current_image_index as usize),
+            render_area: vk::Rect2D {
+                offset: vk::Offset2D { x: 0, y: 0 },
+                extent,
+            },
+            clear_value_count: clear_values.len() as u32,
+            p_clear_values: clear_values.as_ptr(),
+        };
+
+        unsafe {
+            device.device().cmd_begin_render_pass(
+                command_buffer,
+                &renderpass_info,
+                vk::SubpassContents::INLINE,
+            )
+        }
+
+        let viewport: vk::Viewport = vk::Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: extent.width as f32,
+            height: extent.height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        };
+
+        let scissor: vk::Rect2D = vk::Rect2D {
+            offset: vk::Offset2D { x: 0, y: 0 },
             extent,
         };
 
-        for i in 0..MAX_FRAMES_IN_FLIGHT {
-            let mut image = Image::new_2d(
-                device,
-                renderer_bundle.image_format,
-                vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                extent.width,
-                extent.height,
-            );
-            image.new_image_view(device, vk::ImageAspectFlags::COLOR);
-            renderer_data.images.push(image);
-
-            let mut depth_image = Image::new_2d(
-                device,
-                renderer_bundle.depth_format,
-                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
-                vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                extent.width,
-                extent.height,
-            );
-
-            depth_image.new_image_view(device, vk::ImageAspectFlags::DEPTH);
-            renderer_data.depth_images.push(depth_image);
+        unsafe {
+            device
+                .device()
+                .cmd_set_viewport(command_buffer, 0, &[viewport]);
+            device
+                .device()
+                .cmd_set_scissor(command_buffer, 0, &[scissor]);
         }
-
-        for i in 0..MAX_FRAMES_IN_FLIGHT {
-            let attachments = [
-                renderer_data.images[i].get_image_view(),
-                renderer_data.depth_images[i].get_image_view(),
-            ];
-
-            let framebuffer = Framebuffer::new(
-                device,
-                attachments,
-                renderer_bundle.render_pass,
-                extent.width,
-                extent.height,
-            );
-
-            renderer_data.framebuffers.push(framebuffer);
-        }
-
-        renderer_data
     }
 
-    pub fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
+    pub fn begin_custom_renderpass(&self, device: &Device,command_buffer: vk::CommandBuffer,extent:vk::Extent2D,framebuffer:&Framebuffer) {
+         let mut clear_values: [vk::ClearValue; 2] =
+            [vk::ClearValue::default(), vk::ClearValue::default()];
+
+        clear_values[0].color = vk::ClearColorValue {
+            float32: [0.01, 0.01, 0.01,1.0],
+        };
+        clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
+            depth: 1.0,
+            stencil: 0,
+        };
+
+        let renderpass_info = vk::RenderPassBeginInfo {
+            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
+            p_next: std::ptr::null(),
+            render_pass: self.swapchain.get_renderpass(),
+            framebuffer: framebuffer.get_framebuffer(),
+            render_area: vk::Rect2D {
+                offset: vk::Offset2D { x: 0, y: 0 },
+                extent,
+            },
+            clear_value_count: clear_values.len() as u32,
+            p_clear_values: clear_values.as_ptr(),
+        };
+
+        unsafe {
+            device.device().cmd_begin_render_pass(
+                command_buffer,
+                &renderpass_info,
+                vk::SubpassContents::INLINE,
+            )
+        }
+
+        let viewport: vk::Viewport = vk::Viewport {
+            x: 0.0,
+            y: 0.0,
+            width: extent.width as f32,
+            height: extent.height as f32,
+            min_depth: 0.0,
+            max_depth: 1.0,
+        };
+
+        let scissor: vk::Rect2D = vk::Rect2D {
+            offset: vk::Offset2D { x: 0, y: 0 },
+            extent,
+        };
+
+        unsafe {
+            device
+                .device()
+                .cmd_set_viewport(command_buffer, 0, &[viewport]);
+            device
+                .device()
+                .cmd_set_scissor(command_buffer, 0, &[scissor]);
+        }
+    }
+
+    pub fn end_swapchain_renderpass(&self, command_buffer: vk::CommandBuffer, device: &Device) {
+        unsafe {
+            device.device().cmd_end_render_pass(command_buffer);
+        }
+    }
+
+    /*pub fn create_pipeline_layout(&mut self, device: &Device,global_set_layout:vk::DescriptorSetLayout) {
+        let push_constant_range: vk::PushConstantRange = vk::PushConstantRange {
+            stage_flags: vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+            offset: 0,
+            size: std::mem::size_of::<PushConstantData>() as u32,
+        };
+
+        let descriptor_set_layouts = vec![global_set_layout];
+
+        let pipeline_layout_info: vk::PipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo {
+            s_type: vk::StructureType::PIPELINE_LAYOUT_CREATE_INFO,
+            p_next: std::ptr::null(),
+            flags: vk::PipelineLayoutCreateFlags::empty(),
+            set_layout_count: descriptor_set_layouts.len() as u32,
+            p_set_layouts: descriptor_set_layouts.as_ptr(),
+            push_constant_range_count: 1,
+            p_push_constant_ranges: &push_constant_range,
+        };
+
+        unsafe {
+            self.pipeline_layout = device
+                .device()
+                .create_pipeline_layout(&pipeline_layout_info, None)
+                .expect("Failed to create pipeline layout!");
+        }
+    }
+
+    pub fn create_pipeline(&mut self, render_pass: vk::RenderPass, device: &Device) {
+        let mut pipeline_config: PipelineConfiguration = PipelineConfiguration::default();
+        pipeline_config.renderpass = Some(render_pass);
+        pipeline_config.pipeline_layout = Some(self.pipeline_layout);
+
+        self.pipeline = Some(Pipeline::new(
+            device,
+            self.shader.as_ref().unwrap().borrow().vert_module,
+            self.shader.as_ref().unwrap().borrow().frag_module,
+            &mut pipeline_config,
+        ));
+    }
+
+    pub fn render_game_objects(&mut self, device: &Device, frame_info: &FrameInfo, scene: &mut Query,mut shader: Rc<RefCell<Shader>>) {
+
+
+        self.pipeline
+            .as_ref()
+            .unwrap()
+            .bind(device, frame_info.command_buffer);
+
+        unsafe {
+            device.device().cmd_bind_descriptor_sets(
+                frame_info.command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.pipeline_layout,
+                0,
+                &[frame_info.global_descriptor_set],
+                &[],
+            );
+        }
+
+        for (id, entity) in scene.entities.iter_mut() {
+            let push: PushConstantData = if entity.has_component::<Transform>() {
+                PushConstantData {
+                    model_matrix: entity.get_mut_component::<Transform>().unwrap().get_mat4(),
+                    normal_matrix: entity
+                        .get_mut_component::<Transform>()
+                        .unwrap()
+                        .get_normal_matrix(),
+                }
+            } else {
+                PushConstantData {
+                    model_matrix: glam::Mat4::default(),
+                    normal_matrix: glam::Mat4::default(),
+                }
+            };
+
+            let push_bytes: &[u8] = unsafe {
+                let struct_ptr = &push as *const _ as *const u8;
+                std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+            };
+
+            unsafe {
+                device.device().cmd_push_constants(
+                    frame_info.command_buffer,
+                    self.pipeline_layout,
+                    vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                    0,
+                    push_bytes,
+                );
+            }
+
+            if entity.has_component::<Model>() {
+                entity
+                    .get_mut_component::<Model>()
+                    .unwrap()
+                    .render(device, frame_info.command_buffer);
+            }
+        }
+    }*/
+
+    fn create_command_buffers(device: &Device) -> Vec<vk::CommandBuffer> {
         let alloc_info = vk::CommandBufferAllocateInfo {
             s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
             p_next: std::ptr::null(),
@@ -158,157 +361,6 @@ impl Renderer {
         return command_buffers;
     }
 
-    pub fn  begin_frame(&mut self, device: &Device) {
-        let command_buffer = self.get_command_buffer();
-
-        let begin_info = vk::CommandBufferBeginInfo {
-            s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
-            p_next: std::ptr::null(),
-            flags: vk::CommandBufferUsageFlags::empty(),
-            p_inheritance_info: std::ptr::null(),
-        };
-
-        unsafe {
-            device
-                .device()
-                .begin_command_buffer(command_buffer, &begin_info)
-                .expect("Failed to begin recording command buffer");
-        }
-
-        self.begin_rendering(device, command_buffer);
-
-    }
-
-    pub fn end_frame(&mut self, device: &Device,wait_semaphore:vk::Semaphore) {
-        let command_buffer = self.get_command_buffer();
-
-        self.end_rendering(device, command_buffer);
-
-        unsafe {
-            device.device().end_command_buffer(command_buffer).unwrap();
-        }
-
-        self.submit_command_buffers(device, command_buffer, wait_semaphore,self.current_frame_index);
-    }
-
-    fn begin_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
-        let mut clear_values: [vk::ClearValue; 2] =
-            [vk::ClearValue::default(), vk::ClearValue::default()];
-
-        clear_values[0].color = vk::ClearColorValue {
-            float32: [1.0, 1.0, 1.0, 1.0],
-        };
-        
-        clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
-            depth: 1.0,
-            stencil: 0,
-        };
-
-        let renderpass_info = vk::RenderPassBeginInfo {
-            s_type: vk::StructureType::RENDER_PASS_BEGIN_INFO,
-            p_next: std::ptr::null(),
-            render_pass: self.camera_render_pass,
-            framebuffer: self.get_framebuffer(),
-            render_area: vk::Rect2D {
-                offset: vk::Offset2D { x: 0, y: 0 },
-                extent: self.renderer_data.extent,
-            },
-            clear_value_count: clear_values.len() as u32,
-            p_clear_values: clear_values.as_ptr(),
-        };
-
-        unsafe {
-            device.device().cmd_begin_render_pass(
-                command_buffer,
-                &renderpass_info,
-                vk::SubpassContents::INLINE,
-            );
-        }
-
-        let viewport = vk::Viewport {
-            x: 0.0,
-            y: 0.0,
-            width: self.renderer_data.extent.width as f32,
-            height: self.renderer_data.extent.height as f32,
-            min_depth: 0.0,
-            max_depth: 1.0,
-        };
-
-        let scissor = vk::Rect2D {
-            offset: vk::Offset2D { x: 0, y: 0 },
-            extent: self.renderer_data.extent,
-        };
-
-        unsafe {
-            device
-                .device()
-                .cmd_set_viewport(command_buffer, 0, &[viewport]);
-            device
-                .device()
-                .cmd_set_scissor(command_buffer, 0, &[scissor]);
-        }
-    }
-
-    fn end_rendering(&mut self, device: &Device, command_buffer: vk::CommandBuffer) {
-        unsafe {
-            device.device().cmd_end_render_pass(command_buffer);
-        }
-    }
-
-    pub fn submit_command_buffers(
-        &mut self,
-        device: &Device,
-        cmd_buffer: vk::CommandBuffer,
-        wait_semaphore:vk::Semaphore,
-        frame_index: usize,
-    ) {
-        if self.images_in_flight[frame_index] != vk::Fence::null() {
-            unsafe {
-                device
-                    .device()
-                    .wait_for_fences(&[self.images_in_flight[frame_index]], true, u64::MAX)
-                    .unwrap();
-            }
-        }
-
-        self.images_in_flight[frame_index] = self.in_flight_fences[frame_index];
-        
-
-        let submit_info = vk::SubmitInfo {
-            s_type: vk::StructureType::SUBMIT_INFO,
-            command_buffer_count: 1,
-            p_command_buffers: &cmd_buffer,
-            ..Default::default()
-        };
-
-        unsafe {
-            device
-                .device()
-                .reset_fences(&[self.in_flight_fences[frame_index]])
-                .unwrap();
-            
-            device
-                .device()
-                .queue_submit(
-                    device.graphics_queue(),
-                    &[submit_info],
-                    self.in_flight_fences[frame_index],
-                )
-                .unwrap();
-
-        }
-
-        self.current_frame_index = (self.current_frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
-    pub fn get_command_buffer(&self) -> vk::CommandBuffer {
-        return self.command_buffers[self.current_frame_index];
-    }
-
-    pub fn get_framebuffer(&self) -> vk::Framebuffer {
-        return self.renderer_data.framebuffers[self.current_frame_index].get_framebuffer();
-    }
-
     fn free_command_buffers(&self, device: &Device) {
         unsafe {
             device
@@ -317,92 +369,46 @@ impl Renderer {
         }
     }
 
-    pub fn resize_camera_renderer(&mut self,renderer_bundle: &RendererBundle) {
-        self.camera_render_pass = renderer_bundle.render_pass;
-    }
-}
-
-/* pub fn render_game_objects(
-        &mut self,
+    fn create_swapchain(
+        window: &Window,
         device: &Device,
-        frame_info: &FrameInfo,
-        scene: &mut Query,
-    ) {
-        for (id, entity) in scene.entities.iter_mut() {
-            if let Some(shader) = entity.get_mut_component::<Shader>() {
-                if shader.pipeline_layout.is_none() && shader.pipeline.is_none() {
-                    shader.pipeline_layout = Some(Renderer::create_pipeline_layout(
-                        device,
-                        shader
-                            .descriptor_manager
-                            .get_descriptor_layout()
-                            .get_descriptor_set_layout(),
-                    ));
-                    shader.pipeline = Some(Renderer::create_pipeline(
-                        self.get_swapchain_renderpass(),
-                        shader,
-                        device,
-                    ));
-                }
+        swapchain: Option<&Swapchain>,
+    ) -> Swapchain {
+        let mut extent: vk::Extent2D = window.get_extent();
 
-                shader
-                    .pipeline
-                    .as_ref()
-                    .unwrap()
-                    .bind(device, frame_info.command_buffer);
+        while extent.width == 0 || extent.height == 0 {
+            extent = window.get_extent();
+        }
 
-                unsafe {
-                    device.device().cmd_bind_descriptor_sets(
-                        frame_info.command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        shader.pipeline_layout.unwrap(),
-                        0,
-                        &[shader
-                            .descriptor_manager
-                            .get_descriptor_set(self.get_frame_index() as u32)],
-                        &[],
-                    );
-                }
-            };
+        let new_swapchain = if swapchain.is_none() {
+            Swapchain::new(device, window.get_extent())
+        } else {
+            Swapchain::renew(device, window.get_extent(), swapchain.unwrap())
+        };
 
-            let push: PushConstantData = if entity.has_component::<Transform>() {
-                PushConstantData {
-                    model_matrix: entity.get_component::<Transform>().unwrap().get_mat4(),
-                    normal_matrix: entity
-                        .get_component::<Transform>()
-                        .unwrap()
-                        .get_normal_matrix(),
-                }
-            } else {
-                PushConstantData {
-                    model_matrix: glam::Mat4::default(),
-                    normal_matrix: glam::Mat4::default(),
-                }
-            };
+        return new_swapchain;
+    }
 
-            let push_bytes: &[u8] = unsafe {
-                let struct_ptr = &push as *const _ as *const u8;
-                std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
-            };
+    pub fn recreate_swapchain(&mut self, device: &Device, window: &Window) {
+        unsafe {
+            device
+                .device()
+                .device_wait_idle()
+                .expect("Failed to make device idle!");
+        }
 
-            if let Some(shader) = entity.get_component::<Shader>() {
-                unsafe {
-                    device.device().cmd_push_constants(
-                        frame_info.command_buffer,
-                        shader.pipeline_layout.unwrap(),
-                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                        0,
-                        push_bytes,
-                    );
-                }
+        self.cleanup(device);
+        self.swapchain = Renderer::create_swapchain(window, device, None);
+        self.command_buffers = Renderer::create_command_buffers(device);
+    }
 
-                if entity.has_component::<Model>() {
-                    entity
-                        .get_mut_component::<Model>()
-                        .unwrap()
-                        .render(device, frame_info.command_buffer);
-                }
-            }
+    pub fn cleanup(&mut self, device: &Device) {
+        unsafe {
+            device
+                .device()
+                .free_command_buffers(device.get_command_pool(), &self.command_buffers);
+            self.command_buffers.clear();
+            self.swapchain.cleanup(device);
         }
     }
-*/
+}

@@ -9,7 +9,7 @@ pub mod fps_manager;
 pub mod texture;
 
 #[derive(Clone, Copy)]
-pub struct Vertex3D {
+pub struct Vertex {
     pub position: glam::Vec3,
     pub normal: glam::Vec3,
     pub uv: glam::Vec2,
@@ -36,10 +36,14 @@ pub struct RawLight {
     pub _padding2: u32,
     
     pub rotation: [f32; 3],
-    pub intensity: f32,
+    pub _padding3: u32,
 
-    pub range: f32,
+    pub intensity: f32,
     pub spot_size: f32,
+
+    pub linear:f32,
+    pub quadratic:f32,
+
     pub light_type: u32,
 }
 
@@ -51,11 +55,13 @@ impl Default for RawLight {
             color: [0.0;3],
             rotation: [0.0; 3],
             intensity: 0.0,
-            range: 0.0,
             spot_size: 0.0,
             light_type: 0,
+            linear: 0.0,
+            quadratic: 0.0,
             _padding1: 0,
             _padding2: 0,
+            _padding3: 0,
         }
     }
 }

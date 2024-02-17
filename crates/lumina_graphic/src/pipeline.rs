@@ -1,10 +1,9 @@
-use lumina_core::device::Device;
+use lumina_core::{device::Device, Vertex};
 
 use ash::vk::{self};
 use std::ffi::CString;
 
 use crate::offset_of;
-
 
 pub struct PipelineConfiguration {
     pub binding_descriptions: Vec<vk::VertexInputBindingDescription>,
@@ -149,7 +148,6 @@ impl PipelineConfiguration {
     }
 }
 
-#[derive(Clone)]
 pub struct Pipeline {
     pub graphics_pipeline: Option<vk::Pipeline>,
     pub vert_shader_module: Option<vk::ShaderModule>,
@@ -200,7 +198,38 @@ impl Pipeline {
         shader_stages[1].p_next = std::ptr::null();
         shader_stages[1].p_specialization_info = std::ptr::null();
 
-    
+        pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
+
+        pipeline_config.binding_descriptions[0].binding = 0;
+        pipeline_config.binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
+        pipeline_config.binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
+
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 0,
+                binding: 0,
+                format: vk::Format::R32G32B32_SFLOAT,
+                offset: offset_of!(Vertex, position),
+            });
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 1,
+                binding: 0,
+                format: vk::Format::R32G32B32_SFLOAT,
+                offset: offset_of!(Vertex, normal),
+            });
+
+        pipeline_config
+            .attribute_descriptions
+            .push(vk::VertexInputAttributeDescription {
+                location: 2,
+                binding: 0,
+                format: vk::Format::R32G32_SFLOAT,
+                offset: offset_of!(Vertex, uv),
+            });
+
         let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
             vk::PipelineVertexInputStateCreateInfo {
                 flags: vk::PipelineVertexInputStateCreateFlags::empty(),
@@ -256,6 +285,7 @@ impl Pipeline {
 
     pub fn bind(&self, device: &Device, command_buffer: vk::CommandBuffer) {
         unsafe {
+            device.device().device_wait_idle();
             device.device().cmd_bind_pipeline(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
