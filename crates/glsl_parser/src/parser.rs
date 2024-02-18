@@ -16,7 +16,7 @@ pub enum INSERT_TYPE {
 pub struct DescriptorData{
     pub size:u32,
     pub binding:u32,
-    pub is_uniform:bool
+    pub value:u32
 }
 
 pub struct Parser {
@@ -89,12 +89,20 @@ impl Parser {
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
+                            let formatted_type = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "");
+
+                            let value = match formatted_type.to_lowercase().as_str() {
+                                "color" => {1},
+                                "depth" => {2},
+                                &_ => {1}
+                            };
+
                         self.descriptor_data.insert(
                             words[uniform_pos + 2].to_owned(),
                             DescriptorData{
                                 size: 0,
                                 binding: Parser::get_descriptor_binding(&words),
-                                is_uniform: false,
+                                value,
                             },
                         );
                     }
@@ -105,17 +113,14 @@ impl Parser {
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
-                            let word_size:Vec<char> = vector[index - 1].chars().collect();
-                            let mut size:String = word_size[2..word_size.len()].iter().collect();
-                            size = size.replace("\r", "");
-                            Parser::get_descriptor_binding(&words);
+                               let size = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "").parse::<u32>().unwrap();
 
                         self.descriptor_data.insert(
                             words[uniform_pos + 1].to_owned(),
                             DescriptorData{
-                                size: size.parse::<u32>().unwrap(),
+                                size,
                                 binding: Parser::get_descriptor_binding(&words),
-                                is_uniform: true,
+                                value: 0,
                             },
                         );
                     }
@@ -147,12 +152,20 @@ impl Parser {
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
+                        let formatted_type = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "");
+
+                        let value = match formatted_type.to_lowercase().as_str() {
+                            "color" => {1},
+                            "depth" => {2},
+                            &_ => {1}
+                        };
+
                         self.descriptor_data.insert(
                             words[uniform_pos + 2].to_owned(),
                             DescriptorData{
                                 size: 0,
                                 binding: Parser::get_descriptor_binding(&words),
-                                is_uniform: false,
+                                value,
                             },
                         );
                     }
@@ -163,17 +176,16 @@ impl Parser {
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
-                            let word_size:Vec<char> = vector[index - 1].chars().collect();
-                            let mut size:String = word_size[2..word_size.len()].iter().collect();
-                            size = size.replace("\r", "");
+                            let size = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "").parse::<u32>().unwrap();
+
                             Parser::get_descriptor_binding(&words);
 
                         self.descriptor_data.insert(
                             words[uniform_pos + 1].to_owned(),
                             DescriptorData{
-                                size: size.parse::<u32>().unwrap(),
+                                size,
                                 binding: Parser::get_descriptor_binding(&words),
-                                is_uniform: true,
+                                value: 0,
                             },
                         );
                     }

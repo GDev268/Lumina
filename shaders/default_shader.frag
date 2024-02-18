@@ -42,9 +42,17 @@ layout(set = 0, binding = 2) uniform LightInfo {
   Light light[2];
 } object_light;
 
+//color
 layout(set = 0, binding = 3) uniform sampler2D colorMap;
+
+//color
 layout(set = 0, binding = 4) uniform sampler2D normalMap;
+
+//color
 layout(set = 0, binding = 5) uniform sampler2D specularMap;
+
+//depth
+layout(set = 0, binding = 6) uniform sampler2D shadowMap;
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal,vec3 fragPos, vec3 viewDir);
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
@@ -77,8 +85,8 @@ void main() {
   vec3 normal = normalize(texture(normalMap,FragUV).rgb * 2.0 - 1.0);
   vec3 viewDirection = normalize(object.viewPos - FragPos);
 
-  vec3 result = CalculatePointLight(object_light.light[0],normal,FragPos,viewDirection);
-  result += CalculateSpotLight(object_light.light[1],normal,FragPos,viewDirection);
+  vec3 result = CalculateDirectionalLight(object_light.light[0],normal,FragPos,viewDirection);
+  //result += CalculateSpotLight(object_light.light[1],normal,FragPos,viewDirection);
 
   outColor = vec4(result, 1.0);
 
@@ -95,7 +103,11 @@ vec3 CalculateDirectionalLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDir
   vec3 reflectDirection = reflect(-lightDirection,normal);
   float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), object.material.shininess * 128);
   vec3 specular = light.color * (spec * texture(specularMap,FragUV).rgb);
-  
+
+  ambient *= light.intensity;
+  diffuse *= light.intensity;
+  specular *= light.intensity;
+
   return (ambient + diffuse + specular);
 }
 
@@ -144,9 +156,6 @@ vec3 CalculateSpotLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection)
   
   float distance = length(light.position - fragPos);
 
-  /*float linear = 1.2833333333333333333333333333333 + ((-0.05833333333333333333333333333333) * light.range);
-  float quadratic = 2.0888888888888888888888888888888 + ((-0.04074074074074074074074074074074) * light.range);*/
-
   float attenuation = light.intensity / (1.0 + light.linear * distance + light.quadratic * (distance * distance));
 
   ambient *= attenuation;
@@ -155,3 +164,6 @@ vec3 CalculateSpotLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection)
 
   return (ambient + diffuse + specular);
 }
+
+  /*float linear = 1.2833333333333333333333333333333 + ((-0.05833333333333333333333333333333) * light.range);
+  float quadratic = 2.0888888888888888888888888888888 + ((-0.04074074074074074074074074074074) * light.range);*/

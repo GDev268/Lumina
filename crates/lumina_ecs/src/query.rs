@@ -11,7 +11,7 @@ use lumina_object::{
 };
 
 pub struct Query {
-    entities: Arc<RwLock<HashMap<u32, Arc<RwLock<Entity>>>>>,
+    pub entities: Arc<RwLock<HashMap<u32, Arc<RwLock<Entity>>>>>,
 }
 
 impl Query {

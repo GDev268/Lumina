@@ -41,13 +41,14 @@ impl Shader {
             lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
         );
 
+
         let mut descriptor_manager =
             DescriptorManager::new(Arc::clone(&device), pool_config.build(&device));
         for (name, values) in parser.descriptor_data.iter() {
             descriptor_manager.add_new_descriptor(
                 name.to_owned(),
                 values.binding,
-                values.is_uniform,
+                unsafe {std::mem::transmute(values.value)},
                 values.size as u64,
                 None
             );
@@ -179,12 +180,9 @@ impl Shader {
         self.create_pipeline(render_pass);
 
     }
-}
 
-impl Drop for Shader {
-    fn drop(&mut self) {
+    pub fn destroy(&mut self,device: &Device) {
         unsafe {
-            self.device.device().device_wait_idle().unwrap();
             self.device
                 .device()
                 .destroy_shader_module(self.vert_module, None);
@@ -194,8 +192,10 @@ impl Drop for Shader {
             if self.pipeline_layout.is_some() {
                 self.device
                     .device()
-                    .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None)
+                    .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
+                self.pipeline.as_mut().unwrap().destroy(&device);
             }
+            self.descriptor_manager.drop_values(&self.device);
         }
     }
 }

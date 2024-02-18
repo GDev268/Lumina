@@ -12,7 +12,7 @@ static mut EXISTING_IDS: Vec<u32> = vec![];
 
 pub trait Component: Any + Send + Sync {}
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct GameObject {
     id: u32,
     tag: String,

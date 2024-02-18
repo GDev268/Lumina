@@ -13,7 +13,6 @@ layout(set = 0, binding = 0) uniform GlobalUBO {
   mat4 projectionViewMatrix;
 } ubo;
 
-layout(set = 0, binding = 4) uniform sampler2D normalMap;
 
 layout(push_constant) uniform Push {
   mat4 modelMatrix;

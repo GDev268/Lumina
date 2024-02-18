@@ -294,7 +294,7 @@ impl Pipeline {
         }
     }
 
-    pub fn drop(&mut self, device: &Device) {
+    pub fn destroy(&mut self, device: &Device) {
         unsafe {
             device
                 .device()

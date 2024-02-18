@@ -219,12 +219,14 @@ impl Image {
 
     pub fn clean_view(&mut self, device: &Device) {
         unsafe {
+            println!("WAZA");
             device.device().destroy_image_view(self._image_view, None);
         }
     }
 
     pub fn clean_image(&mut self, device: &Device) {
         unsafe {
+            device.device().destroy_sampler(self.sampler, None);
             device.device().destroy_image(self._image, None);
         }
     }

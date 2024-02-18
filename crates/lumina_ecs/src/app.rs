@@ -16,7 +16,7 @@ use crate::{query::Query, stage::Stage};
 pub struct App {
     pub window: Window,
     pub device: Arc<Device>,
-    pub renderer:Renderer,
+    pub renderer:Arc<RwLock<Renderer>>,
     fps_manager: FPS,
     keyboard_pool: Keyboard,
     mouse_pool: Mouse,
@@ -30,20 +30,11 @@ impl App {
     pub fn new(window:&Sdl) -> Self {
         let window = Window::new(window, "Lumina", 840, 680);
         let device = Arc::new(Device::new(&window));
-        let renderer = Renderer::new(&window, &device,None);
+        let renderer = Arc::new(RwLock::new(Renderer::new(&window, &device,None)));
         
         let mut fps_manager = FPS::new();
         fps_manager.set_max_fps(300);
 
-        let renderer_bundle = Arc::new(RendererBundle {
-            image_format: renderer.swapchain.get_swapchain_image_format(),
-            depth_format: renderer.swapchain.get_swapchain_depth_format(),
-            max_extent: vk::Extent2D {
-                width: 800,
-                height: 640,
-            },
-            render_pass: renderer.get_swapchain_renderpass(),
-        });
 
         Self {
             window,
@@ -71,7 +62,7 @@ impl App {
             .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);*/
     }
 
-    pub fn render(&mut self) {
+    /*pub fn render(&mut self) {
         let command_buffer = self.renderer.begin_swapchain_command_buffer(&self.device, &self.window).unwrap();
         self.renderer.begin_frame(&self.device, command_buffer);
         self.renderer.begin_swapchain_renderpass(&self.device,command_buffer);
@@ -127,7 +118,7 @@ impl App {
         }
 
         return event_loop_builder.build();
-    }
+    }*/
 
     pub fn get_device(&self) -> Arc<Device> {
         Arc::clone(&self.device)

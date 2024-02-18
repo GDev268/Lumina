@@ -41,11 +41,22 @@ impl DescriptorSetLayout {
     pub fn get_descriptor_set_layout(&self) -> vk::DescriptorSetLayout {
         return self.descriptor_set_layout;
     }
+
+    pub fn destroy(&self, device: &Device) {
+        unsafe {
+            device
+                .device()
+                .destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+        };
+    }
 }
 
 impl Default for DescriptorSetLayout {
-    fn default() -> Self{
-        return Self { descriptor_set_layout: vk::DescriptorSetLayout::null(), bindings: HashMap::new() };
+    fn default() -> Self {
+        return Self {
+            descriptor_set_layout: vk::DescriptorSetLayout::null(),
+            bindings: HashMap::new(),
+        };
     }
 }
 
@@ -83,7 +94,7 @@ impl LayoutConfig {
         self.bindings.insert(binding, layout_binding);
     }
 
-    pub fn change_binding_count(&mut self,binding: u32,count: u32) {
+    pub fn change_binding_count(&mut self, binding: u32, count: u32) {
         self.bindings.get_mut(&binding).unwrap().descriptor_count = count;
     }
 
@@ -91,8 +102,6 @@ impl LayoutConfig {
         DescriptorSetLayout::new(device, HashMap::clone(&self.bindings))
     }
 }
-
-
 
 pub struct PoolConfig {
     pool_sizes: Vec<vk::DescriptorPoolSize>,
@@ -189,6 +198,14 @@ impl DescriptorPool {
                 .device()
                 .reset_descriptor_pool(self.descriptor_pool, vk::DescriptorPoolResetFlags::empty())
                 .expect("Failed to reset descriptor pool");
+        }
+    }
+
+    pub fn destroy(&self, device: &Device) {
+        unsafe {
+            device
+                .device()
+                .destroy_descriptor_pool(self.descriptor_pool, None);
         }
     }
 }

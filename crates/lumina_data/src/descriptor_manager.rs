@@ -1,5 +1,9 @@
 use std::{
-    any::{Any, TypeId}, collections::HashMap, rc::Rc, sync::Arc, u128::MAX
+    any::{Any, TypeId},
+    collections::HashMap,
+    rc::Rc,
+    sync::Arc,
+    u128::MAX,
 };
 
 use ash::vk;
@@ -15,6 +19,16 @@ use crate::{
     descriptor::{DescriptorPool, DescriptorSetLayout, DescriptorWriter, LayoutConfig},
 };
 
+#[repr(u32)]
+#[derive(Debug, PartialEq)]
+pub enum CurValue {
+    UNIFORM_BUFFER = 0,
+    COLOR_IMAGE = 1,
+    DEPTH_IMAGE = 2,
+    CUBEMAP_COLOR_IMAGE = 3,
+    CUBEMAP_DEPTH_IMAGE = 4,
+}
+
 pub struct DescriptorInformation {
     type_id: Option<std::any::TypeId>,
     buffers: Vec<Buffer>,
@@ -22,7 +36,7 @@ pub struct DescriptorInformation {
     binding: u32,
     buffer_sizes: (u64, u64),
     image_size: (u32, u32),
-    is_uniform: bool,
+    value: CurValue,
 }
 
 pub struct DescriptorManager {
@@ -54,7 +68,7 @@ impl DescriptorManager {
         &mut self,
         label: String,
         binding: u32,
-        is_uniform: bool,
+        value: CurValue,
         buffer_size: u64,
         value_capacity: Option<u32>,
     ) {
@@ -64,14 +78,17 @@ impl DescriptorManager {
             1
         };
 
+        let mut is_uniform = false;
+
         if !self.descriptor_table.contains_key(&label) {
-            if is_uniform {
+            if value == CurValue::UNIFORM_BUFFER {
                 self.layout_config.add_binding(
                     binding,
                     vk::DescriptorType::UNIFORM_BUFFER,
                     vk::ShaderStageFlags::ALL_GRAPHICS,
                     count,
                 );
+                is_uniform = true;
             } else {
                 self.layout_config.add_binding(
                     binding,
@@ -79,6 +96,7 @@ impl DescriptorManager {
                     vk::ShaderStageFlags::ALL_GRAPHICS,
                     1,
                 );
+                is_uniform = false;
             }
 
             self.descriptor_table.insert(
@@ -90,7 +108,7 @@ impl DescriptorManager {
                     binding: binding.clone(),
                     buffer_sizes: (buffer_size, 1),
                     image_size: (64, 64),
-                    is_uniform,
+                    value,
                 },
             );
 
@@ -130,44 +148,77 @@ impl DescriptorManager {
 
         values.buffer_sizes.1 = count;
         for i in 0..MAX_FRAMES_IN_FLIGHT {
-            if values.is_uniform {
-                let mut buffer = Buffer::new(
-                    Arc::clone(&self.device),
-                    values.buffer_sizes.0,
-                    count,
-                    vk::BufferUsageFlags::UNIFORM_BUFFER,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE,
-                );
+            match values.value {
+                CurValue::UNIFORM_BUFFER => {
+                    let mut buffer = Buffer::new(
+                        Arc::clone(&self.device),
+                        values.buffer_sizes.0,
+                        count,
+                        vk::BufferUsageFlags::UNIFORM_BUFFER,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE,
+                    );
 
-                buffer.map(None, None);
-                values.buffers.push(buffer);
-            } else {
-                let buffer_size = values.image_size.0 * values.image_size.1 * 4;
+                    buffer.map(None, None);
+                    values.buffers.push(buffer);
+                }
+                CurValue::COLOR_IMAGE => {
+                    let buffer_size = values.image_size.0 * values.image_size.1 * 4;
 
-                let mut buffer = Buffer::new(
-                    Arc::clone(&self.device),
-                    buffer_size as u64,
-                    1,
-                    vk::BufferUsageFlags::TRANSFER_SRC,
-                    vk::MemoryPropertyFlags::HOST_VISIBLE,
-                );
+                    let mut buffer = Buffer::new(
+                        Arc::clone(&self.device),
+                        buffer_size as u64,
+                        1,
+                        vk::BufferUsageFlags::TRANSFER_SRC,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE,
+                    );
 
-                buffer.map(None, None);
+                    buffer.map(None, None);
 
-                values.buffers.push(buffer);
+                    values.buffers.push(buffer);
 
-                let mut image = Image::new_2d(
-                    &self.device,
-                    vk::Format::R8G8B8A8_SRGB,
-                    vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
-                    vk::MemoryPropertyFlags::DEVICE_LOCAL,
-                    values.image_size.0,
-                    values.image_size.1,
-                );
+                    let mut image = Image::new_2d(
+                        &self.device,
+                        vk::Format::R8G8B8A8_SRGB,
+                        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+                        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                        values.image_size.0,
+                        values.image_size.1,
+                    );
 
-                image.new_image_view(&self.device, vk::ImageAspectFlags::COLOR);
+                    image.new_image_view(&self.device, vk::ImageAspectFlags::COLOR);
 
-                values.images.push(image);
+                    values.images.push(image);
+                }
+                CurValue::DEPTH_IMAGE => {
+                    let buffer_size = values.image_size.0 * values.image_size.1;
+
+                    let mut buffer = Buffer::new(
+                        Arc::clone(&self.device),
+                        buffer_size as u64,
+                        1,
+                        vk::BufferUsageFlags::TRANSFER_SRC,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE,
+                    );
+
+                    buffer.map(None, None);
+
+                    values.buffers.push(buffer);
+
+                    let mut image = Image::new_2d(
+                        &self.device,
+                        vk::Format::D32_SFLOAT,
+                        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+                        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                        values.image_size.0,
+                        values.image_size.1,
+                    );
+
+                    image.new_image_view(&self.device, vk::ImageAspectFlags::DEPTH);
+
+                    values.images.push(image);
+                }
+                CurValue::CUBEMAP_COLOR_IMAGE => unimplemented!(),
+                CurValue::CUBEMAP_DEPTH_IMAGE => unimplemented!(),
             }
         }
     }
@@ -175,7 +226,7 @@ impl DescriptorManager {
     pub fn change_buffer_count(&mut self, label: &str, value_count: u64) {
         let binding = self.descriptor_table.get(label).unwrap().binding;
 
-        if self.descriptor_table.get(label).unwrap().is_uniform {
+        if self.descriptor_table.get(label).unwrap().value == CurValue::UNIFORM_BUFFER {
             self.layout_config
                 .change_binding_count(binding, value_count as u32);
 
@@ -199,7 +250,9 @@ impl DescriptorManager {
 
         self.descriptor_table.get_mut(label).unwrap().image_size = (width, height);
 
-        if !self.descriptor_table.get(label).unwrap().is_uniform {
+        if self.descriptor_table.get(label).unwrap().value == CurValue::COLOR_IMAGE
+            || self.descriptor_table.get(label).unwrap().value == CurValue::DEPTH_IMAGE
+        {
             for image in &mut self.descriptor_table.get_mut(label).unwrap().images {
                 image.clean_image(&self.device);
                 image.clean_view(&self.device);
@@ -214,8 +267,11 @@ impl DescriptorManager {
             }
 
             self.descriptor_table.get_mut(label).unwrap().images.clear();
-            self.descriptor_table.get_mut(label).unwrap().buffers.clear();
-
+            self.descriptor_table
+                .get_mut(label)
+                .unwrap()
+                .buffers
+                .clear();
         }
 
         self.build_descriptor(label, 1);
@@ -252,7 +308,7 @@ impl DescriptorManager {
             }
 
             for values in self.descriptor_table.values() {
-                if values.is_uniform {
+                if values.value == CurValue::UNIFORM_BUFFER {
                     let binding_description = self
                         .descriptor_set_layout
                         .bindings
@@ -332,7 +388,6 @@ impl DescriptorManager {
             .expect("Failed to get the value!");
 
         for i in 0..cur_struct.images.len() {
-
             cur_struct.buffers[i].write_to_buffer(&value.get_texture_data(), None, None);
 
             DescriptorManager::transition_image_layout(
@@ -542,5 +597,26 @@ impl DescriptorManager {
 
     pub fn get_descriptor_layout(&self) -> &DescriptorSetLayout {
         return &self.descriptor_set_layout;
+    }
+
+    pub fn drop_values(&mut self, device: &Device) {
+        for (id,info) in self.descriptor_table.iter_mut() {
+            if info.buffers.len() > 0 {
+                for buffer in &info.buffers {
+                    drop(buffer);
+                }
+            }
+
+            if info.images.len() > 0 {
+                for mut image in &mut info.images {
+                    image.clean_memory(&device);
+                    image.clean_image(&device);
+                    image.clean_view(&device);
+                }
+            }
+        }
+        
+        self.descriptor_pool.destroy(&device);
+        self.descriptor_set_layout.destroy(&device);
     }
 }

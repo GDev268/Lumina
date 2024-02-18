@@ -22,6 +22,7 @@ dependencies = [
  "lumina_data",
  "lumina_debug",
  "lumina_ecs",
+ "lumina_files",
  "lumina_geometry",
  "lumina_graphic",
  "lumina_input",
@@ -2099,6 +2100,15 @@ dependencies = [
  "rand",
  "sdl2",
  "winit 0.28.7",
+]
+
+[[package]]
+name = "lumina_files"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

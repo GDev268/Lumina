@@ -5,7 +5,10 @@ use std::{
     io::Write,
     ops::Deref,
     rc::Rc,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -15,6 +18,7 @@ use cgmath::num_traits::float::FloatCore;
 use egui::Key;
 use glsl_parser::parser::Parser;
 use lumina_ecs::{app::App, query::Query, stage::Stage};
+use lumina_pbr::light::{DirectionalLight, Light};
 use rand::Rng;
 
 use lumina_core::{
@@ -164,7 +168,7 @@ fn main() {
             model.shader.create_pipeline_layout(true);
             model
                 .shader
-                .create_pipeline(app.renderer.get_swapchain_renderpass());
+                .create_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
             model
                 .shader
                 .descriptor_manager
@@ -183,7 +187,7 @@ fn main() {
             .change_buffer_count("LightInfo", 2);*/
             model
                 .shader
-                .renovate_pipeline(app.renderer.get_swapchain_renderpass());
+                .renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
         }
         game_objects.push(cube);
     }
@@ -211,7 +215,7 @@ fn main() {
 
     game_objects.push(cube);*/
 
-    let mut camera = Camera::new(app.renderer.get_aspect_ratio(), false);
+    let mut camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
     camera.update_position(lumina_render::camera::CameraDirection::BACKWARD, 0.12);
     camera.update_position(lumina_render::camera::CameraDirection::UP, 0.10);
 
@@ -233,7 +237,7 @@ fn main() {
         view_pos: camera.get_position().to_array(),
     };
 
-    let light: LightInfo = LightInfo {
+    let raw_light: LightInfo = LightInfo {
         light: RawLight {
             position: [0.2, 0.0, 3.0],
             rotation: [-0.6, 0.0, -0.9],
@@ -248,13 +252,13 @@ fn main() {
         },
     };
 
-    let light_2: LightInfo = LightInfo {
+    let raw_light_2: LightInfo = LightInfo {
         light: RawLight {
-            position: [1.5, 0.0, 3.0],
-            rotation: [-0.6, 0.0, -0.9],
+            position: [0.0, -7.0, 0.0],
+            rotation: [-0.0, 0.0, -0.0],
             color: [1.0, 1.0, 1.0],
-            intensity: 20.0,
-            spot_size: 12.5,
+            intensity: 5.0,
+            spot_size: 0.0,
             linear: 0.7,
             quadratic: 1.8,
             light_type: 0,
@@ -265,11 +269,51 @@ fn main() {
 
     let mut stage = Stage::new("fasf");
 
-    //let model = Model::new_from_model(app.get_device(), "models/Sponza.gltf");
+    let model = Model::new_from_model(app.get_device(), "models/Sponza.gltf");
 
     let cube = stage.manager.spawn();
 
-    //stage.manager.push(&cube, model);
+    stage.manager.push(&cube, model);
+
+    let light = stage.manager.spawn();
+
+    if let Some(transform) = stage
+        .manager
+        .query_entity(&light)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Transform>()
+    {
+        transform.translation = glam::vec3(1.5, 0.0, 3.0);
+        transform.rotation = glam::vec3(-0.6, 0.0, -0.9);
+    }
+
+    let mut light_component = DirectionalLight::new();
+    light_component.change_color(glam::vec3(1.0, 1.0, 1.0));
+    light_component.change_intensity(20.0);
+
+    stage.manager.push(&light, light_component);
+
+    let light_2 = stage.manager.spawn();
+
+    if let Some(transform) = stage
+        .manager
+        .query_entity(&light_2)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Transform>()
+    {
+        transform.translation = glam::vec3(1.5, 0.0, 3.0);
+        transform.rotation = glam::vec3(-0.6, 0.0, -0.9);
+    }
+
+    let mut light_component = DirectionalLight::new();
+    light_component.change_color(glam::vec3(1.0, 1.0, 1.0));
+    light_component.change_intensity(20.0);
+
+    stage.manager.push(&light_2, light_component);
 
     if let Some(transform) = stage
         .manager
@@ -296,7 +340,15 @@ fn main() {
     let mut start_tick = Instant::now();
 
     fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
-    let delta_time = 1.0 / fps._fps as f32;
+    let mut delta_time = 1.0 / fps._fps as f32;
+
+    let renderpas = app.renderer.read().unwrap().get_swapchain_renderpass();
+    let shadow_maps = stage.create_directional_shadow_maps(
+        Arc::new(vec![light.clone()]),
+        renderpas,
+        Arc::clone(&app.renderer),
+        app.get_device(),
+    );
 
     if let Some(model) = query
         .query_entity(&game_objects[0])
@@ -320,9 +372,9 @@ fn main() {
     }
 
     'running: loop {
-        start_tick = Instant::now();
+        delta_time = 1.0 / ((fps.frame_count / fps.frame_elapsed) as f32);
 
-        //stage.create_directional_shadow_maps(Vec::new(), app.renderer.get_swapchain_renderpass(), &app.renderer, app.get_device());
+        start_tick = Instant::now();
 
         for event in event_pump.poll_iter() {
             match event {
@@ -376,119 +428,136 @@ fn main() {
 
         camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
-        if let Some(command_buffer) = app
+        let command_buffer = app
             .renderer
-            .begin_swapchain_command_buffer(&app.device, &app.window)
-        {
-            app.renderer.begin_frame(&app.device, command_buffer);
+            .write()
+            .unwrap()
+            .begin_swapchain_command_buffer(&app.get_device(), &app.window)
+            .unwrap();
 
-            let frame_index = app.renderer.get_frame_index() as usize;
+        app.renderer
+            .read()
+            .unwrap()
+            .begin_frame(&app.device, command_buffer);
 
-            let frame_info: FrameInfo<'_> = FrameInfo {
-                frame_time: 0.0,
-                command_buffer,
-                camera: &camera,
-            };
+        let frame_index = app.renderer.read().unwrap().get_frame_index() as usize;
 
-            app.renderer
-                .begin_swapchain_renderpass(&app.device, command_buffer);
+        let frame_info: FrameInfo<'_> = FrameInfo {
+            frame_time: 0.0,
+            command_buffer,
+            camera: &camera,
+        };
 
-            for i in 0..game_objects.len() {
-                let model_matrix = query
-                    .query_entity(&game_objects[i])
-                    .unwrap()
-                    .write()
-                    .unwrap()
-                    .get_mut_component::<Transform>()
-                    .unwrap()
-                    .get_mat4();
+        app.renderer
+            .read()
+            .unwrap()
+            .begin_swapchain_renderpass(&app.device, command_buffer);
 
-                let normal_matrix = query
-                    .query_entity(&game_objects[i])
-                    .unwrap()
-                    .write()
-                    .unwrap()
-                    .get_mut_component::<Transform>()
-                    .unwrap()
-                    .get_normal_matrix();
+        for i in 0..game_objects.len() {
+            let model_matrix = query
+                .query_entity(&game_objects[i])
+                .unwrap()
+                .write()
+                .unwrap()
+                .get_mut_component::<Transform>()
+                .unwrap()
+                .get_mat4();
 
-                if let Some(cube) = query
-                    .query_entity(&game_objects[i])
+            let normal_matrix = query
+                .query_entity(&game_objects[i])
+                .unwrap()
+                .write()
+                .unwrap()
+                .get_mut_component::<Transform>()
+                .unwrap()
+                .get_normal_matrix();
+
+            let projection =
+                Camera::create_orthographic_projection(-10.0, 10.0, -10.0, 10.0, 1.0, 1000.0);
+
+            let look_projection =
+                glam::Mat4::look_at_lh(glam::vec3(1.5, -10.0, 30.0), glam::Vec3::ZERO, glam::vec3(0.0, 1.0, 0.0));
+
+            let final_projection = projection * look_projection;
+
+            if let Some(cube) = query
+                .query_entity(&game_objects[i])
+                .unwrap()
+                .write()
+                .unwrap()
+                .get_mut_component::<Model>()
+            {
+                cube.shader.descriptor_manager.change_buffer_value(
+                    "GlobalUBO",
+                    frame_index as u32,
+                    &[final_projection],
+                );
+                cube.shader.descriptor_manager.change_buffer_value(
+                    "MaterialInfo",
+                    frame_index as u32,
+                    &[material],
+                );
+                cube.shader.descriptor_manager.change_buffer_value(
+                    "LightInfo",
+                    frame_index as u32,
+                    &[raw_light_2],
+                );
+
+                //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
+
+                cube.shader
+                    .pipeline
+                    .as_ref()
                     .unwrap()
-                    .write()
-                    .unwrap()
-                    .get_mut_component::<Model>()
-                {
-                    cube.shader.descriptor_manager.change_buffer_value(
-                        "GlobalUBO",
-                        frame_index as u32,
-                        &[camera.get_matrix()],
+                    .bind(&app.device, frame_info.command_buffer);
+
+                unsafe {
+                    app.device.device().cmd_bind_descriptor_sets(
+                        frame_info.command_buffer,
+                        vk::PipelineBindPoint::GRAPHICS,
+                        cube.shader.pipeline_layout.unwrap(),
+                        0,
+                        &[cube
+                            .shader
+                            .descriptor_manager
+                            .get_descriptor_set(frame_index as u32)],
+                        &[],
                     );
-                    cube.shader.descriptor_manager.change_buffer_value(
-                        "MaterialInfo",
-                        frame_index as u32,
-                        &[material],
-                    );
-                    cube.shader.descriptor_manager.change_buffer_value(
-                        "LightInfo",
-                        frame_index as u32,
-                        &[light_2],
-                    );
-
-                    //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
-
-                    cube.shader
-                        .pipeline
-                        .as_ref()
-                        .unwrap()
-                        .bind(&app.device, frame_info.command_buffer);
-
-                    unsafe {
-                        app.device.device().cmd_bind_descriptor_sets(
-                            frame_info.command_buffer,
-                            vk::PipelineBindPoint::GRAPHICS,
-                            cube.shader.pipeline_layout.unwrap(),
-                            0,
-                            &[cube
-                                .shader
-                                .descriptor_manager
-                                .get_descriptor_set(frame_index as u32)],
-                            &[],
-                        );
-                    }
-
-                    let push = PushConstantData {
-                        model_matrix,
-                        normal_matrix,
-                    };
-
-                    let push_bytes: &[u8] = unsafe {
-                        let struct_ptr = &push as *const _ as *const u8;
-                        std::slice::from_raw_parts(
-                            struct_ptr,
-                            std::mem::size_of::<PushConstantData>(),
-                        )
-                    };
-
-                    unsafe {
-                        app.device.device().cmd_push_constants(
-                            frame_info.command_buffer,
-                            cube.shader.pipeline_layout.unwrap(),
-                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                            0,
-                            push_bytes,
-                        );
-                    }
-
-                    cube.render(frame_info.command_buffer, &app.device);
                 }
-            }
 
-            app.renderer
-                .end_swapchain_renderpass(command_buffer, &app.device);
+                let push = PushConstantData {
+                    model_matrix,
+                    normal_matrix,
+                };
+
+                let push_bytes: &[u8] = unsafe {
+                    let struct_ptr = &push as *const _ as *const u8;
+                    std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+                };
+
+                unsafe {
+                    app.device.device().cmd_push_constants(
+                        frame_info.command_buffer,
+                        cube.shader.pipeline_layout.unwrap(),
+                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                        0,
+                        push_bytes,
+                    );
+                }
+
+                cube.render(frame_info.command_buffer, &app.device);
+            }
         }
 
-        app.renderer.end_frame(&app.device, &mut app.window);
+        app.renderer
+            .read()
+            .unwrap()
+            .end_swapchain_renderpass(command_buffer, &app.device);
+
+        app.renderer
+            .write()
+            .unwrap()
+            .end_frame(&app.device, &mut app.window);
 
         /*stage.create_directional_shadow_maps(
             Vec::new(),
@@ -497,7 +566,8 @@ fn main() {
             app.get_device(),
         );*/
 
-        print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+        //print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
+        //print!("\r{:?}",fps.frame_count / fps.frame_elapsed);
         let title = String::from("Lumina Dev App ")
             + format!("[FPS: {:.0}]", fps.frame_count / fps.frame_elapsed).as_str();
         app.window.get_window().set_title(title.as_str());
