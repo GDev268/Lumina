@@ -49,12 +49,12 @@ impl Stage {
         render_pass: vk::RenderPass,
         renderer: Arc<RwLock<Renderer>>,
         device: Arc<Device>,
-    ) -> Vec<Image> {
+    ) -> Vec<(glam::Mat4,Image)> {
         let dir_lights = Arc::new(lights);
 
         let num_cpus = num_cpus::get();
 
-        let mut shadow_maps: Vec<Image> = Vec::new();
+        let mut shadow_maps: Vec<(glam::Mat4,Image)> = Vec::new();
 
         let barrier = Arc::new(Barrier::new(num_cpus + 1));
 
@@ -75,11 +75,12 @@ impl Stage {
                         (i + 1) * size / num_cpus
                     };
 
-                    let mut shadow_maps: Vec<Image> = Vec::new();
+                    let mut shadow_maps: Vec<(glam::Mat4,Image)> = Vec::new();
 
                     let mut color_images = Vec::new();
                     let mut depth_images = Vec::new();
                     let mut framebuffers = Vec::new();
+                    let mut light_mat = Vec::new();
 
                     for light in lights_clone.iter().skip(start).take(end - start) {
                         let mut position = glam::Vec3::ZERO;
@@ -270,6 +271,7 @@ impl Stage {
                         color_images.push(color_image);
                         depth_images.push(depth_image);
                         framebuffers.push(framebuffer);
+                        light_mat.push(final_projection);
 
                         //println!("{:?}", depth_image);
                         //shadow_maps.push(depth_image);
@@ -285,8 +287,8 @@ impl Stage {
 
 
 
-                    for depth in depth_images {
-                        shadow_maps.push(depth);
+                    for i in 0..light_mat.len() {
+                        shadow_maps.push((light_mat[i],depth_images[i].clone()));
                     }
 
                     for mut framebuffer in framebuffers {

@@ -141,7 +141,7 @@ impl Camera {
             )
         };
     
-        let view = self.set_view_yxz(self.translation, self.rotation);
+        let view = Camera::set_view_yxz(self.translation, self.rotation);
     
         return (perspective * view).to_cols_array_2d();
     }
@@ -194,7 +194,7 @@ impl Camera {
         self.set_view_direction(position, target - position, up);
     }
 
-    pub fn set_view_yxz(&self, position: glam::Vec3, rotation: glam::Vec3) -> glam::Mat4 {
+    pub fn set_view_yxz(position: glam::Vec3, rotation: glam::Vec3) -> glam::Mat4 {
         let c3 = rotation.z.cos();
         let s3 = rotation.z.sin();
         let c2 = rotation.x.cos();

@@ -350,6 +350,8 @@ fn main() {
         app.get_device(),
     );
 
+    println!("{:?}",shadow_maps);
+
     if let Some(model) = query
         .query_entity(&game_objects[0])
         .unwrap()
@@ -472,14 +474,6 @@ fn main() {
                 .unwrap()
                 .get_normal_matrix();
 
-            let projection =
-                Camera::create_orthographic_projection(-10.0, 10.0, -10.0, 10.0, 1.0, 1000.0);
-
-            let look_projection =
-                glam::Mat4::look_at_lh(glam::vec3(1.5, -10.0, 30.0), glam::Vec3::ZERO, glam::vec3(0.0, 1.0, 0.0));
-
-            let final_projection = projection * look_projection;
-
             if let Some(cube) = query
                 .query_entity(&game_objects[i])
                 .unwrap()
@@ -490,7 +484,7 @@ fn main() {
                 cube.shader.descriptor_manager.change_buffer_value(
                     "GlobalUBO",
                     frame_index as u32,
-                    &[final_projection],
+                    &[camera.get_matrix()],
                 );
                 cube.shader.descriptor_manager.change_buffer_value(
                     "MaterialInfo",

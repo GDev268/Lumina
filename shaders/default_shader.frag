@@ -39,7 +39,7 @@ layout(set = 0, binding = 1) uniform MaterialInfo {
 
 //64
 layout(set = 0, binding = 2) uniform LightInfo {
-  Light light[2];
+  Light light[999];
 } object_light;
 
 //color
@@ -53,6 +53,11 @@ layout(set = 0, binding = 5) uniform sampler2D specularMap;
 
 //depth
 layout(set = 0, binding = 6) uniform sampler2D shadowMap;
+
+//64
+layout(set = 0, binding = 7) uniform LightSpaceMatrices {
+  mat4 matrix[999];
+} light_mat;
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal,vec3 fragPos, vec3 viewDir);
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
@@ -85,13 +90,37 @@ void main() {
   vec3 normal = normalize(texture(normalMap,FragUV).rgb * 2.0 - 1.0);
   vec3 viewDirection = normalize(object.viewPos - FragPos);
 
-  vec3 result = CalculateDirectionalLight(object_light.light[0],normal,FragPos,viewDirection);
+  vec3 result = CalculatePointLight(object_light.light[0],normal,FragPos,viewDirection);
   //result += CalculateSpotLight(object_light.light[1],normal,FragPos,viewDirection);
 
   outColor = vec4(result, 1.0);
 
 }
 
+float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shadowMap,vec3 normal) { 
+  vec3 projection_coords = fragLightPos.xyz / fragLightPos.w;
+  projection_coords = projection_coords * 0.5 + 0.5;
+
+  float closest_depth = texture(shadowMap,projection_coords.xy).r;
+
+  float current_depth = projection_coords.z;
+
+  vec3 lightDirection = normalize(light.position - fragPos);
+
+  float bias = max(0.05 * (1.0 - dot(normal, lightDirection)), 0.005);
+
+  float shadow = 0.0;
+
+  vec2 texelSize = 1.0 / textureSize(shadowMap,0);
+
+  for(int x = -1; x <= 1;++x){
+    for(int y = -1; y <= 1;++y){
+        
+    }
+  }
+
+  return 0.0;
+}
 
 vec3 CalculateDirectionalLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection) {
   vec3 ambient = light.color * texture(colorMap,FragUV).rgb;
