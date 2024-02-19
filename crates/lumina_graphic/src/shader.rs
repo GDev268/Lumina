@@ -41,22 +41,21 @@ impl Shader {
             lumina_core::swapchain::MAX_FRAMES_IN_FLIGHT as u32,
         );
 
-
         let mut descriptor_manager =
             DescriptorManager::new(Arc::clone(&device), pool_config.build(&device));
         for (name, values) in parser.descriptor_data.iter() {
             descriptor_manager.add_new_descriptor(
                 name.to_owned(),
                 values.binding,
-                unsafe {std::mem::transmute(values.value)},
+                unsafe { std::mem::transmute(values.value) },
                 values.size as u64,
-                None
+                None,
             );
             descriptor_manager.build_descriptor(name, 1);
         }
 
         descriptor_manager.preload_we();
-        
+
         return Self {
             device: Arc::clone(&device),
             descriptor_manager,
@@ -122,7 +121,6 @@ impl Shader {
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = self.pipeline_layout;
 
-        
         self.pipeline = Some(Pipeline::new(
             &self.device,
             self.vert_module,
@@ -131,11 +129,14 @@ impl Shader {
         ));
     }
 
-    pub fn create_custom_pipeline(&mut self, render_pass: vk::RenderPass,mut pipeline_config:PipelineConfiguration) {
+    pub fn create_custom_pipeline(
+        &mut self,
+        render_pass: vk::RenderPass,
+        mut pipeline_config: PipelineConfiguration,
+    ) {
         pipeline_config.renderpass = Some(render_pass);
         pipeline_config.pipeline_layout = self.pipeline_layout;
 
-        
         self.pipeline = Some(Pipeline::new(
             &self.device,
             self.vert_module,
@@ -145,7 +146,8 @@ impl Shader {
     }
 
     pub fn read_file(file_path: &str) -> Vec<u8> {
-        let file = File::open(file_path).expect(&("Failed to open shader file ".to_owned() + file_path));
+        let file =
+            File::open(file_path).expect(&("Failed to open shader file ".to_owned() + file_path));
 
         return file.bytes().filter_map(|byte| byte.ok()).collect();
     }
@@ -167,21 +169,25 @@ impl Shader {
         }
     }
 
-    pub fn renovate_pipeline(&mut self,render_pass: vk::RenderPass) {
-        if self.pipeline.is_some() && self.pipeline_layout.is_none(){
-            unsafe{
+    pub fn renovate_pipeline(&mut self, render_pass: vk::RenderPass) {
+        if self.pipeline.is_some() && self.pipeline_layout.is_none() {
+            unsafe {
                 self.device.device().device_wait_idle().unwrap();
-                self.device.device().destroy_pipeline(self.pipeline.as_mut().unwrap().graphics_pipeline.unwrap(), None);
-                self.device.device().destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
+                self.device.device().destroy_pipeline(
+                    self.pipeline.as_mut().unwrap().graphics_pipeline.unwrap(),
+                    None,
+                );
+                self.device
+                    .device()
+                    .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
             }
         }
 
         self.create_pipeline_layout(true);
         self.create_pipeline(render_pass);
-
     }
 
-    pub fn destroy(&mut self,device: &Device) {
+    pub fn destroy(&mut self, device: &Device) {
         unsafe {
             self.device
                 .device()
@@ -194,6 +200,26 @@ impl Shader {
                     .device()
                     .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
                 self.pipeline.as_mut().unwrap().destroy(&device);
+            }
+            self.descriptor_manager.drop_values(&self.device);
+        }
+    }
+}
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            self.device
+                .device()
+                .destroy_shader_module(self.vert_module, None);
+            self.device
+                .device()
+                .destroy_shader_module(self.frag_module, None);
+            if self.pipeline_layout.is_some() {
+                self.device
+                    .device()
+                    .destroy_pipeline_layout(self.pipeline_layout.unwrap(), None);
+                self.pipeline.as_mut().unwrap().destroy(&self.device);
             }
             self.descriptor_manager.drop_values(&self.device);
         }

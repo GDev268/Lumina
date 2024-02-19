@@ -39,7 +39,7 @@ layout(set = 0, binding = 1) uniform MaterialInfo {
 
 //64
 layout(set = 0, binding = 2) uniform LightInfo {
-  Light light[999];
+  Light light[1];
 } object_light;
 
 //color
@@ -59,7 +59,7 @@ layout(set = 0, binding = 7) uniform LightSpaceMatrices {
   mat4 matrix[999];
 } light_mat;
 
-vec3 CalculateDirectionalLight(Light light, vec3 normal,vec3 fragPos, vec3 viewDir);
+vec3 CalculateDirectionalLight(Light light, vec3 normal,vec3 fragPos, vec3 viewDir,float shadow);
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -90,20 +90,22 @@ void main() {
   vec3 normal = normalize(texture(normalMap,FragUV).rgb * 2.0 - 1.0);
   vec3 viewDirection = normalize(object.viewPos - FragPos);
 
-  vec3 result = CalculatePointLight(object_light.light[0],normal,FragPos,viewDirection);
+  vec3 result = CalculateDirectionalLight(object_light.light[0],normal,FragPos,viewDirection,1.0);
   //result += CalculateSpotLight(object_light.light[1],normal,FragPos,viewDirection);
+
+  
 
   outColor = vec4(result, 1.0);
 
 }
 
 float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shadowMap,vec3 normal) { 
-  vec3 projection_coords = fragLightPos.xyz / fragLightPos.w;
-  projection_coords = projection_coords * 0.5 + 0.5;
+  vec3 projectionCoords = fragLightPos.xyz / fragLightPos.w;
+  projectionCoords = projectionCoords * 0.5 + 0.5;
 
-  float closest_depth = texture(shadowMap,projection_coords.xy).r;
+  float closestDepth = texture(shadowMap,projectionCoords.xy).r;
 
-  float current_depth = projection_coords.z;
+  float currentDepth = projectionCoords.z;
 
   vec3 lightDirection = normalize(light.position - fragPos);
 
@@ -113,16 +115,23 @@ float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shad
 
   vec2 texelSize = 1.0 / textureSize(shadowMap,0);
 
-  for(int x = -1; x <= 1;++x){
-    for(int y = -1; y <= 1;++y){
-        
+  for(int x = -1; x <= 1;++x)
+  {
+    for(int y = -1; y <= 1;++y)
+    {
+      float pcfDepth = texture(shadowMap,projectionCoords.xy + vec2(x + y) * texelSize).r;
+      shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
     }
   }
+  shadow /= 9.0;
 
+  if(projectionCoords.z > 1.0)
+    shadow = 0.0;
+        
   return 0.0;
 }
 
-vec3 CalculateDirectionalLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection) {
+vec3 CalculateDirectionalLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection,float shadow) {
   vec3 ambient = light.color * texture(colorMap,FragUV).rgb;
 
   vec3 lightDirection = normalize(-light.rotation);
@@ -137,7 +146,7 @@ vec3 CalculateDirectionalLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDir
   diffuse *= light.intensity;
   specular *= light.intensity;
 
-  return (ambient + diffuse + specular);
+  return (ambient + (1.0 - shadow) * (diffuse + specular));
 }
 
 vec3 CalculatePointLight(Light light,vec3 normal,vec3 fragPos,vec3 viewDirection) {

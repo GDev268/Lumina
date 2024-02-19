@@ -15,8 +15,9 @@ use std::{
 
 use ash::vk::{self, TRUE};
 use cgmath::num_traits::float::FloatCore;
-use egui::Key;
+use egui::{ColorImage, ImageData, Key};
 use glsl_parser::parser::Parser;
+use image::{DynamicImage, ImageBuffer, Rgba};
 use lumina_ecs::{app::App, query::Query, stage::Stage};
 use lumina_pbr::light::{DirectionalLight, Light};
 use rand::Rng;
@@ -113,6 +114,8 @@ fn main() {
 
     let mut event_pump = sdl.event_pump().unwrap();
 
+    let mut video = sdl.video().unwrap();
+
     let mut app = App::new(&sdl);
 
     sdl.mouse().set_relative_mouse_mode(true);
@@ -124,6 +127,8 @@ fn main() {
     let mut mouse_pool = Mouse::new();
 
     let mut game_objects: Vec<GameObject> = Vec::new();
+
+    let mut platform = egui_sdl2_platform::Platform::new(app.window._window.size()).unwrap();
 
     let cube_positions: [glam::Vec3; 10] = [
         glam::Vec3::new(0.0, 0.0, 1.0),
@@ -137,6 +142,7 @@ fn main() {
         glam::Vec3::new(1.5, 0.2, -1.5),
         glam::Vec3::new(-1.3, 1.0, -1.5),
     ];
+
 
     for i in 0..1 {
         let model = Model::new_from_model(app.get_device(), "models/Sponza.gltf");
@@ -254,7 +260,7 @@ fn main() {
 
     let raw_light_2: LightInfo = LightInfo {
         light: RawLight {
-            position: [0.0, -7.0, 0.0],
+            position: [0.0, -50.0, 3.0],
             rotation: [-0.0, 0.0, -0.0],
             color: [1.0, 1.0, 1.0],
             intensity: 5.0,
@@ -327,12 +333,6 @@ fn main() {
         transform.scale = glam::vec3(-0.012, -0.012, -0.012);
     }
 
-    /*stage.create_directional_shadow_maps(
-        Vec::new(),
-        app.renderer.get_swapchain_renderpass(),
-        &app.renderer,
-        app.get_device(),
-    );*/
 
     let mut fps = FPS::new();
     fps._fps = 300;
@@ -342,15 +342,15 @@ fn main() {
     fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
     let mut delta_time = 1.0 / fps._fps as f32;
 
-    let renderpas = app.renderer.read().unwrap().get_swapchain_renderpass();
+    /*let renderpas = app.renderer.read().unwrap().get_swapchain_renderpass();
     let shadow_maps = stage.create_directional_shadow_maps(
         Arc::new(vec![light.clone()]),
         renderpas,
         Arc::clone(&app.renderer),
         app.get_device(),
-    );
+    );*/
 
-    println!("{:?}",shadow_maps);
+    //println!("{:?}",shadow_maps);
 
     if let Some(model) = query
         .query_entity(&game_objects[0])
@@ -373,10 +373,14 @@ fn main() {
             .change_image_value("specularMap", &specular);
     }
 
+    let mut color = [0.0;4];
+
+
     'running: loop {
         delta_time = 1.0 / ((fps.frame_count / fps.frame_elapsed) as f32);
 
         start_tick = Instant::now();
+
 
         for event in event_pump.poll_iter() {
             match event {
@@ -428,6 +432,40 @@ fn main() {
             camera.update_position(CameraDirection::DOWN, delta_time);
         }
 
+        let ctx = platform.context();
+        // Draw an egui window
+        egui::Window::new("Hello, world!").fixed_size(egui::Vec2::new(840.0,680.0)).show(&ctx, |ui| {
+            ui.label("Hello, world!");
+            if ui.button("Greet").clicked() {
+                println!("Hello, world!");
+            }
+            ui.horizontal(|ui| {
+                ui.label("Color: ");
+                ui.color_edit_button_rgba_premultiplied(&mut color);
+            });
+            ui.horizontal_top(|ui| {
+                ui.checkbox(&mut true, "gasfs")
+            })
+        });
+    
+        let output = platform.end_frame(&mut video).unwrap();
+    
+    
+        for (id,texture) in output.textures_delta.set {
+            println!("ID: {:?}\n{:?}",id,texture.pos);
+    
+            match texture.image {
+                ImageData::Color(color_image) => {
+                    println!("COLOR: {:?}\n{:?}",id,color_image.size);
+    
+                },
+                ImageData::Font(font_image) => {
+                    println!("FONT: {:?}\n{:?}",id,font_image.size);
+                },
+            };
+            
+        }
+        
         camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
         let command_buffer = app
@@ -570,6 +608,25 @@ fn main() {
         }
         fps.update();
     }
+}
+
+pub fn save_color_image_as_png(color_image: &ColorImage, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Create an empty ImageBuffer
+    let mut image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(color_image.size[0] as u32, color_image.size[1] as u32);
+
+    // Copy the pixels from the ColorImage into the ImageBuffer
+    for (x, y, pixel) in image_buffer.enumerate_pixels_mut() {
+        let color32 = color_image.pixels[(y as usize * color_image.size[0]) + x as usize];
+        *pixel = Rgba(color32.to_array());
+    }
+
+    // Convert the ImageBuffer into a DynamicImage
+    let dynamic_image: DynamicImage = DynamicImage::ImageRgba8(image_buffer);
+
+    // Save the DynamicImage as a PNG file
+    dynamic_image.save(file_path)?;
+
+    Ok(())
 }
 
 /*fn main() {

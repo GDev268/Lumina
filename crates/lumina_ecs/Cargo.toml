@@ -20,8 +20,4 @@ ash = {version="0.37.3",features = ["linked", "debug"]}
 async-std = "1.12.0"
 rand = "0.6.5"
 glam = "0.24.1"
-
-
-[dependencies.sdl2]
-default-features = false
-features = ["image"]
+sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", revion = "31e830e"}
