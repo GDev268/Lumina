@@ -2,6 +2,7 @@ use std::{any::{TypeId, Any}, collections::HashMap};
 
 use crate::game_object::Component;
 
+#[derive(Debug)]
 pub struct Entity {
     components: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }

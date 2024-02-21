@@ -78,12 +78,11 @@ impl Saver {
         self.directories.get_mut(&directory_name.to_string()).unwrap().files.push(file);
     }
 
-    pub fn create_project_file(&self) {
-        let file_name = (self.json["project_name"].to_string() + ".lumin").as_str();
-    
-    }
+    pub fn combine_to_binary(&self) {
+        let file_name = ("./".to_string() + &self.json["project_name"].to_string() + ".lumin");
 
-    /*pub fn combine_to_binary(&self) {
-        let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(bi)
-    }*/
+        let mut file = OpenOptions::new().create(true).write(true).truncate(true).open(file_name);
+
+
+    }
 }

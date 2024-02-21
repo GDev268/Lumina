@@ -5,5 +5,5 @@
 "C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/light_cube_shader.frag -o shaders/light_cube_shader.frag.spv
 "C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/shadow_map_shader.vert -o shaders/shadow_map_shader.vert.spv
 "C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/shadow_map_shader.frag -o shaders/shadow_map_shader.frag.spv
-"C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/recorder_shader.vert -o shaders/recorder_shader.vert.spv
-"C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/recorder_shader.frag -o shaders/recorder_shader.frag.spv
+"C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/skybox_shader.vert -o shaders/skybox_shader.vert.spv
+"C:\VulkanSDK\1.3.268.0\Bin\glslc.exe"  shaders/skybox_shader.frag -o shaders/skybox_shader.frag.spv

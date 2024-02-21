@@ -39,7 +39,7 @@ layout(set = 0, binding = 1) uniform MaterialInfo {
 
 //64
 layout(set = 0, binding = 2) uniform LightInfo {
-  Light light[1];
+  Light light[999];
 } object_light;
 
 //color
@@ -52,7 +52,7 @@ layout(set = 0, binding = 4) uniform sampler2D normalMap;
 layout(set = 0, binding = 5) uniform sampler2D specularMap;
 
 //depth
-layout(set = 0, binding = 6) uniform sampler2D shadowMap;
+layout(set = 0, binding = 6) uniform sampler2D shadowMap[999];
 
 //64
 layout(set = 0, binding = 7) uniform LightSpaceMatrices {
@@ -63,40 +63,23 @@ vec3 CalculateDirectionalLight(Light light, vec3 normal,vec3 fragPos, vec3 viewD
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
-/*void main() {
+void main() {
   vec3 result = vec3(0.0, 0.0, 0.0);
 
   vec3 normal = normalize(Normal);
   vec3 viewDirection = normalize(object.viewPos - FragPos);
 
-  /*for (int i = 0; i < object_light.lightCount; i++) {
+  for (int i = 0; i < 2; i++) {
     if (object_light.light[i].type == 0) {
-      result += CalculateDirectionalLight(object_light.light[i], normalVec, FragPos, viewDirection);
+      result += CalculateDirectionalLight(object_light.light[i], normal, FragPos, viewDirection,1.0);
     } else if (object_light.light[i].type == 1) {
-      result += CalculatePointLight(object_light.light[i], normalVec, FragPos, viewDirection);
+      result += CalculatePointLight(object_light.light[i], normal, FragPos, viewDirection);
     } else if (object_light.light[i].type == 2) {
-      result += CalculateSpotLight(object_light.light[i], normalVec, FragPos, viewDirection);
+      result += CalculateSpotLight(object_light.light[i], normal, FragPos, viewDirection);
     }
   }
 
   outColor = vec4(result, 1.0);
-
-  result += CalculateSpotLight(object_light.light,normal,FragPos,viewDirection);
-
-  outColor = vec4(result, 1.0);
-}*/
-
-void main() {
-  vec3 normal = normalize(texture(normalMap,FragUV).rgb * 2.0 - 1.0);
-  vec3 viewDirection = normalize(object.viewPos - FragPos);
-
-  vec3 result = CalculateDirectionalLight(object_light.light[0],normal,FragPos,viewDirection,1.0);
-  //result += CalculateSpotLight(object_light.light[1],normal,FragPos,viewDirection);
-
-  
-
-  outColor = vec4(result, 1.0);
-
 }
 
 float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shadowMap,vec3 normal) { 

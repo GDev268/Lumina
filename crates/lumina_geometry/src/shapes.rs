@@ -3,7 +3,7 @@ use std::{rc::Rc, sync::Arc};
 use lumina_core::device::Device;
 use lumina_object::game_object::GameObject;
 use lumina_render::{mesh::Vertex, model::Model};
-/*use lumina_scene::query::Query;
+use lumina_ecs::query::Query;
 
 pub fn cube(scene: &mut Query, device: Arc<Device>) -> GameObject {
     let vertices: Vec<Vertex> = vec![
@@ -401,7 +401,7 @@ pub fn mono_cube(scene: &mut Query, device: Arc<Device>) -> GameObject {
     return game_object;
 }
 
-pub fn model_cube(scene: &mut Query, device: Arc<Device>) -> Model {
+pub fn model_cube(device: Arc<Device>) -> Model {
     let vertices: Vec<Vertex> = vec![
         // left face (white)
         Vertex {
@@ -594,4 +594,4 @@ pub fn model_cube(scene: &mut Query, device: Arc<Device>) -> Model {
     let model = Model::new_from_array(Arc::clone(&device),vertices,Vec::new());
 
     return model;
-}*/
+}

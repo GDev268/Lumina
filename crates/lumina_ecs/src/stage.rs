@@ -49,12 +49,12 @@ impl Stage {
         render_pass: vk::RenderPass,
         renderer: Arc<RwLock<Renderer>>,
         device: Arc<Device>,
-    ) -> Vec<(glam::Mat4,Image)> {
+    ) -> Vec<(glam::Mat4, Image)> {
         let dir_lights = Arc::new(lights);
 
         let num_cpus = num_cpus::get();
 
-        let mut shadow_maps: Vec<(glam::Mat4,Image)> = Vec::new();
+        let mut shadow_maps: Vec<(glam::Mat4, Image)> = Vec::new();
 
         let barrier = Arc::new(Barrier::new(num_cpus + 1));
 
@@ -75,7 +75,7 @@ impl Stage {
                         (i + 1) * size / num_cpus
                     };
 
-                    let mut shadow_maps: Vec<(glam::Mat4,Image)> = Vec::new();
+                    let mut shadow_maps: Vec<(glam::Mat4, Image)> = Vec::new();
 
                     let mut color_images = Vec::new();
                     let mut depth_images = Vec::new();
@@ -94,14 +94,15 @@ impl Stage {
                             .get_mut_component::<Transform>()
                         {
                             position = transform.translation;
+                            position = glam::vec3(0.0, -10.1, 0.1);
                         }
 
                         let projection = Camera::create_orthographic_projection(
-                            -10.0, 10.0, -10.0, 10.0, 1.0, 1000.0,
+                            -35.0, 35.0, -35.0, 35.0, 1.0, 1000.0,
                         );
 
                         let look_projection = glam::Mat4::look_at_lh(
-                            position,
+                            glam::vec3(0.1, 0.1, -20.1),
                             glam::Vec3::ZERO,
                             glam::vec3(0.0, 1.0, 0.0),
                         );
@@ -134,7 +135,8 @@ impl Stage {
                         let mut color_image = Image::new_2d(
                             &device_clone,
                             vk::Format::B8G8R8A8_SRGB,
-                            vk::ImageUsageFlags::COLOR_ATTACHMENT,
+                            vk::ImageUsageFlags::COLOR_ATTACHMENT
+                                | vk::ImageUsageFlags::TRANSFER_SRC,
                             vk::MemoryPropertyFlags::DEVICE_LOCAL,
                             1024,
                             1024,
@@ -231,6 +233,8 @@ impl Stage {
                                             push_bytes,
                                         );
                                     }
+
+                                    model.render(command_buffer, &device_clone);
                                 }
                             }
                         }
@@ -277,25 +281,21 @@ impl Stage {
                         //shadow_maps.push(depth_image);
                     }
 
-
-                    for mut color in color_images {
+                    for mut color in depth_images {
                         color.clean_memory(&device_clone);
                         color.clean_image(&device_clone);
                         color.clean_view(&device_clone);
                         drop(color);
                     }
 
-
-
                     for i in 0..light_mat.len() {
-                        shadow_maps.push((light_mat[i],depth_images[i].clone()));
+                        shadow_maps.push((light_mat[i], color_images[i].clone()));
                     }
 
                     for mut framebuffer in framebuffers {
                         framebuffer.clean_framebuffer(&device_clone);
                         drop(framebuffer);
                     }
-
 
                     barrier_clone.wait();
                     return shadow_maps;
@@ -310,6 +310,458 @@ impl Stage {
         }
 
         return shadow_maps;
+    }
+
+    pub fn create_directional_nigga(
+        &mut self,
+        lights: Arc<Vec<GameObject>>,
+        render_pass: vk::RenderPass,
+        renderer_clone: Arc<RwLock<Renderer>>,
+        device_clone: Arc<Device>,
+    ) -> Vec<(glam::Mat4, Image)> {
+        let mut shadow_maps: Vec<(glam::Mat4, Image)> = Vec::new();
+
+        let mut color_images = Vec::new();
+        let mut depth_images = Vec::new();
+        let mut framebuffers = Vec::new();
+        let mut light_mat = Vec::new();
+
+        let mut shader = Shader::new(
+            device_clone.clone(),
+            "shaders/shadow_map_shader.vert",
+            "shaders/shadow_map_shader.frag",
+        );
+        shader.create_pipeline_layout(true);
+        shader.create_pipeline(render_pass);
+
+        for light in lights.iter() {
+            let mut position = glam::vec3(0.0, -10.1, 0.1);
+
+            /*let projection =
+            Camera::create_orthographic_projection(-35.0, 35.0, -35.0, 35.0, 1.0, 1000.0);*/
+
+            let projection = Camera::create_perspective_projection(
+                150.0,
+                renderer_clone.read().unwrap().get_aspect_ratio(),
+                1.0,
+                1000.0,
+            );
+
+            let look_projection = glam::Mat4::look_at_lh(
+                glam::vec3(0.1, 0.1, -20.1),
+                glam::Vec3::ZERO,
+                glam::vec3(0.0, 1.0, 0.0),
+            );
+
+            let final_projection = projection * look_projection;
+
+            let alloc_info = vk::CommandBufferAllocateInfo {
+                s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+                p_next: std::ptr::null(),
+                level: vk::CommandBufferLevel::PRIMARY,
+                command_pool: device_clone.get_command_pool(),
+                command_buffer_count: 1,
+            };
+
+            let command_buffer = unsafe {
+                device_clone
+                    .device()
+                    .allocate_command_buffers(&alloc_info)
+                    .expect("Failed to allocate command buffers!")[0]
+            };
+
+            let mut color_image = Image::new_2d(
+                &device_clone,
+                vk::Format::B8G8R8A8_SRGB,
+                vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                1024,
+                1024,
+            );
+
+            color_image.new_image_view(&device_clone, vk::ImageAspectFlags::COLOR);
+
+            let mut depth_image = Image::new_2d(
+                &device_clone,
+                vk::Format::D32_SFLOAT,
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                1024,
+                1024,
+            );
+
+            depth_image.new_image_view(&device_clone, vk::ImageAspectFlags::DEPTH);
+
+            let framebuffer = Framebuffer::new(
+                &device_clone,
+                [color_image.get_image_view(), depth_image.get_image_view()],
+                render_pass,
+                1024,
+                1024,
+            );
+
+            renderer_clone
+                .read()
+                .unwrap()
+                .begin_frame(&device_clone, command_buffer);
+            renderer_clone.read().unwrap().begin_custom_renderpass(
+                &device_clone,
+                command_buffer,
+                vk::Extent2D {
+                    width: 1024,
+                    height: 1024,
+                },
+                &framebuffer,
+            );
+
+            shader.descriptor_manager.change_buffer_value(
+                "GlobalUBO",
+                0,
+                &[final_projection.to_cols_array_2d()],
+            );
+
+            shader
+                .pipeline
+                .as_ref()
+                .unwrap()
+                .bind(&device_clone, command_buffer);
+
+            for (_, entity) in self.manager.entities.write().unwrap().iter_mut() {
+                let model_matrix = entity
+                    .write()
+                    .unwrap()
+                    .get_mut_component::<Transform>()
+                    .unwrap()
+                    .get_mat4();
+
+                let normal_matrix = entity
+                    .write()
+                    .unwrap()
+                    .get_mut_component::<Transform>()
+                    .unwrap()
+                    .get_normal_matrix();
+
+                let is = entity.read().unwrap().has_component::<Model>();
+
+                if is {
+                    if let Some(cube) = entity.write().unwrap().get_mut_component::<Model>() {
+                        //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
+
+                        shader
+                            .pipeline
+                            .as_ref()
+                            .unwrap()
+                            .bind(&device_clone, command_buffer);
+
+                        unsafe {
+                            device_clone.device().cmd_bind_descriptor_sets(
+                                command_buffer,
+                                vk::PipelineBindPoint::GRAPHICS,
+                                shader.pipeline_layout.unwrap(),
+                                0,
+                                &[shader.descriptor_manager.get_descriptor_set(0)],
+                                &[],
+                            );
+                        }
+
+                        let push = PushConstantData {
+                            model_matrix,
+                            normal_matrix,
+                        };
+
+                        let push_bytes: &[u8] = unsafe {
+                            let struct_ptr = &push as *const _ as *const u8;
+                            std::slice::from_raw_parts(
+                                struct_ptr,
+                                std::mem::size_of::<PushConstantData>(),
+                            )
+                        };
+
+                        unsafe {
+                            device_clone.device().cmd_push_constants(
+                                command_buffer,
+                                shader.pipeline_layout.unwrap(),
+                                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                                0,
+                                push_bytes,
+                            );
+                        }
+
+                        cube.render(command_buffer, &device_clone);
+                    }
+                }
+            }
+
+            unsafe {
+                device_clone.device().cmd_end_render_pass(command_buffer);
+                device_clone
+                    .device()
+                    .end_command_buffer(command_buffer)
+                    .unwrap();
+
+                let submit_info: vk::SubmitInfo = vk::SubmitInfo {
+                    s_type: vk::StructureType::SUBMIT_INFO,
+                    p_next: std::ptr::null(),
+                    command_buffer_count: 1,
+                    p_command_buffers: &command_buffer,
+                    ..Default::default()
+                };
+
+                device_clone
+                    .device()
+                    .queue_submit(
+                        device_clone.graphics_queue(),
+                        &[submit_info],
+                        vk::Fence::null(),
+                    )
+                    .expect("Failed to submit draw command buffer!");
+
+                device_clone
+                    .device()
+                    .free_command_buffers(device_clone.get_command_pool(), &[command_buffer]);
+
+                shader.destroy(&device_clone);
+            };
+
+            color_images.push(color_image);
+            depth_images.push(depth_image);
+            framebuffers.push(framebuffer);
+            light_mat.push(final_projection);
+
+            //println!("{:?}", depth_image);
+            //shadow_maps.push(depth_image);
+        }
+
+        drop(shader);
+
+        for mut color in depth_images {
+            color.clean_memory(&device_clone);
+            color.clean_image(&device_clone);
+            color.clean_view(&device_clone);
+            drop(color);
+        }
+
+        for i in 0..light_mat.len() {
+            shadow_maps.push((light_mat[i], color_images[i].clone()));
+        }
+
+        for mut framebuffer in framebuffers {
+            framebuffer.clean_framebuffer(&device_clone);
+            drop(framebuffer);
+        }
+
+        return shadow_maps;
+    }
+
+    pub fn create_directional_nigga_2(
+        &mut self,
+        render_pass: vk::RenderPass,
+        renderer_clone: Arc<RwLock<Renderer>>,
+        device_clone: Arc<Device>,
+        window: &mut Window,
+    ) -> Image {
+        let mut position = glam::vec3(0.0, -10.1, 0.1);
+
+        /*let projection =
+        Camera::create_orthographic_projection(-35.0, 35.0, -35.0, 35.0, 1.0, 1000.0);*/
+
+        let projection = Camera::create_perspective_projection(
+            150.0,
+            renderer_clone.read().unwrap().get_aspect_ratio(),
+            1.0,
+            1000.0,
+        );
+
+        let look_projection = glam::Mat4::look_at_lh(
+            glam::vec3(0.1, 0.1, -20.1),
+            glam::Vec3::ZERO,
+            glam::vec3(0.0, 1.0, 0.0),
+        );
+
+        let final_projection = projection * look_projection;
+
+        let mut shader = Shader::new(
+            device_clone.clone(),
+            "shaders/shadow_map_shader.vert",
+            "shaders/shadow_map_shader.frag",
+        );
+        shader.create_pipeline_layout(true);
+        shader.create_pipeline(render_pass);
+
+        
+            let alloc_info = vk::CommandBufferAllocateInfo {
+                s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+                p_next: std::ptr::null(),
+                level: vk::CommandBufferLevel::PRIMARY,
+                command_pool: device_clone.get_command_pool(),
+                command_buffer_count: 1,
+            };
+
+            let command_buffer = unsafe {
+                device_clone
+                    .device()
+                    .allocate_command_buffers(&alloc_info)
+                    .expect("Failed to allocate command buffers!")[0]
+            };
+
+            let mut color_image = Image::new_2d(
+                &device_clone,
+                vk::Format::B8G8R8A8_SRGB,
+                vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                1024,
+                1024,
+            );
+
+            color_image.new_image_view(&device_clone, vk::ImageAspectFlags::COLOR);
+
+            let mut depth_image = Image::new_2d(
+                &device_clone,
+                vk::Format::D32_SFLOAT,
+                vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
+                vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                1024,
+                1024,
+            );
+
+            depth_image.new_image_view(&device_clone, vk::ImageAspectFlags::DEPTH);
+
+            let framebuffer = Framebuffer::new(
+                &device_clone,
+                [color_image.get_image_view(), depth_image.get_image_view()],
+                render_pass,
+                1024,
+                1024,
+            );
+
+        renderer_clone
+            .read()
+            .unwrap()
+            .begin_frame(&device_clone, command_buffer);
+        renderer_clone
+            .read()
+            .unwrap()
+            .begin_custom_renderpass(&device_clone, command_buffer,vk::Extent2D{width:1024,height:1024},&framebuffer);
+
+        shader.descriptor_manager.change_buffer_value(
+            "GlobalUBO",
+            0,
+            &[final_projection.to_cols_array_2d()],
+        );
+
+        shader
+            .pipeline
+            .as_ref()
+            .unwrap()
+            .bind(&device_clone, command_buffer);
+
+        for (_, entity) in self.manager.entities.write().unwrap().iter_mut() {
+            let model_matrix = entity
+                .write()
+                .unwrap()
+                .get_mut_component::<Transform>()
+                .unwrap()
+                .get_mat4();
+
+            let normal_matrix = entity
+                .write()
+                .unwrap()
+                .get_mut_component::<Transform>()
+                .unwrap()
+                .get_normal_matrix();
+
+            let is = entity.read().unwrap().has_component::<Model>();
+
+            if is {
+                if let Some(cube) = entity.write().unwrap().get_mut_component::<Model>() {
+                    //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
+
+                    shader
+                        .pipeline
+                        .as_ref()
+                        .unwrap()
+                        .bind(&device_clone, command_buffer);
+
+                    unsafe {
+                        device_clone.device().cmd_bind_descriptor_sets(
+                            command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            shader.pipeline_layout.unwrap(),
+                            0,
+                            &[shader.descriptor_manager.get_descriptor_set(
+                                0,
+                            )],
+                            &[],
+                        );
+                    }
+
+                    let push = PushConstantData {
+                        model_matrix,
+                        normal_matrix,
+                    };
+
+                    let push_bytes: &[u8] = unsafe {
+                        let struct_ptr = &push as *const _ as *const u8;
+                        std::slice::from_raw_parts(
+                            struct_ptr,
+                            std::mem::size_of::<PushConstantData>(),
+                        )
+                    };
+
+                    unsafe {
+                        device_clone.device().cmd_push_constants(
+                            command_buffer,
+                            shader.pipeline_layout.unwrap(),
+                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                            0,
+                            push_bytes,
+                        );
+                    }
+
+                    cube.render(command_buffer, &device_clone);
+                }
+            }
+
+            //println!("{:?}", depth_image);
+            //shadow_maps.push(depth_image);
+        }
+
+        renderer_clone
+        .read()
+        .unwrap()
+        .end_swapchain_renderpass(command_buffer, &device_clone);
+        
+        unsafe {
+            device_clone
+                .device()
+                .end_command_buffer(command_buffer)
+                .unwrap();
+
+            let submit_info: vk::SubmitInfo = vk::SubmitInfo {
+                s_type: vk::StructureType::SUBMIT_INFO,
+                p_next: std::ptr::null(),
+                command_buffer_count: 1,
+                p_command_buffers: &command_buffer,
+                ..Default::default()
+            };
+
+            device_clone
+                .device()
+                .queue_submit(
+                    device_clone.graphics_queue(),
+                    &[submit_info],
+                    vk::Fence::null(),
+                )
+                .expect("Failed to submit draw command buffer!");
+
+            device_clone
+                .device()
+                .free_command_buffers(device_clone.get_command_pool(), &[command_buffer]);
+
+            shader.destroy(&device_clone);
+        };
+
+        return color_image;
     }
 
     /*pub fn create(

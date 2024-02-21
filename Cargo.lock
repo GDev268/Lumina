@@ -1710,6 +1710,7 @@ dependencies = [
  "ash",
  "glam",
  "lumina_core",
+ "lumina_ecs",
  "lumina_object",
  "lumina_render",
  "lumina_scene",

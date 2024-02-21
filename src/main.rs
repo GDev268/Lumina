@@ -17,7 +17,7 @@ use ash::vk::{self, TRUE};
 use cgmath::num_traits::float::FloatCore;
 use egui::{ColorImage, ImageData, Key};
 use glsl_parser::parser::Parser;
-use image::{DynamicImage, ImageBuffer, Rgba};
+use image::{DynamicImage, ImageBuffer, Luma, Rgba};
 use lumina_ecs::{app::App, query::Query, stage::Stage};
 use lumina_pbr::light::{DirectionalLight, Light};
 use rand::Rng;
@@ -131,7 +131,7 @@ fn main() {
     let mut platform = egui_sdl2_platform::Platform::new(app.window._window.size()).unwrap();
 
     let cube_positions: [glam::Vec3; 10] = [
-        glam::Vec3::new(0.0, 0.0, 1.0),
+        glam::Vec3::new(0.0, 0.0, 0.0),
         glam::Vec3::new(2.0, 5.0, -15.0),
         glam::Vec3::new(-1.5, -2.2, -2.5),
         glam::Vec3::new(-3.8, -2.0, -12.3),
@@ -143,15 +143,17 @@ fn main() {
         glam::Vec3::new(-1.3, 1.0, -1.5),
     ];
 
+    let mut stage = Stage::new("fasf");
 
     for i in 0..1 {
         let model = Model::new_from_model(app.get_device(), "models/Sponza.gltf");
 
-        let cube = query.spawn();
+        let cube = stage.manager.spawn();
 
-        query.push(&cube, model);
+        stage.manager.push(&cube, model);
 
-        if let Some(transform) = query
+        if let Some(transform) = stage
+            .manager
             .query_entity(&cube)
             .unwrap()
             .write()
@@ -164,7 +166,8 @@ fn main() {
             transform.rotation = glam::vec3(angle, angle, angle);
         }
 
-        if let Some(model) = query
+        if let Some(model) = stage
+            .manager
             .query_entity(&cube)
             .unwrap()
             .write()
@@ -187,43 +190,64 @@ fn main() {
                 .shader
                 .descriptor_manager
                 .change_image_size("specularMap", 1024, 1024);
-            /*model
-            .shader
-            .descriptor_manager
-            .change_buffer_count("LightInfo", 2);*/
             model
                 .shader
-                .renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
+                .descriptor_manager
+                .change_buffer_count("LightInfo", 2);
+
+            model.shader.descriptor_manager.update_we();
+
+            //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
         }
         game_objects.push(cube);
     }
 
-    /*let cube = shapes::cube(&mut query, app.get_device());
+    let mut model = shapes::model_cube(app.get_device());
 
-    if let Some(transform) = query.query_mut::<Transform>(&cube) {
-        transform.translation = glam::Vec3::new(0.0, -0.5, 2.0);
-        transform.scale = glam::vec3(3.0, 3.0, 0.0);
-        transform.rotation.x = 35.0;
+    let skybox = stage.manager.spawn();
+
+    model.shader = Shader::new(
+        app.get_device(),
+        "shaders/skybox_shader.vert",
+        "shaders/skybox_shader.frag",
+    );
+
+    stage.manager.push(&skybox, model);
+
+    if let Some(transform) = stage
+        .manager
+        .query_entity(&skybox)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Transform>()
+    {
+        transform.translation = glam::Vec3::ZERO;
+        transform.scale = glam::vec3(1000.0, 1000.0, 1000.0);
     }
 
-    if let Some(model) = query.query_mut::<Model>(&cube) {
+    if let Some(model) = stage
+        .manager
+        .query_entity(&skybox)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Model>()
+    {
         model.shader.create_pipeline_layout(true);
         model
             .shader
-            .create_pipeline(app.renderer.get_swapchain_renderpass());
+            .create_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
+        model
+            .shader
+            .descriptor_manager
+            .change_image_size("skybox", 256, 256);
+        model.shader.descriptor_manager.update_we();
 
-        model.shader.descriptor_manager.change_image_size("colorMap", 1024, 1024);
-        model.shader.descriptor_manager.change_image_size("normalMap", 1024, 1024);
-        model.shader.descriptor_manager.change_image_size("specularMap", 1024, 1024);
-        model.shader.descriptor_manager.change_buffer_count("LightInfo", 2);
-        model.shader.renovate_pipeline(app.renderer.get_swapchain_renderpass());
+        //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
 
-    game_objects.push(cube);*/
-
     let mut camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
-    camera.update_position(lumina_render::camera::CameraDirection::BACKWARD, 0.12);
-    camera.update_position(lumina_render::camera::CameraDirection::UP, 0.10);
 
     camera.speed = 10.0;
 
@@ -252,7 +276,7 @@ fn main() {
             spot_size: 12.5,
             linear: 0.7,
             quadratic: 1.8,
-            light_type: 0,
+            light_type: 1,
             _padding1: 0,
             _padding2: 0,
         },
@@ -264,22 +288,14 @@ fn main() {
             rotation: [-0.0, 0.0, -0.0],
             color: [1.0, 1.0, 1.0],
             intensity: 5.0,
-            spot_size: 0.0,
+            spot_size: 12.0,
             linear: 0.7,
             quadratic: 1.8,
-            light_type: 0,
+            light_type: 2,
             _padding1: 0,
             _padding2: 0,
         },
     };
-
-    let mut stage = Stage::new("fasf");
-
-    let model = Model::new_from_model(app.get_device(), "models/Sponza.gltf");
-
-    let cube = stage.manager.spawn();
-
-    stage.manager.push(&cube, model);
 
     let light = stage.manager.spawn();
 
@@ -311,7 +327,7 @@ fn main() {
         .unwrap()
         .get_mut_component::<Transform>()
     {
-        transform.translation = glam::vec3(1.5, 0.0, 3.0);
+        transform.translation = glam::vec3(0.0, -500.0, 0.0);
         transform.rotation = glam::vec3(-0.6, 0.0, -0.9);
     }
 
@@ -321,19 +337,6 @@ fn main() {
 
     stage.manager.push(&light_2, light_component);
 
-    if let Some(transform) = stage
-        .manager
-        .query_entity(&cube)
-        .unwrap()
-        .write()
-        .unwrap()
-        .get_mut_component::<Transform>()
-    {
-        transform.translation = glam::Vec3::new(0.0, 0.0, 1.0);
-        transform.scale = glam::vec3(-0.012, -0.012, -0.012);
-    }
-
-
     let mut fps = FPS::new();
     fps._fps = 300;
     let mut global_timer = Instant::now();
@@ -342,17 +345,8 @@ fn main() {
     fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
     let mut delta_time = 1.0 / fps._fps as f32;
 
-    /*let renderpas = app.renderer.read().unwrap().get_swapchain_renderpass();
-    let shadow_maps = stage.create_directional_shadow_maps(
-        Arc::new(vec![light.clone()]),
-        renderpas,
-        Arc::clone(&app.renderer),
-        app.get_device(),
-    );*/
-
-    //println!("{:?}",shadow_maps);
-
-    if let Some(model) = query
+    if let Some(model) = stage
+        .manager
         .query_entity(&game_objects[0])
         .unwrap()
         .write()
@@ -373,14 +367,35 @@ fn main() {
             .change_image_value("specularMap", &specular);
     }
 
-    let mut color = [0.0;4];
+    let left = Texture::new("models/cubemap/left.png".to_owned());
+    let right = Texture::new("models/cubemap/right.png".to_owned());
+    let down = Texture::new("models/cubemap/down.png".to_owned());
+    let up: Texture = Texture::new("models/cubemap/up.png".to_owned());
+    let foward = Texture::new("models/cubemap/foward.png".to_owned());
+    let backward = Texture::new("models/cubemap/png.png".to_owned());
 
+    
+    if let Some(model) = stage
+        .manager
+        .query_entity(&skybox)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Model>()
+    {
+        model.shader.descriptor_manager.change_cubemap_value(
+            "skybox",
+            [&left, &right, &down, &up, &foward, &backward],
+        );
+    }
+
+
+    let mut color = [0.0; 4];
 
     'running: loop {
         delta_time = 1.0 / ((fps.frame_count / fps.frame_elapsed) as f32);
 
         start_tick = Instant::now();
-
 
         for event in event_pump.poll_iter() {
             match event {
@@ -432,40 +447,35 @@ fn main() {
             camera.update_position(CameraDirection::DOWN, delta_time);
         }
 
-        let ctx = platform.context();
+        /*let ctx = platform.context();
         // Draw an egui window
-        egui::Window::new("Hello, world!").fixed_size(egui::Vec2::new(840.0,680.0)).show(&ctx, |ui| {
-            ui.label("Hello, world!");
-            if ui.button("Greet").clicked() {
-                println!("Hello, world!");
-            }
-            ui.horizontal(|ui| {
-                ui.label("Color: ");
-                ui.color_edit_button_rgba_premultiplied(&mut color);
+        egui::Window::new("Hello, world!")
+            .fixed_size(egui::Vec2::new(840.0, 680.0))
+            .show(&ctx, |ui| {
+                ui.label("Hello, world!");
+                if ui.button("Greet").clicked() {
+                    println!("Hello, world!");
+                }
+                ui.horizontal(|ui| {
+                    ui.label("Color: ");
+                    ui.color_edit_button_rgba_premultiplied(&mut color);
+                });
+                ui.horizontal_top(|ui| ui.checkbox(&mut true, "gasfs"))
             });
-            ui.horizontal_top(|ui| {
-                ui.checkbox(&mut true, "gasfs")
-            })
-        });
-    
+
         let output = platform.end_frame(&mut video).unwrap();
-    
-    
-        for (id,texture) in output.textures_delta.set {
-            println!("ID: {:?}\n{:?}",id,texture.pos);
-    
+
+        for (id, texture) in output.textures_delta.set {
+            println!("ID: {:?}\n{:?}", id, texture.pos);
+
             match texture.image {
                 ImageData::Color(color_image) => {
-                    println!("COLOR: {:?}\n{:?}",id,color_image.size);
-    
-                },
-                ImageData::Font(font_image) => {
-                    println!("FONT: {:?}\n{:?}",id,font_image.size);
-                },
+                    println!("COLOR: {:?}\n{:?}", id, color_image.size);
+                }
+                ImageData::Font(font_image) => {}
             };
-            
-        }
-        
+        }*/
+
         camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
         let command_buffer = app
@@ -493,91 +503,102 @@ fn main() {
             .unwrap()
             .begin_swapchain_renderpass(&app.device, command_buffer);
 
-        for i in 0..game_objects.len() {
-            let model_matrix = query
-                .query_entity(&game_objects[i])
-                .unwrap()
+
+        if let Some(transform) = stage
+            .manager
+            .query_entity(&skybox)
+            .unwrap()
+            .write()
+            .unwrap()
+            .get_mut_component::<Transform>()
+        {
+            transform.translation = camera.get_position();
+            println!("{:?}",transform.translation);
+        }
+
+
+        for (_, entity) in stage.manager.entities.write().unwrap().iter_mut() {
+            let model_matrix = entity
                 .write()
                 .unwrap()
                 .get_mut_component::<Transform>()
                 .unwrap()
                 .get_mat4();
 
-            let normal_matrix = query
-                .query_entity(&game_objects[i])
-                .unwrap()
+            let normal_matrix = entity
                 .write()
                 .unwrap()
                 .get_mut_component::<Transform>()
                 .unwrap()
                 .get_normal_matrix();
 
-            if let Some(cube) = query
-                .query_entity(&game_objects[i])
-                .unwrap()
-                .write()
-                .unwrap()
-                .get_mut_component::<Model>()
-            {
-                cube.shader.descriptor_manager.change_buffer_value(
-                    "GlobalUBO",
-                    frame_index as u32,
-                    &[camera.get_matrix()],
-                );
-                cube.shader.descriptor_manager.change_buffer_value(
-                    "MaterialInfo",
-                    frame_index as u32,
-                    &[material],
-                );
-                cube.shader.descriptor_manager.change_buffer_value(
-                    "LightInfo",
-                    frame_index as u32,
-                    &[raw_light_2],
-                );
+            let is = entity.read().unwrap().has_component::<Model>();
 
-                //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
-
-                cube.shader
-                    .pipeline
-                    .as_ref()
-                    .unwrap()
-                    .bind(&app.device, frame_info.command_buffer);
-
-                unsafe {
-                    app.device.device().cmd_bind_descriptor_sets(
-                        frame_info.command_buffer,
-                        vk::PipelineBindPoint::GRAPHICS,
-                        cube.shader.pipeline_layout.unwrap(),
-                        0,
-                        &[cube
-                            .shader
-                            .descriptor_manager
-                            .get_descriptor_set(frame_index as u32)],
-                        &[],
+            if is {
+                if let Some(cube) = entity.write().unwrap().get_mut_component::<Model>() {
+                    cube.shader.descriptor_manager.change_buffer_value(
+                        "GlobalUBO",
+                        frame_index as u32,
+                        &[camera.get_matrix()],
                     );
-                }
-
-                let push = PushConstantData {
-                    model_matrix,
-                    normal_matrix,
-                };
-
-                let push_bytes: &[u8] = unsafe {
-                    let struct_ptr = &push as *const _ as *const u8;
-                    std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
-                };
-
-                unsafe {
-                    app.device.device().cmd_push_constants(
-                        frame_info.command_buffer,
-                        cube.shader.pipeline_layout.unwrap(),
-                        vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
-                        0,
-                        push_bytes,
+                    cube.shader.descriptor_manager.change_buffer_value(
+                        "MaterialInfo",
+                        frame_index as u32,
+                        &[material],
                     );
-                }
+                    cube.shader.descriptor_manager.change_buffer_value(
+                        "LightInfo",
+                        frame_index as u32,
+                        &[raw_light_2, raw_light],
+                    );
 
-                cube.render(frame_info.command_buffer, &app.device);
+                    //renderer.render_game_objects(&device, &frame_info, &mut query, Rc::clone(&shader));
+
+                    cube.shader
+                        .pipeline
+                        .as_ref()
+                        .unwrap()
+                        .bind(&app.device, frame_info.command_buffer);
+
+                    unsafe {
+                        app.device.device().cmd_bind_descriptor_sets(
+                            frame_info.command_buffer,
+                            vk::PipelineBindPoint::GRAPHICS,
+                            cube.shader.pipeline_layout.unwrap(),
+                            0,
+                            &[cube
+                                .shader
+                                .descriptor_manager
+                                .get_descriptor_set(frame_index as u32)],
+                            &[],
+                        );
+                    }
+
+                    let push = PushConstantData {
+                        model_matrix,
+                        normal_matrix,
+                    };
+
+                    let push_bytes: &[u8] = unsafe {
+                        let struct_ptr = &push as *const _ as *const u8;
+                        std::slice::from_raw_parts(
+                            struct_ptr,
+                            std::mem::size_of::<PushConstantData>(),
+                        )
+                    };
+
+                    unsafe {
+                        app.device.device().cmd_push_constants(
+                            frame_info.command_buffer,
+                            cube.shader.pipeline_layout.unwrap(),
+                            vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                            0,
+                            push_bytes,
+                        );
+                    }
+
+                    cube.render(frame_info.command_buffer, &app.device);
+                }
             }
         }
 
@@ -591,12 +612,7 @@ fn main() {
             .unwrap()
             .end_frame(&app.device, &mut app.window);
 
-        /*stage.create_directional_shadow_maps(
-            Vec::new(),
-            app.renderer.get_swapchain_renderpass(),
-            &app.renderer,
-            app.get_device(),
-        );*/
+        //save_color_image_as_png(app.get_device(), (app.renderer.read().unwrap().swapchain.get_current_image(frame_index),app.renderer.read().unwrap().swapchain.get_swapchain_image_format()), (840,680),"./test.png");
 
         //print!("\rFPS: {:.2}", fps.frame_count / fps.frame_elapsed);
         //print!("\r{:?}",fps.frame_count / fps.frame_elapsed);
@@ -610,23 +626,134 @@ fn main() {
     }
 }
 
-pub fn save_color_image_as_png(color_image: &ColorImage, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn save_color_image_as_png(
+    device: Arc<Device>,
+    image: (vk::Image, vk::Format),
+    size: (u32, u32),
+    file_path: &str,
+) {
+    let buffer_size = size.0 * size.1 * 4;
+
+    let mut buffer = Buffer::new(
+        Arc::clone(&device),
+        buffer_size as u64,
+        1,
+        vk::BufferUsageFlags::TRANSFER_DST,
+        vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+    );
+
+    DescriptorManager::transition_image_layout(
+        Arc::clone(&device),
+        image.0,
+        image.1,
+        vk::ImageLayout::UNDEFINED,
+        vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+    );
+
+    let command_buffer: vk::CommandBuffer;
+
+    let alloc_info = vk::CommandBufferAllocateInfo {
+        s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+        p_next: std::ptr::null(),
+        command_pool: device.get_command_pool(),
+        level: vk::CommandBufferLevel::PRIMARY,
+        command_buffer_count: 1,
+    };
+
+    command_buffer = unsafe {
+        device
+            .device()
+            .allocate_command_buffers(&alloc_info)
+            .unwrap()[0]
+    };
+
+    let begin_info = vk::CommandBufferBeginInfo {
+        s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+        p_next: std::ptr::null(),
+        flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+        ..Default::default()
+    };
+
+    unsafe {
+        device
+            .device()
+            .begin_command_buffer(command_buffer, &begin_info)
+            .expect("Failed to begin command buffer!");
+    }
+
+    let region = vk::BufferImageCopy {
+        buffer_offset: 0,
+        buffer_row_length: 0,
+        buffer_image_height: 0,
+        image_subresource: vk::ImageSubresourceLayers {
+            aspect_mask: vk::ImageAspectFlags::COLOR,
+            mip_level: 0,
+            base_array_layer: 0,
+            layer_count: 1,
+        },
+        image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+        image_extent: vk::Extent3D {
+            width: 840,
+            height: 680,
+            depth: 1,
+        },
+    };
+
+    unsafe {
+        device.device().cmd_copy_image_to_buffer(
+            command_buffer,
+            image.0,
+            vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            buffer.get_buffer(),
+            &[region],
+        )
+    }
+
+    unsafe {
+        device
+            .device()
+            .end_command_buffer(command_buffer)
+            .expect("Failed to end command buffer!");
+        let submit_info = vk::SubmitInfo {
+            s_type: vk::StructureType::SUBMIT_INFO,
+            command_buffer_count: 1,
+            p_command_buffers: &command_buffer,
+            ..Default::default()
+        };
+        device
+            .device()
+            .queue_submit(device.graphics_queue(), &[submit_info], vk::Fence::null())
+            .expect("Failed to submit data");
+        device
+            .device()
+            .queue_wait_idle(device.graphics_queue())
+            .unwrap();
+        device
+            .device()
+            .free_command_buffers(device.get_command_pool(), &[command_buffer]);
+    }
+
+    buffer.map(None, None);
+
+    let data = buffer.convert_to_raw_data();
+
+    //println!("{:?}",data);
+
     // Create an empty ImageBuffer
-    let mut image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(color_image.size[0] as u32, color_image.size[1] as u32);
+    let mut image_buffer = ImageBuffer::new(840, 680);
 
     // Copy the pixels from the ColorImage into the ImageBuffer
     for (x, y, pixel) in image_buffer.enumerate_pixels_mut() {
-        let color32 = color_image.pixels[(y as usize * color_image.size[0]) + x as usize];
-        *pixel = Rgba(color32.to_array());
+        let index = (y * 1024 + x) as usize;
+        let depth_value = data[index];
+        *pixel = Luma([depth_value]);
     }
 
     // Convert the ImageBuffer into a DynamicImage
-    let dynamic_image: DynamicImage = DynamicImage::ImageRgba8(image_buffer);
+    let dynamic_image: DynamicImage = DynamicImage::ImageLuma8(image_buffer);
 
     // Save the DynamicImage as a PNG file
-    dynamic_image.save(file_path)?;
-
-    Ok(())
+    dynamic_image.save(file_path).unwrap();
 }
 
 /*fn main() {

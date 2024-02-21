@@ -31,7 +31,7 @@ pub enum CurValue {
 
 pub struct DescriptorInformation {
     type_id: Option<std::any::TypeId>,
-    buffers: Vec<Buffer>,
+    pub buffers: Vec<Buffer>,
     images: Vec<Image>,
     binding: u32,
     buffer_sizes: (u64, u64),
@@ -217,7 +217,34 @@ impl DescriptorManager {
 
                     values.images.push(image);
                 }
-                CurValue::CUBEMAP_COLOR_IMAGE => unimplemented!(),
+                CurValue::CUBEMAP_COLOR_IMAGE => {
+                    let buffer_size = values.image_size.0 * values.image_size.1 * 4;
+
+                    let mut buffer = Buffer::new(
+                        Arc::clone(&self.device),
+                        buffer_size as u64,
+                        6,
+                        vk::BufferUsageFlags::TRANSFER_SRC,
+                        vk::MemoryPropertyFlags::HOST_VISIBLE,
+                    );
+
+                    buffer.map(None, None);
+
+                    values.buffers.push(buffer);
+
+                    let mut image = Image::new_3d(
+                        &self.device,
+                        vk::Format::R8G8B8A8_SRGB,
+                        vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
+                        vk::MemoryPropertyFlags::DEVICE_LOCAL,
+                        values.image_size.0,
+                        values.image_size.1,
+                    );
+
+                    image.new_3d_image_view(&self.device, vk::ImageAspectFlags::COLOR);
+
+                    values.images.push(image);
+                }
                 CurValue::CUBEMAP_DEPTH_IMAGE => unimplemented!(),
             }
         }
@@ -230,9 +257,6 @@ impl DescriptorManager {
             self.layout_config
                 .change_binding_count(binding, value_count as u32);
 
-            for buffer in &mut self.descriptor_table.get_mut(label).unwrap().buffers {
-                drop(buffer);
-            }
             self.descriptor_table
                 .get_mut(label)
                 .unwrap()
@@ -240,8 +264,6 @@ impl DescriptorManager {
                 .clear();
 
             self.build_descriptor(label, value_count);
-            self.descriptor_sets.clear();
-            self.preload_we();
         }
     }
 
@@ -252,18 +274,17 @@ impl DescriptorManager {
 
         if self.descriptor_table.get(label).unwrap().value == CurValue::COLOR_IMAGE
             || self.descriptor_table.get(label).unwrap().value == CurValue::DEPTH_IMAGE
+            || self.descriptor_table.get(label).unwrap().value == CurValue::CUBEMAP_COLOR_IMAGE
         {
             for image in &mut self.descriptor_table.get_mut(label).unwrap().images {
                 image.clean_image(&self.device);
                 image.clean_view(&self.device);
                 image.clean_memory(&self.device);
-                drop(image);
             }
 
             for buffer in &mut self.descriptor_table.get_mut(label).unwrap().buffers {
                 buffer.flush(None, None);
                 buffer.unmap();
-                drop(buffer);
             }
 
             self.descriptor_table.get_mut(label).unwrap().images.clear();
@@ -275,8 +296,10 @@ impl DescriptorManager {
         }
 
         self.build_descriptor(label, 1);
-        self.descriptor_sets.clear();
-        self.preload_we();
+
+        for buffer in &mut self.descriptor_table.get_mut(label).unwrap().buffers {
+            println!("{:?}", buffer.get_buffer_size());
+        }
     }
 
     pub fn preload_we(&mut self) {
@@ -359,6 +382,80 @@ impl DescriptorManager {
         }
     }
 
+    pub fn update_we(&mut self) {
+        self.descriptor_set_layout = self.layout_config.build(&self.device);
+
+        for i in 0..MAX_FRAMES_IN_FLIGHT {
+            let mut writers = Vec::new();
+
+            let mut buffers: HashMap<u32, vk::DescriptorBufferInfo> = HashMap::new();
+            let mut images: HashMap<u32, vk::DescriptorImageInfo> = HashMap::new();
+
+            for (binding, is_uniform, name) in &self.descriptor_positions {
+                if *is_uniform {
+                    buffers.insert(
+                        *binding,
+                        self.descriptor_table.get(name).unwrap().buffers[i]
+                            .descriptor_info(None, None),
+                    );
+                } else {
+                    images.insert(
+                        *binding,
+                        self.descriptor_table.get(name).unwrap().images[i].descriptor_info(),
+                    );
+                }
+            }
+
+            for values in self.descriptor_table.values() {
+                if values.value == CurValue::UNIFORM_BUFFER {
+                    let binding_description = self
+                        .descriptor_set_layout
+                        .bindings
+                        .get(&values.binding)
+                        .expect("Layout does not contain specified binding");
+
+                    let write = vk::WriteDescriptorSet {
+                        s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
+                        p_next: std::ptr::null(),
+                        dst_set: self.descriptor_sets[i],
+                        dst_binding: values.binding,
+                        dst_array_element: 0,
+                        descriptor_count: 1,
+                        descriptor_type: vk::DescriptorType::UNIFORM_BUFFER,
+                        p_image_info: std::ptr::null(),
+                        p_buffer_info: &buffers[&values.binding],
+                        p_texel_buffer_view: std::ptr::null(),
+                    };
+
+                    writers.push(write);
+                } else {
+                    let binding_description = self
+                        .descriptor_set_layout
+                        .bindings
+                        .get(&values.binding)
+                        .expect("Layout does not contain specified binding");
+
+                    let write = vk::WriteDescriptorSet {
+                        s_type: vk::StructureType::WRITE_DESCRIPTOR_SET,
+                        p_next: std::ptr::null(),
+                        dst_set: self.descriptor_sets[i],
+                        dst_binding: values.binding,
+                        dst_array_element: 0,
+                        descriptor_count: 1,
+                        descriptor_type: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                        p_image_info: &images[&values.binding],
+                        p_buffer_info: std::ptr::null(),
+                        p_texel_buffer_view: std::ptr::null(),
+                    };
+
+                    writers.push(write);
+                }
+            }
+
+            unsafe { self.device.device().update_descriptor_sets(&writers, &[]) };
+        }
+    }
+
     pub fn print_weege(&self) {
         println!("{:?}", self.descriptor_sets);
         println!("{:?}", self.descriptor_set_layout);
@@ -366,18 +463,17 @@ impl DescriptorManager {
     }
 
     pub fn change_buffer_value<T: Any>(&mut self, label: &str, cur_frame: u32, values: &[T]) {
-        let cur_struct = self
-            .descriptor_table
-            .get_mut(&label.to_string())
-            .expect("Failed to get the value!");
+        if let Some(cur_struct) = self.descriptor_table.get_mut(&label.to_string()) {
+            let value_size = std::mem::size_of::<T>();
 
-        let value_size = std::mem::size_of::<T>();
+            let max_size = (value_size * values.len()) as u64;
 
-        let max_size = (value_size * values.len()) as u64;
-
-        if max_size == cur_struct.buffers[cur_frame as usize].get_buffer_size() {
-            cur_struct.buffers[cur_frame as usize].write_to_buffer(values, None, None);
-            cur_struct.buffers[cur_frame as usize].flush(None, None)
+            if max_size == cur_struct.buffers[cur_frame as usize].get_buffer_size() {
+                cur_struct.buffers[cur_frame as usize].write_to_buffer(values, None, None);
+                cur_struct.buffers[cur_frame as usize].flush(None, None)
+            }
+        } else {
+            println!("ERROR: Value doesn't exist")
         }
     }
 
@@ -387,8 +483,132 @@ impl DescriptorManager {
             .get_mut(&label.to_string())
             .expect("Failed to get the value!");
 
+        if let Some(cur_struct) = self.descriptor_table.get_mut(&label.to_string()) {
+            for i in 0..cur_struct.images.len() {
+                cur_struct.buffers[i].write_to_buffer(&value.get_texture_data(), None, None);
+
+                DescriptorManager::transition_image_layout(
+                    Arc::clone(&self.device),
+                    cur_struct.images[i].get_image(),
+                    cur_struct.images[i].get_format(),
+                    vk::ImageLayout::UNDEFINED,
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                );
+
+                let command_buffer: vk::CommandBuffer;
+
+                let alloc_info = vk::CommandBufferAllocateInfo {
+                    s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+                    p_next: std::ptr::null(),
+                    command_pool: self.device.get_command_pool(),
+                    level: vk::CommandBufferLevel::PRIMARY,
+                    command_buffer_count: 1,
+                };
+
+                command_buffer = unsafe {
+                    self.device
+                        .device()
+                        .allocate_command_buffers(&alloc_info)
+                        .unwrap()[0]
+                };
+
+                let begin_info = vk::CommandBufferBeginInfo {
+                    s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+                    p_next: std::ptr::null(),
+                    flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+                    ..Default::default()
+                };
+
+                unsafe {
+                    self.device
+                        .device()
+                        .begin_command_buffer(command_buffer, &begin_info)
+                        .expect("Failed to begin command buffer!");
+                }
+
+                let region = vk::BufferImageCopy {
+                    buffer_offset: 0,
+                    buffer_row_length: 0,
+                    buffer_image_height: 0,
+                    image_subresource: vk::ImageSubresourceLayers {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
+                        mip_level: 0,
+                        base_array_layer: 0,
+                        layer_count: 1,
+                    },
+                    image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+                    image_extent: vk::Extent3D {
+                        width: value.get_texture_info().0,
+                        height: value.get_texture_info().1,
+                        depth: 1,
+                    },
+                };
+
+                unsafe {
+                    self.device.device().cmd_copy_buffer_to_image(
+                        command_buffer,
+                        cur_struct.buffers[i].get_buffer(),
+                        cur_struct.images[i].get_image(),
+                        vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                        &[region],
+                    );
+                }
+
+                unsafe {
+                    self.device
+                        .device()
+                        .end_command_buffer(command_buffer)
+                        .expect("Failed to end command buffer!");
+                    let submit_info = vk::SubmitInfo {
+                        s_type: vk::StructureType::SUBMIT_INFO,
+                        command_buffer_count: 1,
+                        p_command_buffers: &command_buffer,
+                        ..Default::default()
+                    };
+                    self.device
+                        .device()
+                        .queue_submit(
+                            self.device.graphics_queue(),
+                            &[submit_info],
+                            vk::Fence::null(),
+                        )
+                        .expect("Failed to submit data");
+                    self.device
+                        .device()
+                        .queue_wait_idle(self.device.graphics_queue())
+                        .unwrap();
+                    self.device
+                        .device()
+                        .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
+                }
+
+                DescriptorManager::transition_image_layout(
+                    Arc::clone(&self.device),
+                    cur_struct.images[i].get_image(),
+                    cur_struct.images[i].get_format(),
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    vk::ImageLayout::GENERAL,
+                );
+            }
+        } else {
+            println!("ERROR: Failed to get the value");
+        }
+    }
+
+    pub fn change_cubemap_value(&mut self, label: &str, value: [&Texture; 6]) {
+        let cur_struct = self
+            .descriptor_table
+            .get_mut(&label.to_string())
+            .expect("Failed to get the value!");
+
+        let mut data = Vec::new();
+
+        for image in value {
+            data.extend(image.get_texture_data());
+        }
+
         for i in 0..cur_struct.images.len() {
-            cur_struct.buffers[i].write_to_buffer(&value.get_texture_data(), None, None);
+            cur_struct.buffers[i].write_to_buffer(&data, None, None);
 
             DescriptorManager::transition_image_layout(
                 Arc::clone(&self.device),
@@ -437,12 +657,12 @@ impl DescriptorManager {
                     aspect_mask: vk::ImageAspectFlags::COLOR,
                     mip_level: 0,
                     base_array_layer: 0,
-                    layer_count: 1,
+                    layer_count: 6,
                 },
                 image_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
                 image_extent: vk::Extent3D {
-                    width: value.get_texture_info().0,
-                    height: value.get_texture_info().1,
+                    width: value[0].get_texture_info().0,
+                    height: value[0].get_texture_info().1,
                     depth: 1,
                 },
             };
@@ -495,7 +715,124 @@ impl DescriptorManager {
         }
     }
 
-    fn transition_image_layout(
+    pub fn change_image_value_vk(&mut self, label: &str, value: vk::Image) {
+        let cur_struct = self
+            .descriptor_table
+            .get_mut(&label.to_string())
+            .expect("Failed to get the value!");
+
+        for i in 0..cur_struct.images.len() {
+            DescriptorManager::transition_image_layout(
+                Arc::clone(&self.device),
+                cur_struct.images[i].get_image(),
+                cur_struct.images[i].get_format(),
+                vk::ImageLayout::UNDEFINED,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+            );
+
+            let command_buffer: vk::CommandBuffer;
+
+            let alloc_info = vk::CommandBufferAllocateInfo {
+                s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
+                p_next: std::ptr::null(),
+                command_pool: self.device.get_command_pool(),
+                level: vk::CommandBufferLevel::PRIMARY,
+                command_buffer_count: 1,
+            };
+
+            command_buffer = unsafe {
+                self.device
+                    .device()
+                    .allocate_command_buffers(&alloc_info)
+                    .unwrap()[0]
+            };
+
+            let begin_info = vk::CommandBufferBeginInfo {
+                s_type: vk::StructureType::COMMAND_BUFFER_BEGIN_INFO,
+                p_next: std::ptr::null(),
+                flags: vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT,
+                ..Default::default()
+            };
+
+            unsafe {
+                self.device
+                    .device()
+                    .begin_command_buffer(command_buffer, &begin_info)
+                    .expect("Failed to begin command buffer!");
+            }
+
+            let region = vk::ImageCopy {
+                src_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+                dst_offset: vk::Offset3D { x: 0, y: 0, z: 0 },
+                extent: vk::Extent3D {
+                    width: 1024,
+                    height: 1024,
+                    depth: 1,
+                },
+                src_subresource: vk::ImageSubresourceLayers {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                },
+                dst_subresource: vk::ImageSubresourceLayers {
+                    aspect_mask: vk::ImageAspectFlags::COLOR,
+                    mip_level: 0,
+                    base_array_layer: 0,
+                    layer_count: 1,
+                },
+            };
+
+            unsafe {
+                self.device.device().cmd_copy_image(
+                    command_buffer,
+                    value,
+                    vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                    cur_struct.images[i].get_image(),
+                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                    &[region],
+                )
+            };
+
+            unsafe {
+                self.device
+                    .device()
+                    .end_command_buffer(command_buffer)
+                    .expect("Failed to end command buffer!");
+                let submit_info = vk::SubmitInfo {
+                    s_type: vk::StructureType::SUBMIT_INFO,
+                    command_buffer_count: 1,
+                    p_command_buffers: &command_buffer,
+                    ..Default::default()
+                };
+                self.device
+                    .device()
+                    .queue_submit(
+                        self.device.graphics_queue(),
+                        &[submit_info],
+                        vk::Fence::null(),
+                    )
+                    .expect("Failed to submit data");
+                self.device
+                    .device()
+                    .queue_wait_idle(self.device.graphics_queue())
+                    .unwrap();
+                self.device
+                    .device()
+                    .free_command_buffers(self.device.get_command_pool(), &[command_buffer]);
+            }
+
+            DescriptorManager::transition_image_layout(
+                Arc::clone(&self.device),
+                cur_struct.images[i].get_image(),
+                cur_struct.images[i].get_format(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                vk::ImageLayout::GENERAL,
+            );
+        }
+    }
+
+    pub fn transition_image_layout(
         device: Arc<Device>,
         image: vk::Image,
         format: vk::Format,
@@ -600,7 +937,7 @@ impl DescriptorManager {
     }
 
     pub fn drop_values(&mut self, device: &Device) {
-        for (id,info) in self.descriptor_table.iter_mut() {
+        for (id, info) in self.descriptor_table.iter_mut() {
             if info.buffers.len() > 0 {
                 for buffer in &info.buffers {
                     drop(buffer);
@@ -615,7 +952,7 @@ impl DescriptorManager {
                 }
             }
         }
-        
+
         self.descriptor_pool.destroy(&device);
         self.descriptor_set_layout.destroy(&device);
     }

@@ -89,6 +89,10 @@ impl Swapchain {
         return self.swapchain_images[index].get_image_view();
     }
 
+    pub fn get_current_image(&self,index:usize) -> vk::Image {
+        return self.swapchain_images[index].get_image();
+    }
+
     pub fn image_count(&self) -> usize {
         return self.swapchain_images.len();
     }

@@ -37,7 +37,7 @@ impl Model {
 
         Self {
             device: Arc::clone(&device),
-            meshes: vec![/*mesh*/],
+            meshes: vec![mesh],
             shader,
             component_id: 0,
         }
@@ -140,6 +140,12 @@ impl Model {
         return &self.game_object;
     }
 }*/
+
+impl Drop for Model {
+    fn drop(&mut self) {
+        self.shader.destroy(&self.device);
+    }
+}
 
 impl Component for Model {}
 

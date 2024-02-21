@@ -1,7 +1,9 @@
 use lumina_core::device::Device;
 
 use ash::vk;
+use core::slice;
 use std::{ffi::c_void, rc::Rc, sync::{Arc, Mutex}};
+
 
 
 pub struct Buffer {
@@ -163,6 +165,14 @@ impl Buffer {
             offset: new_offset,
             range: new_size,
         };
+    }
+
+    pub fn convert_to_raw_data(&self) -> Vec<u8> {
+        let buffer_data = unsafe {
+            std::slice::from_raw_parts(self.mapped.lock().unwrap().unwrap() as *const u8, 2284800)
+        };
+        
+        return buffer_data.to_vec();
     }
 }
 

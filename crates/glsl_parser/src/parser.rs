@@ -82,7 +82,7 @@ impl Parser {
             if !line.trim().is_empty() {
                 if line.contains("//") || line.contains("*/") || line.contains("/*") {
                 } else {
-                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler2D") {
+                    if line.contains("uniform") && !line.contains("push_constant") && line.contains("sampler2D") || line.contains("uniform") && !line.contains("push_constant") && line.contains("samplerCube") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
@@ -94,6 +94,8 @@ impl Parser {
                             let value = match formatted_type.to_lowercase().as_str() {
                                 "color" => {1},
                                 "depth" => {2},
+                                "cubemap-color" => {3},
+                                "cubemap-depth" => {4},
                                 &_ => {1}
                             };
 
@@ -106,7 +108,7 @@ impl Parser {
                             },
                         );
                     }
-                    if !line.contains("sampler2D") && line.contains("uniform") && !line.contains("push_constant") {
+                    if !line.contains("sampler2D") && !line.contains("samplerCube") && line.contains("uniform") && !line.contains("push_constant") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
@@ -145,7 +147,7 @@ impl Parser {
             if !line.trim().is_empty() {
                 if line.contains("//") || line.contains("*/") || line.contains("/*") {
                 } else {
-                    if line.contains("uniform") && !line.contains("push_constant") &&  line.contains("sampler2D") {
+                    if line.contains("uniform") && !line.contains("push_constant") && line.contains("sampler2D") || line.contains("uniform") && !line.contains("push_constant") && line.contains("samplerCube") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
@@ -157,6 +159,8 @@ impl Parser {
                         let value = match formatted_type.to_lowercase().as_str() {
                             "color" => {1},
                             "depth" => {2},
+                            "cubemap-color" => {3},
+                            "cubemap-depth" => {4},
                             &_ => {1}
                         };
 
@@ -169,13 +173,14 @@ impl Parser {
                             },
                         );
                     }
-                    if !line.contains("sampler2D") && line.contains("uniform") && !line.contains("push_constant") {
+                    if !line.contains("sampler2D") && !line.contains("samplerCube") && line.contains("uniform") && !line.contains("push_constant") {
                         let words: Vec<&str> = line.split_whitespace().collect();
                         let uniform_pos = words
                             .iter()
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
+                            println!("{:?}",vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", ""));
                             let size = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "").parse::<u32>().unwrap();
 
                             Parser::get_descriptor_binding(&words);
