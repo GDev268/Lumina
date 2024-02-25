@@ -88,9 +88,9 @@ impl App {
 
         let json_string = String::from_utf8(file_content).unwrap();
         let json: Value = serde_json::from_str(&json_string).unwrap();
-        println!("JSON Content: {:?}", serde_json::to_string_pretty(&json));
+        println!("JSON Content: {:?}", serde_json::to_string_pretty(&json["game_objects"]));
 
-        //self.stage = Stage::new("");
+        self.stage = Some(Stage::new(""));
     }
 
     pub fn save_scene(&mut self) {
@@ -123,11 +123,11 @@ impl App {
 
         saver.modify_project_name(&self.stage.as_ref().unwrap().name);
 
-        let lights = self.stage.as_ref().unwrap().get_light_json();
+        //let lights = self.stage.as_ref().unwrap().get_light_json();
 
-        saver.modify_array_value("lights", lights);
+        //saver.modify_array_value("lights", lights);
 
-        saver.save_data();
+        //saver.save_data();
     }
 
     /*pub fn render(&mut self) {
@@ -191,15 +191,11 @@ impl App {
     pub fn get_device(&self) -> Arc<Device> {
         Arc::clone(&self.device)
     }
-}
 
-
-impl Drop for App {
-    fn drop(&mut self) {
+    pub fn drop(&mut self) {
         unsafe {
             self.renderer.write().unwrap().cleanup(&self.device);
             self.device.device().device_wait_idle().unwrap();
-            self.device.cleanup();
         }
     }
 }

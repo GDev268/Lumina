@@ -66,8 +66,8 @@ impl Vertex3D {
 
 #[derive(Clone, Copy)]
 pub struct Vertex2D {
-    pub position: glam::Vec3,
-    pub normal: glam::Vec3,
+    pub position: glam::Vec2,
+    pub color: glam::Vec4,
     pub uv: glam::Vec2,
 }
 
@@ -81,14 +81,14 @@ impl Vertex2D {
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 0,
             binding: 0,
-            format: vk::Format::R32G32B32_SFLOAT,
+            format: vk::Format::R32G32_SFLOAT,
             offset: offset_of!(Self, position),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 1,
             binding: 0,
-            format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Self, normal),
+            format: vk::Format::R32G32B32A32_SFLOAT,
+            offset: offset_of!(Self, color),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 2,

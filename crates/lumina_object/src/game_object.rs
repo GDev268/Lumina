@@ -12,7 +12,7 @@ use lazy_static::lazy_static;
 static mut EXISTING_IDS: Vec<u32> = vec![];
 
 pub trait Component: Any + Send + Sync {
-    fn convert_to_json(&self) -> Value {
+    fn convert_to_json(&self,id:u32) -> Value {
         serde_json::json!({})
     }
 }

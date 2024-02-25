@@ -8,6 +8,9 @@ edition = "2021"
 [dependencies]
 #Lumina
 lumina_core = { path = "../lumina_core", version = "0.1.0" }
+lumina_atlas = { path = "../lumina_atlas", version = "0.1.0" }
+
 
 #Other
 ash = {version="0.37.3",features = ["linked", "debug"]}
+image = "0.24.7"

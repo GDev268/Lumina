@@ -18,11 +18,13 @@ use cgmath::num_traits::float::FloatCore;
 use egui::{epaint::Primitive, ColorImage, ImageData, Key};
 use glsl_parser::parser::Parser;
 use image::{DynamicImage, ImageBuffer, Luma, Rgba};
+use lumina_atlas::atlas::Atlas;
 use lumina_ecs::{app::App, query::Query, stage::Stage};
 use rand::Rng;
 
 use lumina_core::{
     device::Device, fps_manager::FPS, swapchain::Swapchain, texture::Texture, window::Window,
+    Vertex2D,
 };
 
 use lumina_data::{
@@ -37,18 +39,16 @@ use lumina_input::{
     mouse::{Mouse, MouseButton},
 };
 use lumina_object::{
-    game_object::{self, GameObject},
+    game_object::{self, Component, GameObject},
     transform::Transform,
 };
 use lumina_render::{
     camera::{Camera, CameraDirection},
+    gui_canvas::GuiCanvas,
     model::Model,
     renderer::Renderer,
 };
-use lumina_scene::{FrameInfo, GlobalUBO};
 //use lumina_pbr::material::Material;
-
-use lazy_static::lazy_static;
 
 use sdl2::{event::Event, Sdl};
 
@@ -124,24 +124,39 @@ fn main() {
 
     let mut platform = egui_sdl2_platform::Platform::new(app.window._window.size()).unwrap();
 
-    let mut stage = Stage::new("fasf");
+    let mut stage = Stage::new("hfd");
 
-    let mut sky_texture = Texture::new("models/cubemap/top.jpg");
-    sky_texture.create_texture();
-    let mut texture = Texture::new("models/Character_baseColor.jpeg");
-    texture.create_texture();
+    let instant = Instant::now();
 
-    let mut paving = Texture::new("models/PavingStone_Color.png");
-    paving.create_texture();
+    let mut tex_sky_texture = Texture::new_raw("models/cubemap/top.jpg");
+    let mut tex_texture = Texture::new_raw("models/Character_baseColor.jpeg");
+    let mut tex_paving = Texture::new_raw("models/PavingStone_Color.png");
+        
+    //app.load_file("hfd.lumin");
 
+    
+    /*let mut atlas = Atlas::new();
+
+    atlas.pack_textures(vec![&mut tex_sky_texture,&mut tex_texture,&mut tex_paving,&mut tex_sky_texture_2,&mut tex_texture_2,&mut tex_paving_2]);
+    
+    println!("{:?}",atlas.images);
+
+    atlas.texture.save("test.png").unwrap();
+
+    panic!("took: {:?} seconds",instant.elapsed().as_secs_f64());*/
+    
     let model = Model::new_from_model(app.get_device(), "models/men.gltf");
+
+    //println!("{:?}",model.convert_to_json());
 
     let low_poly: GameObject = stage.manager.spawn();
 
     stage.manager.push(&low_poly, model);
 
-    app.save_scene();
-    app.load_file("./test.lumin");
+    //app.save_scene();
+    stage.save_scene();
+
+    app.load_file("./hfd.lumin");
 
     if let Some(transform) = stage
         .manager
@@ -172,7 +187,7 @@ fn main() {
         model
             .shader
             .descriptor_manager
-            .change_image_size("colorMap", 1024, 1024, 1);
+            .change_image_size("colorMap", 1024, 1024);
         /*model
             .shader
             .descriptor_manager
@@ -190,8 +205,6 @@ fn main() {
 
         //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
-
-
 
     let model = shapes::model_cube(app.get_device());
 
@@ -228,7 +241,7 @@ fn main() {
         model
             .shader
             .descriptor_manager
-            .change_image_size("colorMap", 2048, 2048, 1);
+            .change_image_size("colorMap", 2048, 2048);
         /* model
             .shader
             .descriptor_manager
@@ -246,8 +259,6 @@ fn main() {
 
         //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
-
-
 
     let mut model = shapes::model_cube(app.get_device());
 
@@ -289,15 +300,14 @@ fn main() {
         model
             .shader
             .descriptor_manager
-            .change_image_size("skybox", 2048, 2048, 1);
+            .change_image_size("skybox", 2048, 2048);
         model.shader.descriptor_manager.update_we();
 
         //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
 
-
-
     let mut camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
+    let gui_camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), true);
 
     camera.speed = 10.0;
 
@@ -358,8 +368,12 @@ fn main() {
         },
     };
 
+    let sky_texture = tex_sky_texture.create_texture();
+    let texture = tex_texture.create_texture();
+    let paving = tex_paving.create_texture();
 
-    
+    let mut gui_canvas = GuiCanvas::new(app.get_device(),app.renderer.read().unwrap().get_swapchain_renderpass());
+
     let mut fps = FPS::new();
     fps._fps = 300;
     let mut global_timer = Instant::now();
@@ -377,9 +391,9 @@ fn main() {
         .get_mut_component::<Model>()
     {
         model
-            .shader
-            .descriptor_manager
-            .change_image_value("colorMap", 0, &texture);
+        .shader
+        .descriptor_manager
+        .change_image_value("colorMap", &texture);
         /*model
             .shader
             .descriptor_manager
@@ -399,9 +413,9 @@ fn main() {
         .get_mut_component::<Model>()
     {
         model
-            .shader
-            .descriptor_manager
-            .change_image_value("colorMap", 0, &paving);
+        .shader
+        .descriptor_manager
+        .change_image_value("colorMap", &paving);
         /*model
             .shader
             .descriptor_manager
@@ -429,7 +443,6 @@ fn main() {
     {
         model.shader.descriptor_manager.change_cubemap_value(
             "skybox",
-            0,
             [
                 &sky_texture,
                 &sky_texture,
@@ -523,25 +536,13 @@ fn main() {
 
             match texture.image {
                 ImageData::Color(color_image) => {
-                    println!("COLOR: {:?}\n{:?}", id, color_image.size);
+                    println!("COLOR: {:?}\n{:?}", id, color_image.pixels);
                 }
-                ImageData::Font(font_image) => {}
-            };
-        }
-
-        for cp in pj {
-            match &cp.primitive {
-                Primitive::Mesh(mesh) => {
-                    //println!("{:?}", mesh.vertices);
-                }
-                _ => {
-                    println!("It's the other shit lol")
+                ImageData::Font(font_image) => {
+                    println!("FONT: {:?}\n{:?}", id, font_image.size);
                 }
             };
-            //panic!("");
         }
-
-        //stage.render(Arc::clone(&app.renderer), app.get_device(), command_buffer, camera);
 
         camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
@@ -580,6 +581,44 @@ fn main() {
             camera,
         );
 
+        /*let mut vertices: Vec<Vec<Vertex2D>> = Vec::new();
+        let mut indices: Vec<Vec<u32>> = Vec::new();
+
+        for clipped in pj {
+            match &clipped.primitive {
+                Primitive::Mesh(mesh) => {
+                    let mut temp_verts = Vec::new();
+
+                    for vertice in mesh.vertices.iter() {
+                        temp_verts.push(Vertex2D {
+                            position: glam::vec2(vertice.pos.x, vertice.pos.y),
+                            color: glam::vec4(
+                                vertice.color.r() as f32,
+                                vertice.color.g() as f32,
+                                vertice.color.b() as f32,
+                                vertice.color.a() as f32,
+                            ),
+                            uv: glam::vec2(vertice.uv.x, vertice.uv.y),
+                        });
+                    }
+
+                    vertices.push(temp_verts);
+                    indices.push(mesh.indices.clone());
+                }
+                _ => {
+                    println!("It's the other shit lol")
+                }
+            };
+            //panic!("");
+        }
+
+        gui_canvas.render(
+            command_buffer,
+            vertices,
+            indices,
+            app.renderer.read().unwrap().get_frame_index() as u32,
+            gui_camera,
+        );*/
 
         if keyboard_pool.get_key(Keycode::F12) {
             save_color_image_as_png(
@@ -613,7 +652,7 @@ fn main() {
 
         let title = String::from("Lumina Dev App ")
             + format!("[FPS: {:.0}]", fps.frame_count / fps.frame_elapsed).as_str();
-        app.window.get_window().set_title(title.as_str());
+        app.window.get_window().set_title(title.as_str()).unwrap();
         if start_tick.elapsed() < fps.fps_limit {
             let sleep_duration =
                 if let Some(remaining) = fps.fps_limit.checked_sub(start_tick.elapsed()) {
@@ -626,6 +665,8 @@ fn main() {
         }
         fps.update();
     }
+
+    app.drop();
 }
 
 pub fn save_color_image_as_png(

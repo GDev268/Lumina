@@ -11,6 +11,7 @@ use std::{
 use ash::vk;
 use lumina_core::{device::Device, framebuffer::Framebuffer, image::Image, window::Window, Vertex3D};
 use lumina_data::{buffer::Buffer, descriptor_manager::DescriptorManager};
+use lumina_files::saver::Saver;
 use lumina_graphic::shader::{PushConstantData, Shader};
 use lumina_object::{game_object::{Component, GameObject}, transform::Transform};
 use lumina_pbr::light::Light;
@@ -198,6 +199,7 @@ impl Stage {
                         .bind(&device, command_buffer);
 
                     unsafe {
+                        device.device().device_wait_idle().unwrap();
                         device.device().cmd_bind_descriptor_sets(
                             command_buffer,
                             vk::PipelineBindPoint::GRAPHICS,
@@ -240,7 +242,65 @@ impl Stage {
         }
     }
 
-    pub fn get_light_json(&self) -> Vec<Value> {
+    pub fn save_scene(&self) {
+        let num_cpus = num_cpus::get();
+
+        let saver = Arc::new(RwLock::new(Saver::new()));
+
+        let handles: Vec<_> = (0..num_cpus).map(|i| {
+            let manager_clone = self.manager.entities.clone();
+
+            let saver_clone = saver.clone();
+            saver.write().unwrap().modify_project_name(&self.name);
+
+            thread::spawn(move || {
+                let size = manager_clone.read().unwrap().len();
+                let start = i * size / num_cpus;
+                let end = if i == num_cpus - 1 {
+                    size
+                } else {
+                    (i + 1) * size / num_cpus
+                };
+
+                for (id,entity) in manager_clone.read().unwrap().iter().skip(start).take(end - start) {
+                    let mut saver_lock = saver_clone.write().unwrap();
+                    saver_lock.json["game_objects"].as_array_mut().unwrap().push(serde_json::json!(*id));
+
+                    let is_light = entity.read().unwrap().has_component::<Light>();
+                    let is_model: bool = entity.read().unwrap().has_component::<Model>();
+                    let is_transform: bool = entity.read().unwrap().has_component::<Transform>();
+
+                    if is_light {
+                        if let Some(light) = entity.read().unwrap().get_component::<Light>() {
+                            saver_lock.json["lights"].as_array_mut().unwrap().push(light.convert_to_json(*id));
+                        }
+                    }
+
+                    if is_model {
+                        if let Some(model) = entity.read().unwrap().get_component::<Model>() {
+                            saver_lock.json["models"].as_array_mut().unwrap().push(model.convert_to_json(*id));
+                        }
+                    }
+
+                    if is_transform {
+                        if let Some(transform) = entity.read().unwrap().get_component::<Transform>() {
+                            saver_lock.json["transforms"].as_array_mut().unwrap().push(transform.convert_to_json(*id));
+                        }
+                    }
+                }
+
+            })
+        })
+        .collect();
+
+        for handle in handles {
+           handle.join().unwrap();
+        }
+
+        saver.write().unwrap().save_data();
+    }
+
+    /*pub fn get_light_json(&self) -> Vec<Value> {
         let num_cpus = num_cpus::get();
 
         let mut light_values: Vec<Value> = Vec::new();
@@ -282,7 +342,7 @@ impl Stage {
         });
 
         light_values        
-    }
+    }*/
 
     pub fn create_directional_shadow_maps(
         &mut self,

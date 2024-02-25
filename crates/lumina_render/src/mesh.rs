@@ -4,6 +4,7 @@ use ash::vk;
 
 use lumina_data::buffer::Buffer;
 use lumina_core::device::Device;
+use serde_json::Value;
 use crate::offset_of;
 
 #[derive(Clone, Copy)]
@@ -200,5 +201,27 @@ impl Mesh {
         binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
 
         return (attribute_descriptions, binding_descriptions);
+    }
+
+    pub fn to_json(&self,id:usize) -> Value {
+        let mut json = serde_json::json!({
+            "vertices": [],
+            "indices": []
+        });
+
+        for vertice in self.vertex_array.iter() {
+            json["vertices"].as_array_mut().unwrap().push(serde_json::json!({
+                "id": id,
+                "position": vertice.position.to_array(),
+                "normal": vertice.normal.to_array(),
+                "uv": vertice.uv.to_array()
+            }))
+        }
+
+        for index in self.index_array.iter() {
+            json["indices"].as_array_mut().unwrap().push(serde_json::json!(index))
+        }
+
+        json
     }
 }

@@ -79,7 +79,7 @@ void main() {
     }
   }
 
-  outColor = vec4(result, 1.0);
+  outColor = vec4(1.0,1.0,1.0, 1.0);
 }
 
 float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shadowMap,vec3 normal) { 

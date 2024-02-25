@@ -69,8 +69,9 @@ impl Light {
 }
 
 impl Component for Light {
-    fn convert_to_json(&self) -> serde_json::Value {
+    fn convert_to_json(&self,id:u32) -> serde_json::Value {
         serde_json::json!({
+            "id": id,
             "light_type": self.light_type as u32,
             "color": self.color.to_vec(),
             "intensity": self.intensity,

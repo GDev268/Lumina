@@ -60,7 +60,10 @@ impl Saver {
                 "z": "",
                 "-z": "",
             },
-            "lights": []
+            "game_objects": [],
+            "lights": [],
+            "models": [],
+            "transforms": []
         });
 
         Self {

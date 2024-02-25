@@ -86,5 +86,12 @@ impl Transform {
 }
 
 impl Component for Transform {
-    
+    fn convert_to_json(&self,id:u32) -> serde_json::Value {
+        serde_json::json!({
+            "id": id,
+            "transform": self.translation.to_array(),
+            "rotation": self.rotation.to_array(),
+            "scale": self.scale.to_array()
+        })
+    }
 }

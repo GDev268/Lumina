@@ -2,6 +2,7 @@ pub mod camera;
 pub mod mesh;
 pub mod model;
 pub mod renderer;
+pub mod gui_canvas;
 
 #[macro_export]
 macro_rules! offset_of {

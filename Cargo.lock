@@ -25,12 +25,10 @@ dependencies = [
  "lumina_geometry",
  "lumina_graphic",
  "lumina_input",
- "lumina_macro",
  "lumina_object",
  "lumina_path",
  "lumina_pbr",
  "lumina_render",
- "lumina_scene",
  "num",
  "rand",
  "raw-window-handle",
@@ -1759,6 +1757,7 @@ name = "lumina_atlas"
 version = "0.1.0"
 dependencies = [
  "image",
+ "lumina_core",
 ]
 
 [[package]]
@@ -1784,6 +1783,8 @@ name = "lumina_data"
 version = "0.1.0"
 dependencies = [
  "ash",
+ "image",
+ "lumina_atlas",
  "lumina_core",
 ]
 
@@ -1832,7 +1833,6 @@ dependencies = [
  "lumina_ecs",
  "lumina_object",
  "lumina_render",
- "lumina_scene",
 ]
 
 [[package]]
@@ -1853,15 +1853,6 @@ name = "lumina_input"
 version = "0.1.0"
 dependencies = [
  "winit",
-]
-
-[[package]]
-name = "lumina_macro"
-version = "0.1.0"
-dependencies = [
- "lumina_core",
- "quote",
- "syn 2.0.41",
 ]
 
 [[package]]
@@ -1902,6 +1893,8 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "glam",
+ "image",
+ "lumina_atlas",
  "lumina_core",
  "lumina_data",
  "lumina_graphic",
@@ -1911,16 +1904,6 @@ dependencies = [
  "russimp",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "lumina_scene"
-version = "0.1.0"
-dependencies = [
- "ash",
- "glam",
- "lumina_object",
- "lumina_render",
 ]
 
 [[package]]

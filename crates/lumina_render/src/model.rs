@@ -2,7 +2,9 @@ use std::{collections::HashMap, hash::Hash, rc::Rc, sync::Arc};
 
 use ash::vk;
 
-use lumina_core::{device::Device, RawLight, Vertex3D};
+use lumina_atlas::atlas::Atlas;
+use lumina_core::{device::Device, texture::Texture, RawLight, Vertex3D};
+use lumina_data::descriptor_manager::CurValue;
 use lumina_graphic::shader::Shader;
 use lumina_object::game_object::{Component, GameObject};
 use lumina_pbr::material::Material;
@@ -23,6 +25,7 @@ pub struct Model {
     pub materials: Vec<Material>,
     pub mesh_material_bindings: HashMap<usize, usize>,
     pub shader: Shader,
+    pub atlas: HashMap<String, Atlas>,
 }
 
 impl Model {
@@ -37,11 +40,19 @@ impl Model {
             Arc::clone(&device),
             "shaders/default/default_shader.vert",
             "shaders/default/default_shader.frag",
-            Vertex3D::setup()
+            Vertex3D::setup(),
         );
 
         let mut mesh_material_bindings: HashMap<usize, usize> = HashMap::new();
         mesh_material_bindings.insert(0, 0);
+
+        let mut atlas = HashMap::new();
+
+        for (id, descriptor_info) in shader.descriptor_manager.descriptor_table.iter() {
+            if descriptor_info.value == CurValue::COLOR_IMAGE {
+                atlas.insert(id.clone(), Atlas::new());
+            }
+        }
 
         Self {
             device: Arc::clone(&device),
@@ -50,6 +61,7 @@ impl Model {
             mesh_material_bindings,
             materials: Vec::new(),
             shader,
+            atlas,
         }
     }
 
@@ -106,8 +118,16 @@ impl Model {
             Arc::clone(&device),
             "shaders/default/default_shader.vert",
             "shaders/default/default_shader.frag",
-            Vertex3D::setup()
+            Vertex3D::setup(),
         );
+
+        let mut atlas = HashMap::new();
+
+        for (id, descriptor_info) in shader.descriptor_manager.descriptor_table.iter() {
+            if descriptor_info.value == CurValue::COLOR_IMAGE {
+                atlas.insert(id.clone(), Atlas::new());
+            }
+        }
 
         Self {
             device: Arc::clone(&device),
@@ -116,6 +136,7 @@ impl Model {
             materials: Vec::new(),
             shader,
             mesh_material_bindings: HashMap::new(),
+            atlas,
         }
     }
 
@@ -154,6 +175,14 @@ impl Model {
             mesh.draw(command_buffer, device);
         }
     }
+
+    pub fn add_texture(&mut self, label: &str, textures: Vec<&mut Texture>) {
+        if self.atlas.contains_key(label) {
+            self.atlas.get_mut(label).unwrap().pack_textures(textures);
+        } else {
+            eprintln!("ERROR: Failed to get the desired texture atlas!")
+        }
+    }
 }
 
 /*impl GameObjectTrait for Model {
@@ -189,26 +218,41 @@ impl Drop for Model {
 }
 
 impl Component for Model {
-    fn convert_to_json(&self) -> Value {
+    fn convert_to_json(&self,id:u32) -> Value {
         let mut json = serde_json::json!({
-            "model" : {
-                "file": self.file_path,
-                "materials": [],
-                "meshes": [],
-            }
+            "id": id,
+            "file": self.file_path,
+            "materials": [],
+            "meshes": [],
         });
 
-        for material in self.materials.iter() {
+        for (mat_id, material) in self.materials.iter().enumerate() {
+            let mut id = 0;
+
+            for (m_id, m_key) in self.mesh_material_bindings.iter() {
+                if *m_key == mat_id {
+                    id = *m_id;
+                }
+            }
+
             json["materials"]
                 .as_array_mut()
                 .unwrap()
                 .push(serde_json::json!({
+                    "parent_id": id,
                     "ambient": material.ambient.to_array(),
-                    "ambient_texture": "",
+                    "ambient_texture": material.ambient_texture.get_new_path(),
                     "diffuse": material.diffuse.to_array(),
                     "metallic": material.metallic.to_array(),
-                    "metallic_texture": ""
+                    "metallic_texture": material.metallic_texture.get_new_path()
                 }));
+        }
+
+        for (id, mesh) in self.meshes.iter().enumerate() {
+            json["meshes"]
+                .as_array_mut()
+                .unwrap()
+                .push(mesh.to_json(id));
         }
 
         return json;
