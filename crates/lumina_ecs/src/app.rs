@@ -1,9 +1,18 @@
 struct ClearColor([f32; 3]);
 use ash::vk;
+use lumina_files::{loader::Loader, saver::Saver};
+use lumina_pbr::light::Light;
 use lumina_render::renderer::Renderer;
-use std::{rc::Rc, thread, time::Instant, f32::consts::E, sync::{Arc, RwLock}};
+use rand::Rng;
+use serde_json::Value;
+use std::{
+    f32::consts::E,
+    rc::Rc,
+    sync::{Arc, RwLock},
+    thread,
+    time::Instant,
+};
 
-use lumina_bundle::{RendererBundle, ResourcesBundle};
 use lumina_core::{device::Device, fps_manager::FPS, window::Window};
 //use lumina_graphic::renderer::Renderer;
 use lumina_input::{keyboard::Keyboard, mouse::Mouse};
@@ -16,7 +25,7 @@ use crate::{query::Query, stage::Stage};
 pub struct App {
     pub window: Window,
     pub device: Arc<Device>,
-    pub renderer:Arc<RwLock<Renderer>>,
+    pub renderer: Arc<RwLock<Renderer>>,
     fps_manager: FPS,
     keyboard_pool: Keyboard,
     mouse_pool: Mouse,
@@ -27,14 +36,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(window:&Sdl) -> Self {
-        let window = Window::new(window, "Lumina", 840, 680);
+    pub fn new(window: &Sdl) -> Self {
+        let window = Window::new(window, "Lumina", 1280, 720);
         let device = Arc::new(Device::new(&window));
-        let renderer = Arc::new(RwLock::new(Renderer::new(&window, &device,None)));
-        
+        let renderer = Arc::new(RwLock::new(Renderer::new(&window, &device, None)));
+
         let mut fps_manager = FPS::new();
         fps_manager.set_max_fps(300);
-
 
         Self {
             window,
@@ -56,10 +64,70 @@ impl App {
     }
 
     pub fn update(&mut self) {
-            /*self.stage
-            .as_mut()
+        /*self.stage
+        .as_mut()
+        .unwrap()
+        .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);*/
+    }
+
+    pub fn load_file(&mut self, file_path: &str) {
+        let mut loader = Loader::new();
+
+        loader.load_file(file_path.to_string());
+
+        let file_content = loader
+            .directories
+            .get("gameData")
             .unwrap()
-            .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);*/
+            .files
+            .iter()
+            .find(|file| "scene.json" == file.file_name)
+            .unwrap()
+            .file_content
+            .clone();
+
+        let json_string = String::from_utf8(file_content).unwrap();
+        let json: Value = serde_json::from_str(&json_string).unwrap();
+        println!("JSON Content: {:?}", serde_json::to_string_pretty(&json));
+
+        //self.stage = Stage::new("");
+    }
+
+    pub fn save_scene(&mut self) {
+        let mut saver = Saver::new();
+
+        self.stage = Some(Stage::new("test"));
+
+        let mut rng = rand::thread_rng();
+
+        for i in 0..10 {
+            let light = self.stage.as_mut().unwrap().manager.spawn();
+
+            let mut light_component = Light::new();
+            light_component.change_color(glam::vec3(
+                rng.gen_range(0, 20) as f32,
+                rng.gen_range(0, 20) as f32,
+                rng.gen_range(0, 20) as f32,
+            ));
+            light_component.change_intensity(rng.gen_range(0, 20) as f32);
+            light_component.change_light_type(rng.gen_range(0, 3));
+            light_component.change_range(rng.gen_range(0, 20) as f32);
+            light_component.change_spot_size(rng.gen_range(0, 20) as f32);
+
+            self.stage
+                .as_mut()
+                .unwrap()
+                .manager
+                .push(&light, light_component);
+        }
+
+        saver.modify_project_name(&self.stage.as_ref().unwrap().name);
+
+        let lights = self.stage.as_ref().unwrap().get_light_json();
+
+        saver.modify_array_value("lights", lights);
+
+        saver.save_data();
     }
 
     /*pub fn render(&mut self) {
@@ -123,5 +191,15 @@ impl App {
     pub fn get_device(&self) -> Arc<Device> {
         Arc::clone(&self.device)
     }
+}
 
+
+impl Drop for App {
+    fn drop(&mut self) {
+        unsafe {
+            self.renderer.write().unwrap().cleanup(&self.device);
+            self.device.device().device_wait_idle().unwrap();
+            self.device.cleanup();
+        }
+    }
 }

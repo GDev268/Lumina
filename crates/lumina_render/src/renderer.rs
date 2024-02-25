@@ -55,7 +55,7 @@ impl Renderer {
     }
 
     pub fn get_frame_index(&self) -> i32 {
-        assert!(
+            assert!(
             self.is_frame_started,
             "Cannot get frame index when frame not in progress"
         );
@@ -124,7 +124,7 @@ impl Renderer {
             [vk::ClearValue::default(), vk::ClearValue::default()];
 
         clear_values[0].color = vk::ClearColorValue {
-            float32: [0.0, 0.0, 1.0,1.0],
+            float32: [0.0, 0.0, 0.0,1.0],
         };
         clear_values[1].depth_stencil = vk::ClearDepthStencilValue {
             depth: 1.0,
@@ -361,7 +361,7 @@ impl Renderer {
         return command_buffers;
     }
 
-    fn free_command_buffers(&self, device: &Device) {
+    pub fn free_command_buffers(&self, device: &Device) {
         unsafe {
             device
                 .device()
@@ -404,6 +404,7 @@ impl Renderer {
 
     pub fn cleanup(&mut self, device: &Device) {
         unsafe {
+            device.device().device_wait_idle().unwrap();
             device
                 .device()
                 .free_command_buffers(device.get_command_pool(), &self.command_buffers);

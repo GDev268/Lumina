@@ -1,10 +1,11 @@
 [package]
-name = "lumina_debug"
+name = "lumina_atlas"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-print = "0.3.4"
 
+
+image = "0.24.7"

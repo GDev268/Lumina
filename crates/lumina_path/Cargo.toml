@@ -1,13 +1,9 @@
 [package]
-name = "lumina_files"
+name = "lumina_path"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glam = "0.24.1"
-lazy_static = "1.4.0"
-serde = "1.0.188"
-serde_json = "1.0.106"
-simple_crypt = "0.2.3"
+lumina_files = {path="../lumina_files",version = "0.1.0"}

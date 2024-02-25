@@ -2,7 +2,7 @@ use std::{collections::HashMap, hash::Hash, rc::Rc, sync::Arc};
 
 use ash::vk;
 
-use lumina_core::{device::Device, RawLight, Vertex3D};
+use lumina_core::{device::Device, RawLight};
 use lumina_graphic::shader::Shader;
 use lumina_object::game_object::{Component, GameObject};
 use lumina_pbr::material::Material;
@@ -11,12 +11,8 @@ use serde_json::Value;
 
 use crate::mesh::{Mesh, Vertex};
 
-pub struct PushConstantData {
-    pub model_matrix: glam::Mat4,
-    pub normal_matrix: glam::Mat4,
-}
 
-pub struct Model {
+pub struct Canvas {
     device: Arc<Device>,
     pub meshes: Vec<Mesh>,
     pub file_path: String,
@@ -25,7 +21,7 @@ pub struct Model {
     pub shader: Shader,
 }
 
-impl Model {
+impl Canvas {
     pub fn new_from_array(
         device: Arc<Device>,
         vertex_array: Vec<Vertex>,
@@ -35,9 +31,8 @@ impl Model {
 
         let shader = Shader::new(
             Arc::clone(&device),
-            "shaders/default/default_shader.vert",
-            "shaders/default/default_shader.frag",
-            Vertex3D::setup()
+            "shaders/default_shader.vert",
+            "shaders/default_shader.frag",
         );
 
         let mut mesh_material_bindings: HashMap<usize, usize> = HashMap::new();
@@ -104,9 +99,8 @@ impl Model {
 
         let shader = Shader::new(
             Arc::clone(&device),
-            "shaders/default/default_shader.vert",
-            "shaders/default/default_shader.frag",
-            Vertex3D::setup()
+            "shaders/default_shader.vert",
+            "shaders/default_shader.frag",
         );
 
         Self {
@@ -155,66 +149,3 @@ impl Model {
         }
     }
 }
-
-/*impl GameObjectTrait for Model {
-    fn render(
-        &self,
-        device: &Device,
-        game_object: &GameObject,
-        command_buffer: vk::CommandBuffer,
-    ) {
-        let _push = PushConstantData {
-            model_matrix: game_object.transform.get_mat4(),
-            normal_matrix: game_object.transform.get_normal_matrix(),
-        };
-
-        for mesh in &self.meshes {
-            mesh.bind(command_buffer, device);
-            mesh.draw(command_buffer, device);
-        }
-    }
-
-    fn game_object(&self) -> &GameObject {
-        return &self.game_object;
-    }
-}*/
-
-impl Drop for Model {
-    fn drop(&mut self) {
-        self.shader.destroy(&self.device);
-        for mesh in self.meshes.iter_mut() {
-            drop(mesh);
-        }
-    }
-}
-
-impl Component for Model {
-    fn convert_to_json(&self) -> Value {
-        let mut json = serde_json::json!({
-            "model" : {
-                "file": self.file_path,
-                "materials": [],
-                "meshes": [],
-            }
-        });
-
-        for material in self.materials.iter() {
-            json["materials"]
-                .as_array_mut()
-                .unwrap()
-                .push(serde_json::json!({
-                    "ambient": material.ambient.to_array(),
-                    "ambient_texture": "",
-                    "diffuse": material.diffuse.to_array(),
-                    "metallic": material.metallic.to_array(),
-                    "metallic_texture": ""
-                }));
-        }
-
-        return json;
-    }
-}
-
-unsafe impl Send for Model {}
-
-unsafe impl Sync for Model {}

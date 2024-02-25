@@ -85,4 +85,6 @@ impl Transform {
     }
 }
 
-impl Component for Transform {}
+impl Component for Transform {
+    
+}

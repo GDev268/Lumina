@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 
 
 [features]
-default = ["lumina_core", "lumina_files", "lumina_data", "lumina_render", "lumina_graphic", "lumina_geometry", "lumina_object", "lumina_scene", "lumina_debug", "lumina_input", "lumina_ecs", "lumina_pbr", "lumina_macro", "glsl_parser"]
+default = ["lumina_core", "lumina_atlas", "lumina_files", "lumina_data", "lumina_render", "lumina_graphic", "lumina_geometry", "lumina_object", "lumina_scene", "lumina_input", "lumina_ecs", "lumina_pbr", "lumina_path", "glsl_parser"]
 optional = []
 
 [dependencies]
@@ -24,12 +24,13 @@ lumina_graphic = { path = "crates/lumina_graphic", version = "0.1.0", optional =
 lumina_geometry = { path = "crates/lumina_geometry", version = "0.1.0", optional = true }
 lumina_object = { path = "crates/lumina_object", version = "0.1.0", optional = true }
 lumina_scene = { path = "crates/lumina_scene", version = "0.1.0", optional = true }
-lumina_debug = { path = "crates/lumina_debug", version = "0.1.0", optional = true }
 lumina_input = { path = "crates/lumina_input", version = "0.1.0", optional = true }
 lumina_pbr = { path = "crates/lumina_pbr", version = "0.1.0", optional = true }
 lumina_ecs = { path = "crates/lumina_ecs", version = "0.1.0", optional = true }
 lumina_macro = { path = "crates/lumina_macro", version = "0.1.0", optional = true }
 lumina_files = { path = "crates/lumina_files", version = "0.1.0", optional = true }
+lumina_path = { path = "crates/lumina_path", version = "0.1.0", optional = true }
+lumina_atlas = { path = "crates/lumina_atlas", version = "0.1.0", optional = true }
 glsl_parser = { path = "crates/glsl_parser", version = "0.1.0", optional = true } 
 
 #Other

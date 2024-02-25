@@ -13,11 +13,16 @@ lumina_graphic = {path="../lumina_graphic",version = "0.1.0"}
 lumina_object = {path="../lumina_object",version = "0.1.0"}
 lumina_pbr = {path="../lumina_pbr",version = "0.1.0"}
 lumina_render = {path="../lumina_render",version = "0.1.0"}
-lumina_bundle = {path="../lumina_bundle",version = "0.1.0"}
+lumina_files = {path="../lumina_files",version = "0.1.0"}
+
+
 num_cpus = "1.16.0"
 winit = "0.28.7"
 ash = {version="0.37.3",features = ["linked", "debug"]}
 async-std = "1.12.0"
 rand = "0.6.5"
 glam = "0.24.1"
+image = "0.24.7"
+serde = "1.0.188"
+serde_json = "1.0.106"
 sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", revion = "31e830e"}

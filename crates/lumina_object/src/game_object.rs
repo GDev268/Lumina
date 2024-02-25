@@ -1,5 +1,6 @@
 use ash::vk;
 use rand::Rng;
+use serde_json::Value;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -10,7 +11,11 @@ use lazy_static::lazy_static;
 
 static mut EXISTING_IDS: Vec<u32> = vec![];
 
-pub trait Component: Any + Send + Sync {}
+pub trait Component: Any + Send + Sync {
+    fn convert_to_json(&self) -> Value {
+        serde_json::json!({})
+    }
+}
 
 #[derive(Debug,Clone)]
 pub struct GameObject {

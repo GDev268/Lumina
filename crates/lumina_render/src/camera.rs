@@ -2,7 +2,7 @@ use lumina_object::game_object::Component;
 
 pub enum CameraDirection {
     NONE,
-    FOWARD,
+    FORWARD,
     BACKWARD,
     LEFT,
     RIGHT,
@@ -10,6 +10,7 @@ pub enum CameraDirection {
     DOWN,
 }
 
+#[derive(Debug,Clone, Copy)]
 pub struct Camera {
     projection_matrix: [[f32; 4]; 4],
     view_matrix: [[f32; 4]; 4],
@@ -80,25 +81,28 @@ impl Camera {
 
     pub fn update_position(&mut self, dir: CameraDirection, dt: f32) {
         let velocity = dt * self.speed;
-    
-        let yaw = self.rotation.y;
-        let mut move_direction = glam::Vec3::ZERO;
-    
-        match dir {
-            CameraDirection::NONE => {}
-            CameraDirection::FOWARD => move_direction += glam::vec3(0.0,0.0,1.0),
-            CameraDirection::BACKWARD => move_direction -= glam::vec3(0.0,0.0,1.0),
-            CameraDirection::LEFT => move_direction -= glam::vec3(1.0,0.0,0.0),
-            CameraDirection::RIGHT => move_direction += glam::vec3(1.0,0.0,0.0),
-            CameraDirection::UP => move_direction -= glam::vec3(0.0,1.0,0.0),
-            CameraDirection::DOWN => move_direction += glam::vec3(0.0,1.0,0.0),
-        }
-    
-        if move_direction.dot(move_direction) > std::f32::EPSILON {
-            self.translation += self.speed * dt * move_direction;
+
+        // Define the movement direction relative to the camera's local space
+        let mut move_direction = match dir {
+            CameraDirection::NONE => glam::Vec3::ZERO,
+            CameraDirection::FORWARD => glam::Vec3::new(0.0, 0.0, 1.0), // Move forward along the negative z-axis
+            CameraDirection::BACKWARD => glam::Vec3::new(0.0, 0.0, -1.0), // Move backward along the positive z-axis
+            CameraDirection::LEFT => glam::Vec3::new(-1.0, 0.0, 0.0), // Move left along the negative x-axis
+            CameraDirection::RIGHT => glam::Vec3::new(1.0, 0.0, 0.0), // Move right along the positive x-axis
+            CameraDirection::UP => glam::Vec3::new(0.0, -1.0, 0.0), // Move up along the positive y-axis
+            CameraDirection::DOWN => glam::Vec3::new(0.0, 1.0, 0.0), // Move down along the negative y-axis
+        };
+
+        // Rotate the movement direction based on the camera's rotation
+        let rotation_matrix = -(glam::Mat3::from_rotation_y(self.rotation.y) * glam::Mat3::from_rotation_x(self.rotation.x));
+        move_direction = rotation_matrix * move_direction; // Apply rotation to the movement direction
+
+        if move_direction.length_squared() > std::f32::EPSILON {
+            move_direction = -move_direction.normalize();
+            self.translation += velocity * move_direction;
         }
     }
-    
+
     pub fn update_direction(&mut self, dx: f64, dy: f64, dt: f32) {
         let mut rotation = glam::Vec3::ZERO;
     
@@ -247,5 +251,3 @@ impl Camera {
         };
     }
 }
-
-impl Component for Camera {}

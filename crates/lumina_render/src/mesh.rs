@@ -21,15 +21,17 @@ pub struct Mesh {
     index_count: u32,
     binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
+    vertex_array:Vec<Vertex>,
+    index_array:Vec<u32>
 }
 
 impl Mesh {
     pub fn new(device: Arc<Device>, vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
         let (attributes, bindings) = Mesh::setup();
 
-        let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices, Arc::clone(&device));
+        let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices.clone(), Arc::clone(&device));
         let (index_count, has_index_buffer, index_buffer) =
-            Mesh::create_index_buffers(indices, Arc::clone(&device));
+            Mesh::create_index_buffers(indices.clone(), Arc::clone(&device));
 
         return Self {
             vertex_buffer: vertex_buffer,
@@ -39,6 +41,8 @@ impl Mesh {
             index_count: index_count,
             binding_descriptions: bindings,
             attribute_descriptions: attributes,
+            vertex_array: vertices,
+            index_array: indices
         };
     }
 
@@ -47,6 +51,7 @@ impl Mesh {
         let offsets: [vk::DeviceSize; 1] = [0];
 
         unsafe {
+            device.device().device_wait_idle().unwrap();
             device
                 .device()
                 .cmd_bind_vertex_buffers(command_buffer, 0, &buffers, &offsets);
@@ -65,6 +70,7 @@ impl Mesh {
 
     pub fn draw(&self,command_buffer: vk::CommandBuffer,device: &Device) {
         unsafe {
+            device.device().device_wait_idle().unwrap();
             if self.has_index_buffer {
                 device
                     .device()
@@ -195,5 +201,4 @@ impl Mesh {
 
         return (attribute_descriptions, binding_descriptions);
     }
-
 }

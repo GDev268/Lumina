@@ -169,7 +169,7 @@ impl Buffer {
 
     pub fn convert_to_raw_data(&self) -> Vec<u8> {
         let buffer_data = unsafe {
-            std::slice::from_raw_parts(self.mapped.lock().unwrap().unwrap() as *const u8, 2284800)
+            std::slice::from_raw_parts(self.mapped.lock().unwrap().unwrap() as *const u8, self.buffer_size as usize)
         };
         
         return buffer_data.to_vec();

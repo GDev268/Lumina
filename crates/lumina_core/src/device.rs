@@ -13,7 +13,6 @@ use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_void;
 use std::ptr::{self};
 
-
 use ash::extensions::ext::DebugUtils;
 
 unsafe extern "system" fn vulkan_debug_callback(
@@ -23,7 +22,7 @@ unsafe extern "system" fn vulkan_debug_callback(
     _p_user_data: *mut c_void,
 ) -> vk::Bool32 {
     let message = CStr::from_ptr((*p_callback_data).p_message);
-    
+
     match message_severity {
         vk::DebugUtilsMessageSeverityFlagsEXT::VERBOSE => {
             cprintln!("\n[Debug][Verbose]{:?}", message)
@@ -134,7 +133,17 @@ impl Device {
         };
     }
 
-    pub fn cleanup() {}
+    pub fn cleanup(&self) {
+        unsafe {
+            self._device
+                .as_ref()
+                .unwrap()
+                .destroy_command_pool(self.command_pool.unwrap(), None);
+
+            self.device().device_wait_idle().unwrap();
+            self.device().destroy_device(None);
+        }
+    }
 
     pub fn get_command_pool(&self) -> vk::CommandPool {
         return self.command_pool.unwrap();
@@ -334,7 +343,10 @@ impl Device {
                 .queue_wait_idle(self.graphics_queue())
                 .expect("Failed to set queue wait idle");
 
-            self._device.as_ref().unwrap().free_command_buffers(self.get_command_pool(), &[command_buffer]);
+            self._device
+                .as_ref()
+                .unwrap()
+                .free_command_buffers(self.get_command_pool(), &[command_buffer]);
         }
     }
 
@@ -346,14 +358,19 @@ impl Device {
     ) {
         let command_buffer: vk::CommandBuffer = self.begin_single_time_commands();
 
-        let copy_region: vk::BufferCopy = vk::BufferCopy{
+        let copy_region: vk::BufferCopy = vk::BufferCopy {
             src_offset: 0,
             dst_offset: 0,
-            size: size
+            size: size,
         };
 
-        unsafe{
-            self._device.as_ref().unwrap().cmd_copy_buffer(command_buffer, src_buffer, dst_buffer, &[copy_region]);
+        unsafe {
+            self._device.as_ref().unwrap().cmd_copy_buffer(
+                command_buffer,
+                src_buffer,
+                dst_buffer,
+                &[copy_region],
+            );
         }
 
         self.end_single_time_commands(command_buffer);
@@ -497,9 +514,7 @@ impl Device {
                 self.entry.as_ref().unwrap(),
                 self.instance.as_ref().unwrap(),
             ),
-            _surface: window.create_window_surface(
-                self.instance.as_ref().unwrap()
-            ),
+            _surface: window.create_window_surface(self.instance.as_ref().unwrap()),
         };
         return Some(surface);
     }
@@ -770,22 +785,24 @@ impl Device {
         }
     }
 
-    fn get_required_extensions(&self,window:&Window) -> Vec<*const i8> {
-        let raw_extensions = window._window.vulkan_instance_extensions().expect("Failed to get extensions");
+    fn get_required_extensions(&self, window: &Window) -> Vec<*const i8> {
+        let raw_extensions = window
+            ._window
+            .vulkan_instance_extensions()
+            .expect("Failed to get extensions");
 
-        println!("{:?}",raw_extensions);
+        println!("{:?}", raw_extensions);
         let mut extensions = Vec::new();
 
         for name in raw_extensions.iter() {
             let c_name = name.as_ptr() as *const i8;
             extensions.push(c_name);
         }
-        
 
         if self.enable_validation_layers {
             extensions.push(ash::extensions::ext::DebugUtils::name().as_ptr());
         }
-        
+
         return extensions;
     }
 

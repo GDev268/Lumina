@@ -1,4 +1,4 @@
-use lumina_core::{device::Device, Vertex};
+use lumina_core::{device::Device};
 
 use ash::vk::{self};
 use std::ffi::CString;
@@ -75,9 +75,9 @@ impl PipelineConfiguration {
             | vk::ColorComponentFlags::G
             | vk::ColorComponentFlags::B
             | vk::ColorComponentFlags::A;
-        color_blend_attachment.blend_enable = vk::FALSE;
-        color_blend_attachment.src_color_blend_factor = vk::BlendFactor::ONE;
-        color_blend_attachment.dst_color_blend_factor = vk::BlendFactor::ZERO;
+        color_blend_attachment.blend_enable = vk::TRUE;
+        color_blend_attachment.src_color_blend_factor = vk::BlendFactor::SRC_ALPHA;
+        color_blend_attachment.dst_color_blend_factor = vk::BlendFactor::ONE_MINUS_SRC_ALPHA;
         color_blend_attachment.color_blend_op = vk::BlendOp::ADD;
         color_blend_attachment.src_alpha_blend_factor = vk::BlendFactor::ONE;
         color_blend_attachment.dst_alpha_blend_factor = vk::BlendFactor::ZERO;
@@ -198,38 +198,6 @@ impl Pipeline {
         shader_stages[1].p_next = std::ptr::null();
         shader_stages[1].p_specialization_info = std::ptr::null();
 
-        pipeline_config.binding_descriptions = vec![vk::VertexInputBindingDescription::default()];
-
-        pipeline_config.binding_descriptions[0].binding = 0;
-        pipeline_config.binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
-        pipeline_config.binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
-
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 0,
-                binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, position),
-            });
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 1,
-                binding: 0,
-                format: vk::Format::R32G32B32_SFLOAT,
-                offset: offset_of!(Vertex, normal),
-            });
-
-        pipeline_config
-            .attribute_descriptions
-            .push(vk::VertexInputAttributeDescription {
-                location: 2,
-                binding: 0,
-                format: vk::Format::R32G32_SFLOAT,
-                offset: offset_of!(Vertex, uv),
-            });
-
         let vertex_input_info: vk::PipelineVertexInputStateCreateInfo =
             vk::PipelineVertexInputStateCreateInfo {
                 flags: vk::PipelineVertexInputStateCreateFlags::empty(),
@@ -265,6 +233,7 @@ impl Pipeline {
         };
 
         unsafe {
+            device.device().device_wait_idle().unwrap();
             let graphics_pipelines = device
                 .device()
                 .create_graphics_pipelines(vk::PipelineCache::null(), &[create_info], None)
@@ -285,7 +254,6 @@ impl Pipeline {
 
     pub fn bind(&self, device: &Device, command_buffer: vk::CommandBuffer) {
         unsafe {
-            device.device().device_wait_idle();
             device.device().cmd_bind_pipeline(
                 command_buffer,
                 vk::PipelineBindPoint::GRAPHICS,
@@ -296,6 +264,7 @@ impl Pipeline {
 
     pub fn destroy(&mut self, device: &Device) {
         unsafe {
+            device.device().device_wait_idle().unwrap();
             device
                 .device()
                 .destroy_pipeline(self.graphics_pipeline.unwrap(), None);

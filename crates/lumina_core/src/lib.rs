@@ -1,4 +1,5 @@
 use std::any::Any;
+use ash::*;
 
 pub mod device;
 pub mod window;
@@ -8,17 +9,103 @@ pub mod framebuffer;
 pub mod fps_manager;
 pub mod texture;
 
+#[macro_export]
+macro_rules! offset_of {
+    ($base:path, $field:ident) => {{
+        unsafe {
+            let b: $base = std::mem::zeroed();
+            (std::ptr::addr_of!(b.$field) as isize - std::ptr::addr_of!(b) as isize).try_into().unwrap()
+        }
+    }};
+}
+
+
 #[derive(Clone, Copy)]
-pub struct Vertex {
+pub struct Vertex3D {
     pub position: glam::Vec3,
     pub normal: glam::Vec3,
     pub uv: glam::Vec2,
 }
 
+impl Vertex3D {
+    pub fn setup() -> (
+        Vec<vk::VertexInputAttributeDescription>,
+        Vec<vk::VertexInputBindingDescription>,
+    ) {
+        let mut attribute_descriptions: Vec<vk::VertexInputAttributeDescription> = Vec::new();
+
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 0,
+            binding: 0,
+            format: vk::Format::R32G32B32_SFLOAT,
+            offset: offset_of!(Self, position),
+        });
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 1,
+            binding: 0,
+            format: vk::Format::R32G32B32_SFLOAT,
+            offset: offset_of!(Self, normal),
+        });
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 2,
+            binding: 0,
+            format: vk::Format::R32G32_SFLOAT,
+            offset: offset_of!(Self, uv),
+        });
+
+        let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
+            vec![vk::VertexInputBindingDescription::default()];
+
+        binding_descriptions[0].binding = 0;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex3D>() as u32;
+        binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
+
+        return (attribute_descriptions, binding_descriptions);
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Vertex2D {
     pub position: glam::Vec3,
+    pub normal: glam::Vec3,
     pub uv: glam::Vec2,
+}
+
+impl Vertex2D {
+    pub fn setup() -> (
+        Vec<vk::VertexInputAttributeDescription>,
+        Vec<vk::VertexInputBindingDescription>,
+    ) {
+        let mut attribute_descriptions: Vec<vk::VertexInputAttributeDescription> = Vec::new();
+
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 0,
+            binding: 0,
+            format: vk::Format::R32G32B32_SFLOAT,
+            offset: offset_of!(Self, position),
+        });
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 1,
+            binding: 0,
+            format: vk::Format::R32G32B32_SFLOAT,
+            offset: offset_of!(Self, normal),
+        });
+        attribute_descriptions.push(vk::VertexInputAttributeDescription {
+            location: 2,
+            binding: 0,
+            format: vk::Format::R32G32_SFLOAT,
+            offset: offset_of!(Self, uv),
+        });
+
+        let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
+            vec![vk::VertexInputBindingDescription::default()];
+
+        binding_descriptions[0].binding = 0;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex2D>() as u32;
+        binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
+
+        return (attribute_descriptions, binding_descriptions);
+    }
 }
 
 

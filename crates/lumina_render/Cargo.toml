@@ -18,3 +18,5 @@ ash = {version="0.37.3",features = ["linked", "debug"]}
 glam = "0.24.1"
 russimp = { version = "1.0.6", features = ["prebuilt"] }
 rand = "0.6.5"
+serde = "1.0.188"
+serde_json = "1.0.106"
