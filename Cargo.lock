@@ -29,6 +29,7 @@ dependencies = [
  "lumina_path",
  "lumina_pbr",
  "lumina_render",
+ "nfd",
  "num",
  "rand",
  "raw-window-handle",
@@ -1363,6 +1364,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1758,6 +1765,8 @@ version = "0.1.0"
 dependencies = [
  "image",
  "lumina_core",
+ "lumina_path",
+ "num_cpus",
 ]
 
 [[package]]
@@ -1770,6 +1779,7 @@ dependencies = [
  "color-print",
  "glam",
  "image",
+ "lumina_files",
  "lumina_path",
  "num",
  "raw-window-handle",
@@ -1802,6 +1812,7 @@ dependencies = [
  "lumina_graphic",
  "lumina_input",
  "lumina_object",
+ "lumina_path",
  "lumina_pbr",
  "lumina_render",
  "num_cpus",
@@ -1872,6 +1883,7 @@ dependencies = [
 name = "lumina_path"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "lumina_files",
 ]
 
@@ -1897,6 +1909,7 @@ dependencies = [
  "lumina_atlas",
  "lumina_core",
  "lumina_data",
+ "lumina_files",
  "lumina_graphic",
  "lumina_object",
  "lumina_pbr",
@@ -2030,6 +2043,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cf2aae958bd232cac5069850591667ad422d263686d75b52a065f9badeee5a3"
 dependencies = [
  "jni-sys",
+]
+
+[[package]]
+name = "nfd"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e752e3c216bc8a491c5b59fa46da10f1379ae450b19ac688e07f4bb55042e98"
+dependencies = [
+ "gcc",
 ]
 
 [[package]]

@@ -60,6 +60,7 @@ impl Saver {
                 "z": "",
                 "-z": "",
             },
+            "light_count": 0,
             "game_objects": [],
             "lights": [],
             "models": [],

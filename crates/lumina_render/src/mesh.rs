@@ -3,7 +3,7 @@ use std::{rc::Rc, sync::Arc};
 use ash::vk;
 
 use lumina_data::buffer::Buffer;
-use lumina_core::device::Device;
+use lumina_core::{device::Device, Vertex3D};
 use serde_json::Value;
 use crate::offset_of;
 
@@ -22,12 +22,12 @@ pub struct Mesh {
     index_count: u32,
     binding_descriptions: Vec<vk::VertexInputBindingDescription>,
     attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
-    vertex_array:Vec<Vertex>,
+    vertex_array:Vec<Vertex3D>,
     index_array:Vec<u32>
 }
 
 impl Mesh {
-    pub fn new(device: Arc<Device>, vertices: Vec<Vertex>, indices: Vec<u32>) -> Self {
+    pub fn new(device: Arc<Device>, vertices: Vec<Vertex3D>, indices: Vec<u32>) -> Self {
         let (attributes, bindings) = Mesh::setup();
 
         let (vertex_buffer, vertex_count) = Mesh::create_vertex_buffers(vertices.clone(), Arc::clone(&device));
@@ -92,7 +92,7 @@ impl Mesh {
         return &self.binding_descriptions;
     }
 
-    fn create_vertex_buffers(vertices: Vec<Vertex>, device: Arc<Device>) -> (Buffer, u32) {
+    fn create_vertex_buffers(vertices: Vec<Vertex3D>, device: Arc<Device>) -> (Buffer, u32) {
         let vertex_count = vertices.len() as u32;
         assert!(vertex_count >= 3, "Vertex must be at least 3");
         let buffer_size: vk::DeviceSize =
@@ -178,26 +178,26 @@ impl Mesh {
             location: 0,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex, position),
+            offset: offset_of!(Vertex3D, position),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 1,
             binding: 0,
             format: vk::Format::R32G32B32_SFLOAT,
-            offset: offset_of!(Vertex, normal),
+            offset: offset_of!(Vertex3D, normal),
         });
         attribute_descriptions.push(vk::VertexInputAttributeDescription {
             location: 2,
             binding: 0,
             format: vk::Format::R32G32_SFLOAT,
-            offset: offset_of!(Vertex, uv),
+            offset: offset_of!(Vertex3D, uv),
         });
 
         let mut binding_descriptions: Vec<vk::VertexInputBindingDescription> =
             vec![vk::VertexInputBindingDescription::default()];
 
         binding_descriptions[0].binding = 0;
-        binding_descriptions[0].stride = std::mem::size_of::<Vertex>() as u32;
+        binding_descriptions[0].stride = std::mem::size_of::<Vertex3D>() as u32;
         binding_descriptions[0].input_rate = vk::VertexInputRate::VERTEX;
 
         return (attribute_descriptions, binding_descriptions);
@@ -211,7 +211,7 @@ impl Mesh {
 
         for vertice in self.vertex_array.iter() {
             json["vertices"].as_array_mut().unwrap().push(serde_json::json!({
-                "id": id,
+                "id":id,
                 "position": vertice.position.to_array(),
                 "normal": vertice.normal.to_array(),
                 "uv": vertice.uv.to_array()

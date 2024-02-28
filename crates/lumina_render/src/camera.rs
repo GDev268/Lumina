@@ -48,16 +48,16 @@ impl Camera {
         near: f32,
         far: f32,
     ) -> glam::Mat4 {
-
-        let mut projection_matrix = [[1.0;4];4];
+        let mut projection_matrix = [[0.0; 4]; 4];
         projection_matrix[0][0] = 2.0 / (right - left);
-        projection_matrix[1][1] = 2.0 / (bottom - top);
-        projection_matrix[2][2] = 1.0 / (far - near);
+        projection_matrix[1][1] = 2.0 / (top - bottom);
+        projection_matrix[2][2] = -2.0 / (far - near);
         projection_matrix[3][0] = -(right + left) / (right - left);
-        projection_matrix[3][1] = -(bottom + top) / (bottom - top);
-        projection_matrix[3][2] = -near / (far - near);
-
-        return glam::Mat4::from_cols_array_2d(&projection_matrix);
+        projection_matrix[3][1] = -(top + bottom) / (top - bottom);
+        projection_matrix[3][2] = -(far + near) / (far - near);
+        projection_matrix[3][3] = 1.0;
+    
+        glam::Mat4::from_cols_array_2d(&projection_matrix)
     }
 
     pub fn create_perspective_projection(fovy: f32, aspect: f32, near: f32, far: f32) -> glam::Mat4 {

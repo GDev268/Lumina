@@ -1,6 +1,6 @@
 use super::game_object::Component;
 
-#[derive(Debug)]
+#[derive(Debug,Clone, Copy)]
 pub struct Transform {
     pub translation: glam::Vec3,
     pub scale: glam::Vec3,

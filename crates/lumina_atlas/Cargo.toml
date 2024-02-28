@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 lumina_core = { path = "../lumina_core", version = "0.1.0" }
+lumina_path = { path = "../lumina_path", version = "0.1.0" }
 
 
 image = "0.24.7"
+num_cpus = "1.16.0"

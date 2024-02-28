@@ -299,9 +299,6 @@ impl DescriptorManager {
 
         self.build_descriptor(label, 1);
 
-        for buffer in &mut self.descriptor_table.get_mut(label).unwrap().buffers {
-            println!("{:?}", buffer.get_buffer_size());
-        }
     }
 
     pub fn preload_we(&mut self) {
@@ -458,12 +455,6 @@ impl DescriptorManager {
         }
     }
 
-    pub fn print_weege(&self) {
-        println!("{:?}", self.descriptor_sets);
-        println!("{:?}", self.descriptor_set_layout);
-        println!("{:?}", self.descriptor_positions);
-    }
-
     pub fn change_buffer_value<T: Any>(&mut self, label: &str, cur_frame: u32, values: &[T]) {
         if let Some(cur_struct) = self.descriptor_table.get_mut(&label.to_string()) {
             let value_size = std::mem::size_of::<T>();
@@ -475,7 +466,7 @@ impl DescriptorManager {
                 cur_struct.buffers[cur_frame as usize].flush(None, None)
             }
         } else {
-            println!("ERROR: Value doesn't exist")
+            eprintln!("ERROR: Value doesn't exist")
         }
     }
 
@@ -593,7 +584,7 @@ impl DescriptorManager {
                 );
             }
         } else {
-            println!("ERROR: Failed to get the value");
+            eprintln!("ERROR: Failed to get the value");
         }
     }
 

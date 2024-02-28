@@ -51,4 +51,5 @@ criterion = "0.5.1"
 image = "0.24.7"
 egui_sdl2_platform = { git = "https://github.com/ComLarsic/egui_sdl2_platform" }
 sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2", revion = "31e830e"}
+nfd = "0.0.4"
 

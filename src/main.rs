@@ -15,11 +15,13 @@ use std::{
 
 use ash::vk::{self, TRUE};
 use cgmath::num_traits::float::FloatCore;
-use egui::{epaint::Primitive, ColorImage, ImageData, Key};
+use egui::{epaint::Primitive, CentralPanel, ColorImage, Frame, ImageData, Key, SidePanel};
 use glsl_parser::parser::Parser;
 use image::{DynamicImage, ImageBuffer, Luma, Rgba};
 use lumina_atlas::atlas::Atlas;
 use lumina_ecs::{app::App, query::Query, stage::Stage};
+use lumina_pbr::light::Light;
+use nfd::Response;
 use rand::Rng;
 
 use lumina_core::{
@@ -44,7 +46,6 @@ use lumina_object::{
 };
 use lumina_render::{
     camera::{Camera, CameraDirection},
-    gui_canvas::GuiCanvas,
     model::Model,
     renderer::Renderer,
 };
@@ -124,40 +125,39 @@ fn main() {
 
     let mut platform = egui_sdl2_platform::Platform::new(app.window._window.size()).unwrap();
 
-    let mut stage = Stage::new("hfd");
+    let mut stage = Stage::new("figurine");
 
     let instant = Instant::now();
 
-    let mut tex_sky_texture = Texture::new_raw("models/cubemap/top.jpg");
-    let mut tex_texture = Texture::new_raw("models/Character_baseColor.jpeg");
-    let mut tex_paving = Texture::new_raw("models/PavingStone_Color.png");
-        
-    //app.load_file("hfd.lumin");
+    //let tex_texture = Texture::new_raw("assets/tests/Character_baseColor.jpeg");
+    //let tex_paving = Texture::new_raw("assets/tests/PavingStone_Color.png");
+    let tex = Texture::new_raw("assets/tests/figurine.png");
+  
 
-    
-    /*let mut atlas = Atlas::new();
+    //app.window.get_window().set_title("Lumina [CHOOSING A FILE]").unwrap();
 
-    atlas.pack_textures(vec![&mut tex_sky_texture,&mut tex_texture,&mut tex_paving,&mut tex_sky_texture_2,&mut tex_texture_2,&mut tex_paving_2]);
-    
-    println!("{:?}",atlas.images);
+    /*let mut scene_path = String::new();
 
-    atlas.texture.save("test.png").unwrap();
+    match nfd::open_file_dialog(Some("lumin"),None).unwrap() {
+        Response::Okay(file_path) => {
+            scene_path = file_path;
+        }
+        Response::OkayMultiple(files) => {}
+        Response::Cancel => {}
+    }
 
-    panic!("took: {:?} seconds",instant.elapsed().as_secs_f64());*/
-    
-    let model = Model::new_from_model(app.get_device(), "models/men.gltf");
+    app.window.get_window().set_title("Lumina [LOADING FILE]").unwrap();
+
+
+    stage.load_scene(app.get_device(),app.renderer.read().unwrap().get_swapchain_renderpass(),scene_path.as_str());*/
 
     //println!("{:?}",model.convert_to_json());
+
+    let model = Model::new_from_model(app.get_device(), "models/figurine.fbx");
 
     let low_poly: GameObject = stage.manager.spawn();
 
     stage.manager.push(&low_poly, model);
-
-    //app.save_scene();
-    stage.save_scene();
-
-    app.load_file("./hfd.lumin");
-
     if let Some(transform) = stage
         .manager
         .query_entity(&low_poly)
@@ -167,9 +167,9 @@ fn main() {
         .get_mut_component::<Transform>()
     {
         transform.translation = glam::Vec3::new(0.0, 0.0, 5.0);
-        transform.scale = glam::vec3(1.0, 1.0, 1.0);
+        transform.scale = glam::vec3(2.0, 2.0, 2.0);
         let angle = 20.0 * 0 as f32;
-        transform.rotation = glam::vec3(-90.0, angle, angle);
+        transform.rotation = glam::vec3(-180.0, angle, angle);
     }
 
     if let Some(model) = stage
@@ -180,6 +180,19 @@ fn main() {
         .unwrap()
         .get_mut_component::<Model>()
     {
+        let mut material = lumina_pbr::material::Material::default();
+
+        material.ambient = glam::vec3(0.0, 0.0, 0.0);
+        material.diffuse = glam::Vec3::ZERO;
+        material.metallic = glam::vec3(0.0, 0.0, 0.0);
+        material.shininess = 1.0;
+
+        material.ambient_texture = Texture::new_raw("assets/tests/figurine.jpg");
+        material.metallic_texture = Texture::new_raw("assets/tests/figurine.jpg");
+
+
+        model.materials.push(material);
+
         model.shader.create_pipeline_layout(true);
         model
             .shader
@@ -191,22 +204,22 @@ fn main() {
         /*model
             .shader
             .descriptor_manager
-            .change_image_size("normalMap", 1024, 1024);
+            .change_image_size("normalMap", 1024, 1024);*/
         model
             .shader
             .descriptor_manager
-            .change_image_size("specularMap", 1024, 1024);*/
+            .change_image_size("specularMap", 1024, 1024);
         model
             .shader
             .descriptor_manager
-            .change_buffer_count("LightInfo", 3);
+            .change_buffer_count("LightInfo", 2);
 
         model.shader.descriptor_manager.update_we();
 
         //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
 
-    let model = shapes::model_cube(app.get_device());
+    /*let model = shapes::model_cube(app.get_device());
 
     let cube: GameObject = stage.manager.spawn();
 
@@ -234,6 +247,17 @@ fn main() {
         .unwrap()
         .get_mut_component::<Model>()
     {
+        let mut material = lumina_pbr::material::Material::default();
+
+        material.ambient = glam::vec3(0.0, 0.0, 0.0);
+        material.diffuse = glam::Vec3::ZERO;
+        material.metallic = glam::vec3(0.1, 0.1, 0.1);
+        material.shininess = 1.0;
+
+        material.ambient_texture = Texture::new_raw("assets/tests/PavingStone_Color.png");
+
+        model.materials.push(material);
+        
         model.shader.create_pipeline_layout(true);
         model
             .shader
@@ -241,146 +265,32 @@ fn main() {
         model
             .shader
             .descriptor_manager
-            .change_image_size("colorMap", 2048, 2048);
-        /* model
-            .shader
-            .descriptor_manager
-            .change_image_size("normalMap", 2048, 2048);
+            .change_image_size("colorMap", 1024, 1024);
         model
             .shader
             .descriptor_manager
-            .change_image_size("specularMap", 2048, 2048);*/
+            .change_image_size("normalMap", 1024, 1024);
         model
             .shader
             .descriptor_manager
-            .change_buffer_count("LightInfo", 3);
+            .change_image_size("specularMap", 1024, 1024);
+        model
+            .shader
+            .descriptor_manager
+            .change_buffer_count("LightInfo", 2);
 
         model.shader.descriptor_manager.update_we();
 
         //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
     }
 
-    let mut model = shapes::model_cube(app.get_device());
+    let mut camera: Camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
 
-    let skybox = stage.manager.spawn();
+    camera.speed = 10.0;*/
 
-    model.shader = Shader::new(
-        app.get_device(),
-        "shaders/skybox/skybox_shader.vert",
-        "shaders/skybox/skybox_shader.frag",
-        lumina_core::Vertex3D::setup(),
-    );
 
-    stage.manager.push(&skybox, model);
-
-    if let Some(transform) = stage
-        .manager
-        .query_entity(&skybox)
-        .unwrap()
-        .write()
-        .unwrap()
-        .get_mut_component::<Transform>()
-    {
-        transform.translation = glam::Vec3::ZERO;
-        transform.scale = glam::vec3(1000.0, 1000.0, 1000.0);
-    }
-
-    if let Some(model) = stage
-        .manager
-        .query_entity(&skybox)
-        .unwrap()
-        .write()
-        .unwrap()
-        .get_mut_component::<Model>()
-    {
-        model.shader.create_pipeline_layout(true);
-        model
-            .shader
-            .create_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
-        model
-            .shader
-            .descriptor_manager
-            .change_image_size("skybox", 2048, 2048);
-        model.shader.descriptor_manager.update_we();
-
-        //model.shader.renovate_pipeline(app.renderer.read().unwrap().get_swapchain_renderpass());
-    }
-
-    let mut camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
-    let gui_camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), true);
-
-    camera.speed = 10.0;
-
-    let material: MaterialInfo = MaterialInfo {
-        material: Material {
-            ambient: [0.1, 0.1, 0.1],
-            diffuse: [0.0, 0.0, 0.0],
-            specular: [0.1, 0.1, 0.1],
-            shininess: 1.0,
-            _padding1: [0.0],
-            _padding2: [0.0],
-        },
-        view_pos: camera.get_position().to_array(),
-    };
-
-    let raw_light_3: LightInfo = LightInfo {
-        light: RawLight {
-            position: [0.0, -5.0, 5.0],
-            rotation: [-0.6, 90.0, -5.9],
-            color: [1.0, 1.0, 1.0],
-            intensity: 1.0,
-            spot_size: 7.5,
-            linear: 0.7,
-            quadratic: 1.8,
-            light_type: 0,
-            _padding1: 0,
-            _padding2: 0,
-        },
-    };
-
-    let raw_light_2: LightInfo = LightInfo {
-        light: RawLight {
-            position: [5.0, -1.0, 0.0],
-            rotation: [-0.0, 0.0, -0.0],
-            color: [1.0, 1.0, 0.0],
-            intensity: 20.0,
-            spot_size: 12.0,
-            linear: 0.7,
-            quadratic: 1.8,
-            light_type: 1,
-            _padding1: 0,
-            _padding2: 0,
-        },
-    };
-
-    let raw_light: LightInfo = LightInfo {
-        light: RawLight {
-            position: [0.0, -5.0, 5.0],
-            rotation: [-0.6, 90.0, -5.9],
-            color: [1.0, 1.0, 1.0],
-            intensity: 1000.0,
-            spot_size: 7.5,
-            linear: 0.7,
-            quadratic: 1.8,
-            light_type: 2,
-            _padding1: 0,
-            _padding2: 0,
-        },
-    };
-
-    let sky_texture = tex_sky_texture.create_texture();
-    let texture = tex_texture.create_texture();
-    let paving = tex_paving.create_texture();
-
-    let mut gui_canvas = GuiCanvas::new(app.get_device(),app.renderer.read().unwrap().get_swapchain_renderpass());
-
-    let mut fps = FPS::new();
-    fps._fps = 300;
-    let mut global_timer = Instant::now();
-    let mut start_tick = Instant::now();
-
-    fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
-    let mut delta_time = 1.0 / fps._fps as f32;
+    //let texture = tex_texture.create_texture();
+    //let paving = tex_paving.create_texture();
 
     if let Some(model) = stage
         .manager
@@ -391,18 +301,22 @@ fn main() {
         .get_mut_component::<Model>()
     {
         model
-        .shader
-        .descriptor_manager
-        .change_image_value("colorMap", &texture);
+            .shader
+            .descriptor_manager
+            .change_image_value("colorMap", &tex.create_texture());
         /*model
             .shader
             .descriptor_manager
-            .change_image_value("normalMap", &normal);
+            .change_image_value("normalMap", &normal);*/
         model
             .shader
             .descriptor_manager
-            .change_image_value("specularMap", &specular);*/
+            .change_image_value("specularMap", &tex.create_texture());
     }
+
+    /*let color = brickwall.create_texture();
+    let normal = brickwall_normal.create_texture();
+    let specular = brickwall_specular.create_texture();
 
     if let Some(model) = stage
         .manager
@@ -413,48 +327,83 @@ fn main() {
         .get_mut_component::<Model>()
     {
         model
-        .shader
-        .descriptor_manager
-        .change_image_value("colorMap", &paving);
-        /*model
+            .shader
+            .descriptor_manager
+            .change_image_value("colorMap", &color);
+        model
             .shader
             .descriptor_manager
             .change_image_value("normalMap", &normal);
         model
             .shader
             .descriptor_manager
-            .change_image_value("specularMap", &specular);*/
-    }
+            .change_image_value("specularMap", &specular);
+    }*/
+   
+    let light_2 = stage.manager.spawn();
 
-    /*let left = Texture::new("models/cubemap/left.jpg".to_owned());
-    let right = Texture::new("models/cubemap/right.jpg".to_owned());
-    let down = Texture::new("models/cubemap/bottom.jpg".to_owned());
-    let up: Texture = Texture::new("models/cubemap/top.jpg".to_owned());
-    let foward = Texture::new("models/cubemap/front.jpg".to_owned());
-    let backward = Texture::new("models/cubemap/back.jpg".to_owned());*/
-
-    if let Some(model) = stage
+    if let Some(transform) = stage
         .manager
-        .query_entity(&skybox)
+        .query_entity(&light_2)
         .unwrap()
         .write()
         .unwrap()
-        .get_mut_component::<Model>()
+        .get_mut_component::<Transform>()
     {
-        model.shader.descriptor_manager.change_cubemap_value(
-            "skybox",
-            [
-                &sky_texture,
-                &sky_texture,
-                &sky_texture,
-                &sky_texture,
-                &sky_texture,
-                &sky_texture,
-            ],
-        );
+        transform.translation = glam::Vec3::new(8.0, -0.0, 0.0);
+        transform.rotation = glam::vec3(-0.6, 90.0, -5.9);
     }
 
-    let mut color = [0.0; 4];
+    let mut light = Light::new();
+
+    light.change_color(glam::vec3(1.0, 1.0, 1.0));
+    light.change_intensity(20.0);
+    light.change_spot_size(7.5);
+    light.change_range(7.0);
+    light.change_light_type(1);
+
+    stage.manager.push(&light_2, light);
+
+
+    let light_1 = stage.manager.spawn();
+
+    if let Some(transform) = stage
+        .manager
+        .query_entity(&light_1)
+        .unwrap()
+        .write()
+        .unwrap()
+        .get_mut_component::<Transform>()
+    {
+        transform.translation = glam::Vec3::new(-8.0, -0.0, 0.0);
+        transform.rotation = glam::vec3(-0.6, 90.0, -5.9);
+    }
+
+    let mut light = Light::new();
+
+    light.change_color(glam::vec3(0.0, 0.0, 1.0));
+    light.change_intensity(30.0);
+    light.change_spot_size(7.5);
+    light.change_range(7.0);
+    light.change_light_type(1);
+
+    stage.manager.push(&light_1, light);
+
+    stage.save_scene();
+
+    let mut camera: Camera = Camera::new(app.renderer.read().unwrap().get_aspect_ratio(), false);
+
+    camera.speed = 10.0;
+
+    let mut fps = FPS::new();
+    fps._fps = 300;
+    let mut global_timer = Instant::now();
+    let mut start_tick = Instant::now();
+
+    fps.fps_limit = Duration::new(0, 1000000000u32 / fps._fps);
+    let mut delta_time = 1.0 / fps._fps as f32;
+
+    thread::sleep(Duration::from_secs(1));
 
     'running: loop {
         delta_time = 1.0 / ((fps.frame_count / fps.frame_elapsed) as f32);
@@ -511,51 +460,8 @@ fn main() {
             camera.update_position(CameraDirection::DOWN, delta_time);
         }
 
-        let ctx = platform.context();
-        // Draw an egui window
-        egui::Window::new("Hello, world!")
-            .fixed_size(egui::Vec2::new(840.0, 680.0))
-            .show(&ctx, |ui| {
-                ui.label("Hello, world!");
-                if ui.button("Greet").clicked() {
-                    println!("Hello, world!");
-                }
-                ui.horizontal(|ui| {
-                    ui.label("Color: ");
-                    ui.color_edit_button_rgba_premultiplied(&mut color);
-                });
-                ui.horizontal_top(|ui| ui.checkbox(&mut true, "gasfs"))
-            });
-
-        let output = platform.end_frame(&mut video).unwrap();
-        let paint_jobs = platform.tessellate(&output);
-        let pj = paint_jobs.as_slice();
-
-        for (id, texture) in output.textures_delta.set {
-            println!("ID: {:?}\n{:?}", id, texture.pos);
-
-            match texture.image {
-                ImageData::Color(color_image) => {
-                    println!("COLOR: {:?}\n{:?}", id, color_image.pixels);
-                }
-                ImageData::Font(font_image) => {
-                    println!("FONT: {:?}\n{:?}", id, font_image.size);
-                }
-            };
-        }
-
         camera.update_direction(mouse_pool.get_dx(), mouse_pool.get_dy(), delta_time);
 
-        if let Some(transform) = stage
-            .manager
-            .query_entity(&skybox)
-            .unwrap()
-            .write()
-            .unwrap()
-            .get_mut_component::<Transform>()
-        {
-            transform.translation = camera.get_position();
-        }
 
         let command_buffer = app
             .renderer
@@ -581,45 +487,6 @@ fn main() {
             camera,
         );
 
-        /*let mut vertices: Vec<Vec<Vertex2D>> = Vec::new();
-        let mut indices: Vec<Vec<u32>> = Vec::new();
-
-        for clipped in pj {
-            match &clipped.primitive {
-                Primitive::Mesh(mesh) => {
-                    let mut temp_verts = Vec::new();
-
-                    for vertice in mesh.vertices.iter() {
-                        temp_verts.push(Vertex2D {
-                            position: glam::vec2(vertice.pos.x, vertice.pos.y),
-                            color: glam::vec4(
-                                vertice.color.r() as f32,
-                                vertice.color.g() as f32,
-                                vertice.color.b() as f32,
-                                vertice.color.a() as f32,
-                            ),
-                            uv: glam::vec2(vertice.uv.x, vertice.uv.y),
-                        });
-                    }
-
-                    vertices.push(temp_verts);
-                    indices.push(mesh.indices.clone());
-                }
-                _ => {
-                    println!("It's the other shit lol")
-                }
-            };
-            //panic!("");
-        }
-
-        gui_canvas.render(
-            command_buffer,
-            vertices,
-            indices,
-            app.renderer.read().unwrap().get_frame_index() as u32,
-            gui_camera,
-        );*/
-
         if keyboard_pool.get_key(Keycode::F12) {
             save_color_image_as_png(
                 app.get_device(),
@@ -635,7 +502,10 @@ fn main() {
                         .swapchain
                         .get_swapchain_image_format(),
                 ),
-                (1280, 720),
+                (
+                    app.window.get_extent().width,
+                    app.window.get_extent().height,
+                ),
                 "./test.png",
             );
         }
@@ -664,6 +534,8 @@ fn main() {
             thread::sleep(sleep_duration);
         }
         fps.update();
+
+
     }
 
     app.drop();

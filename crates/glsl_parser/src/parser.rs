@@ -180,7 +180,6 @@ impl Parser {
                             .position(|&word| word == "uniform")
                             .expect("Failed to get the position");
 
-                            println!("{:?}",vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", ""));
                             let size = vector[index - 1].replace("/", "").replace(" ", "").replace("\r", "").replace(" ", "").parse::<u32>().unwrap();
 
                             Parser::get_descriptor_binding(&words);

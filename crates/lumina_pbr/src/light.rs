@@ -43,7 +43,6 @@ impl Light {
             light_type: self.light_type as u32,
             _padding1: 0,
             _padding2: 0,
-            _padding3: 0
         }
     }
 

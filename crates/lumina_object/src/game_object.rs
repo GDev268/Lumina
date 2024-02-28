@@ -57,6 +57,16 @@ impl GameObject {
         return game_object;
     }
 
+    pub fn create_game_object_with_id(id:u32) -> Self {
+        let game_object: GameObject = unsafe { GameObject::new(id) };
+
+        unsafe {
+            EXISTING_IDS.push(id);
+        }
+
+        return game_object;
+    }
+
     pub fn get_id(&self) -> u32 {
         return self.id;
     }

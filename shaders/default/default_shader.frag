@@ -51,8 +51,6 @@ layout(set = 0, binding = 4) uniform sampler2D normalMap;
 //color
 layout(set = 0, binding = 5) uniform sampler2D specularMap;
 
-//depth
-layout(set = 0, binding = 6) uniform sampler2D shadowMap[999];
 
 //64
 layout(set = 0, binding = 7) uniform LightSpaceMatrices {
@@ -79,52 +77,20 @@ void main() {
     }
   }
 
-  outColor = vec4(1.0,1.0,1.0, 1.0);
-}
-
-float CalculateShadows(Light light,vec3 fragPos,vec4 fragLightPos,sampler2D shadowMap,vec3 normal) { 
-  vec3 projectionCoords = fragLightPos.xyz / fragLightPos.w;
-  projectionCoords = projectionCoords * 0.5 + 0.5;
-
-  float closestDepth = texture(shadowMap,projectionCoords.xy).r;
-
-  float currentDepth = projectionCoords.z;
-
-  vec3 lightDirection = normalize(light.position - fragPos);
-
-  float bias = max(0.05 * (1.0 - dot(normal, lightDirection)), 0.005);
-
-  float shadow = 0.0;
-
-  vec2 texelSize = 1.0 / textureSize(shadowMap,0);
-
-  for(int x = -1; x <= 1;++x)
-  {
-    for(int y = -1; y <= 1;++y)
-    {
-      float pcfDepth = texture(shadowMap,projectionCoords.xy + vec2(x + y) * texelSize).r;
-      shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-    }
-  }
-  shadow /= 9.0;
-
-  if(projectionCoords.z > 1.0)
-    shadow = 0.0;
-        
-  return 0.0;
+  outColor = vec4(result, 1.0);
 }
 
 vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection, float shadow) {
-  vec3 ambient = light.color * texture(colorMap, FragUV).rgb;
+  vec3 ambient = light.color * (texture(colorMap, FragUV).rgb + object.material.ambient);
 
   vec3 lightDirection = normalize(-light.rotation);
   float diffuseDistance = max(dot(normal, lightDirection), 0.0);
   
   float metallic = object.material.shininess;
-  vec3 diffuse = light.color * mix(vec3(0.05), texture(colorMap, FragUV).rgb, metallic);
+  vec3 diffuse = light.color * mix(vec3(0.05), (texture(colorMap, FragUV).rgb + object.material.diffuse), metallic);
 
   vec3 reflectDirection = reflect(-lightDirection, normal);
-  vec3 specular = light.color * (metallic * texture(specularMap, FragUV).rgb);
+  vec3 specular = light.color * (metallic * (texture(specularMap, FragUV).rgb + object.material.specular));
 
   ambient *= light.intensity;
   diffuse *= light.intensity;
@@ -134,16 +100,16 @@ vec3 CalculateDirectionalLight(Light light, vec3 normal, vec3 fragPos, vec3 view
 }
 
 vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection) {
-  vec3 ambient = light.color * texture(colorMap, FragUV).rgb;
+  vec3 ambient = light.color * (texture(colorMap, FragUV).rgb + object.material.ambient);
 
   vec3 lightDirection = normalize(light.position - fragPos);
   float diffuseDistance = max(dot(normal, lightDirection), 0.0);
   
   float metallic = object.material.shininess;
-  vec3 diffuse = light.color * mix(vec3(0.05), texture(colorMap, FragUV).rgb, metallic);
+  vec3 diffuse = light.color * mix(vec3(0.05), (texture(colorMap, FragUV).rgb + object.material.diffuse), metallic);
 
   vec3 reflectDirection = reflect(-lightDirection, normal);
-  vec3 specular = light.color * (metallic * texture(specularMap, FragUV).rgb);
+  vec3 specular = light.color * (metallic * (texture(specularMap, FragUV).rgb + object.material.specular));
 
   float distance = length(light.position - fragPos);
   float attenuation = light.intensity / (1.0 + light.linear * distance + light.quadratic * (distance * distance));
@@ -156,16 +122,16 @@ vec3 CalculatePointLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirect
 }
 
 vec3 CalculateSpotLight(Light light, vec3 normal, vec3 fragPos, vec3 viewDirection) {
-  vec3 ambient = light.color * texture(colorMap, FragUV).rgb;
+  vec3 ambient = light.color * (texture(colorMap, FragUV).rgb + object.material.ambient);
 
   vec3 lightDirection = normalize(light.position - fragPos);
   float diffuseDistance = max(dot(normal, lightDirection), 0.0);
   
   float metallic = object.material.shininess;
-  vec3 diffuse = light.color * mix(vec3(0.05), texture(colorMap, FragUV).rgb, metallic);
+  vec3 diffuse = light.color * mix(vec3(0.05), (texture(colorMap, FragUV).rgb + object.material.diffuse), metallic);
 
   vec3 reflectDirection = reflect(-lightDirection, normal);
-  vec3 specular = light.color * (metallic * texture(specularMap, FragUV).rgb);
+  vec3 specular = light.color * (metallic * (texture(specularMap, FragUV).rgb + object.material.specular));
 
   float theta = dot(lightDirection, normalize(-light.rotation));
   float cutOff = cos(radians(light.spot_size));

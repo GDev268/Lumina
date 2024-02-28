@@ -13,6 +13,7 @@ lumina_object = {path="../lumina_object",version = "0.1.0"}
 lumina_graphic = {path="../lumina_graphic",version = "0.1.0"}
 lumina_pbr = {path="../lumina_pbr",version = "0.1.0"}
 lumina_atlas = { path = "../lumina_atlas", version = "0.1.0" }
+lumina_files = { path = "../lumina_files", version = "0.1.0" }
 
 
 #Other

@@ -70,66 +70,6 @@ impl App {
         .update(Arc::clone(&self.resources_bundle),self.fps_manager._fps as f32);*/
     }
 
-    pub fn load_file(&mut self, file_path: &str) {
-        let mut loader = Loader::new();
-
-        loader.load_file(file_path.to_string());
-
-        let file_content = loader
-            .directories
-            .get("gameData")
-            .unwrap()
-            .files
-            .iter()
-            .find(|file| "scene.json" == file.file_name)
-            .unwrap()
-            .file_content
-            .clone();
-
-        let json_string = String::from_utf8(file_content).unwrap();
-        let json: Value = serde_json::from_str(&json_string).unwrap();
-        println!("JSON Content: {:?}", serde_json::to_string_pretty(&json["game_objects"]));
-
-        self.stage = Some(Stage::new(""));
-    }
-
-    pub fn save_scene(&mut self) {
-        let mut saver = Saver::new();
-
-        self.stage = Some(Stage::new("test"));
-
-        let mut rng = rand::thread_rng();
-
-        for i in 0..10 {
-            let light = self.stage.as_mut().unwrap().manager.spawn();
-
-            let mut light_component = Light::new();
-            light_component.change_color(glam::vec3(
-                rng.gen_range(0, 20) as f32,
-                rng.gen_range(0, 20) as f32,
-                rng.gen_range(0, 20) as f32,
-            ));
-            light_component.change_intensity(rng.gen_range(0, 20) as f32);
-            light_component.change_light_type(rng.gen_range(0, 3));
-            light_component.change_range(rng.gen_range(0, 20) as f32);
-            light_component.change_spot_size(rng.gen_range(0, 20) as f32);
-
-            self.stage
-                .as_mut()
-                .unwrap()
-                .manager
-                .push(&light, light_component);
-        }
-
-        saver.modify_project_name(&self.stage.as_ref().unwrap().name);
-
-        //let lights = self.stage.as_ref().unwrap().get_light_json();
-
-        //saver.modify_array_value("lights", lights);
-
-        //saver.save_data();
-    }
-
     /*pub fn render(&mut self) {
         let command_buffer = self.renderer.begin_swapchain_command_buffer(&self.device, &self.window).unwrap();
         self.renderer.begin_frame(&self.device, command_buffer);

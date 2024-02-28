@@ -2,9 +2,11 @@ use lumina_core::device::Device;
 
 use ash::vk;
 use core::slice;
-use std::{ffi::c_void, rc::Rc, sync::{Arc, Mutex}};
-
-
+use std::{
+    ffi::c_void,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 pub struct Buffer {
     device: Option<Arc<Device>>,
@@ -36,8 +38,14 @@ impl Buffer {
         }
     }
 
-    pub fn default() -> Self{
-        return Self { device: None, buffer: vk::Buffer::null(), memory: vk::DeviceMemory::null(), mapped: Arc::new(Mutex::new(None)), buffer_size: 0 };
+    pub fn default() -> Self {
+        return Self {
+            device: None,
+            buffer: vk::Buffer::null(),
+            memory: vk::DeviceMemory::null(),
+            mapped: Arc::new(Mutex::new(None)),
+            buffer_size: 0,
+        };
     }
 
     fn get_alignment(
@@ -52,18 +60,18 @@ impl Buffer {
         return instance_size;
     }
 
-    pub fn map(
-        &mut self,
-        size: Option<vk::DeviceSize>,
-        offset: Option<vk::DeviceSize>,
-    ) {
+    pub fn map(&mut self, size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) {
         let new_size = size.unwrap_or(vk::WHOLE_SIZE);
         let new_offset = offset.unwrap_or(0);
 
-        assert!(self.mapped.lock().unwrap().is_none(), "Memory is already mapped");
+        assert!(
+            self.mapped.lock().unwrap().is_none(),
+            "Memory is already mapped"
+        );
 
         unsafe {
-            let mapped = self.device
+            let mapped = self
+                .device
                 .as_ref()
                 .unwrap()
                 .device()
@@ -74,7 +82,7 @@ impl Buffer {
                     vk::MemoryMapFlags::empty(),
                 )
                 .expect("Failed to map memory on the buffer!");
-            
+
             *self.mapped.lock().unwrap() = Some(mapped);
         }
     }
@@ -94,7 +102,8 @@ impl Buffer {
         let new_offset = if offset.is_none() { 0 } else { offset.unwrap() };
 
         unsafe {
-            let mem_offset = (self.mapped.lock().unwrap().unwrap() as *mut u8).offset(new_offset as isize);
+            let mem_offset =
+                (self.mapped.lock().unwrap().unwrap() as *mut u8).offset(new_offset as isize);
             std::ptr::copy_nonoverlapping(
                 data.as_ptr() as *const c_void,
                 mem_offset as *mut c_void,
@@ -105,15 +114,15 @@ impl Buffer {
 
     pub fn unmap(&self) {
         unsafe {
-            self.device.as_ref().unwrap().device().unmap_memory(self.memory);
+            self.device
+                .as_ref()
+                .unwrap()
+                .device()
+                .unmap_memory(self.memory);
         }
     }
 
-    pub fn flush(
-        &self,
-        size: Option<vk::DeviceSize>,
-        offset: Option<vk::DeviceSize>,
-    ) {
+    pub fn flush(&self, size: Option<vk::DeviceSize>, offset: Option<vk::DeviceSize>) {
         let new_size = if size.is_none() {
             vk::WHOLE_SIZE
         } else {
@@ -131,18 +140,20 @@ impl Buffer {
         }];
 
         unsafe {
-            return self.device.as_ref().unwrap()
+            return self
+                .device
+                .as_ref()
+                .unwrap()
                 .device()
                 .flush_mapped_memory_ranges(&mapped_range)
                 .expect("Failed to flush memory from the buffer!");
         }
     }
 
-
     pub fn get_buffer_size(&self) -> u64 {
         return self.buffer_size;
     }
-    
+
     pub fn get_buffer(&self) -> vk::Buffer {
         return self.buffer;
     }
@@ -169,19 +180,37 @@ impl Buffer {
 
     pub fn convert_to_raw_data(&self) -> Vec<u8> {
         let buffer_data = unsafe {
-            std::slice::from_raw_parts(self.mapped.lock().unwrap().unwrap() as *const u8, self.buffer_size as usize)
+            std::slice::from_raw_parts(
+                self.mapped.lock().unwrap().unwrap() as *const u8,
+                self.buffer_size as usize,
+            )
         };
-        
+
         return buffer_data.to_vec();
     }
 }
 
 impl Drop for Buffer {
     fn drop(&mut self) {
-        unsafe { 
-            self.device.as_ref().unwrap().device().device_wait_idle().unwrap();
-            self.device.as_ref().unwrap().device().destroy_buffer(self.buffer, None);
-            self.device.as_ref().unwrap().device().free_memory(self.memory, None);
+        unsafe {
+            if self.device.is_some() {
+                self.device
+                    .as_ref()
+                    .unwrap()
+                    .device()
+                    .device_wait_idle()
+                    .unwrap();
+                self.device
+                    .as_ref()
+                    .unwrap()
+                    .device()
+                    .destroy_buffer(self.buffer, None);
+                self.device
+                    .as_ref()
+                    .unwrap()
+                    .device()
+                    .free_memory(self.memory, None);
+            }
         };
     }
 }

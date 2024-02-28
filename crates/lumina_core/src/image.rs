@@ -222,7 +222,6 @@ impl Image {
 
     pub fn clean_view(&mut self, device: &Device) {
         unsafe {
-            println!("WAZA");
             device.device().destroy_image_view(self._image_view, None);
         }
     }

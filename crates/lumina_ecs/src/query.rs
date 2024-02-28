@@ -31,6 +31,16 @@ impl Query {
         game_object
     }
 
+    pub fn spawn_with_id(&self,id:u32) -> GameObject {
+        let game_object = GameObject::create_game_object_with_id(id);
+        let entity = Arc::new(RwLock::new(Entity::new()));
+
+        self.entities.write().unwrap().insert(game_object.get_id(), entity.clone());
+
+        game_object
+    }
+
+
     pub fn push<T: Component + 'static>(&self, game_object: &GameObject, component: T) {
         if let Some(entity) = self.entities.read().unwrap().get(&game_object.get_id()) {
             entity.write().unwrap().add_component(component);

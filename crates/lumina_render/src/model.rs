@@ -1,10 +1,17 @@
-use std::{collections::HashMap, hash::Hash, rc::Rc, sync::Arc};
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
 use ash::vk;
 
+use image::{DynamicImage, ImageBuffer};
 use lumina_atlas::atlas::Atlas;
 use lumina_core::{device::Device, texture::Texture, RawLight, Vertex3D};
 use lumina_data::descriptor_manager::CurValue;
+use lumina_files::loader::{Loader, LuminaFile};
 use lumina_graphic::shader::Shader;
 use lumina_object::game_object::{Component, GameObject};
 use lumina_pbr::material::Material;
@@ -29,9 +36,39 @@ pub struct Model {
 }
 
 impl Model {
+    pub fn new(device: Arc<Device>) -> Self {
+        let shader = Shader::new(
+            Arc::clone(&device),
+            "shaders/default/default_shader.vert",
+            "shaders/default/default_shader.frag",
+            Vertex3D::setup(),
+        );
+
+        let mut mesh_material_bindings: HashMap<usize, usize> = HashMap::new();
+        mesh_material_bindings.insert(0, 0);
+
+        let mut atlas = HashMap::new();
+
+        for (id, descriptor_info) in shader.descriptor_manager.descriptor_table.iter() {
+            if descriptor_info.value == CurValue::COLOR_IMAGE {
+                atlas.insert(id.clone(), Atlas::new());
+            }
+        }
+
+        Self {
+            device: Arc::clone(&device),
+            meshes: vec![],
+            file_path: String::default(),
+            mesh_material_bindings,
+            materials: vec![],
+            shader,
+            atlas,
+        }
+    }
+
     pub fn new_from_array(
         device: Arc<Device>,
-        vertex_array: Vec<Vertex>,
+        vertex_array: Vec<Vertex3D>,
         index_array: Vec<u32>,
     ) -> Self {
         let mesh = Mesh::new(Arc::clone(&device), vertex_array, index_array);
@@ -54,12 +91,13 @@ impl Model {
             }
         }
 
+
         Self {
             device: Arc::clone(&device),
             meshes: vec![mesh],
             file_path: String::default(),
             mesh_material_bindings,
-            materials: Vec::new(),
+            materials: vec![],
             shader,
             atlas,
         }
@@ -81,7 +119,7 @@ impl Model {
         let mut meshes = Vec::new();
 
         for mesh in scene.meshes {
-            let mut vertex_array: Vec<Vertex> = Vec::new();
+            let mut vertex_array: Vec<Vertex3D> = Vec::new();
 
             for i in 0..mesh.vertices.len() {
                 let position =
@@ -92,7 +130,7 @@ impl Model {
                     mesh.texture_coords[0].as_ref().unwrap()[i].y,
                 );
 
-                let vertex = Vertex {
+                let vertex = Vertex3D {
                     position,
                     normal,
                     uv,
@@ -129,45 +167,189 @@ impl Model {
             }
         }
 
+        let mut material = Material::default();
+
         Self {
             device: Arc::clone(&device),
             meshes,
             file_path: file_path.to_string(),
-            materials: Vec::new(),
+            materials: vec![],
             shader,
             mesh_material_bindings: HashMap::new(),
             atlas,
         }
     }
 
-    pub fn render(&mut self, command_buffer: vk::CommandBuffer, device: &Device, frame_index: u32) {
-        for (id, mesh) in self.meshes.iter().enumerate() {
-            let material = &self.materials[*self.mesh_material_bindings.get(&id).unwrap()];
+    pub fn init_model(
+        &mut self,
+        renderpass: vk::RenderPass,
+        light_count: u64,
+    ) {
+        self.shader.create_pipeline_layout(true);
+        self.shader.create_pipeline(renderpass);
+        self.shader.descriptor_manager.change_image_size(
+            "colorMap",
+            self.materials[0].ambient_texture.get_texture_info().0,
+            self.materials[0].ambient_texture.get_texture_info().1,
+        );
+        self.shader.descriptor_manager.change_image_size(
+            "normalMap",
+            self.materials[0].normal_texture.get_texture_info().0,
+            self.materials[0].normal_texture.get_texture_info().1,
+        );
+        self.shader.descriptor_manager.change_image_size(
+            "specularMap",
+            self.materials[0].metallic_texture.get_texture_info().0,
+            self.materials[0].metallic_texture.get_texture_info().1,
+        );
+        self.shader
+            .descriptor_manager
+            .change_buffer_count("LightInfo", light_count);
 
-            self.shader.descriptor_manager.change_buffer_value(
-                "MaterialInfo",
-                frame_index as u32,
-                &[material.get_material_info()],
+        self.shader.descriptor_manager.update_we();
+
+        unsafe { self.device.device().device_wait_idle().unwrap() };
+
+
+        self.shader.descriptor_manager.change_image_value("colorMap", &self.materials[0].ambient_texture.create_texture());
+        self.shader.descriptor_manager.change_image_value("normalMap", &self.materials[0].normal_texture.create_texture());
+        self.shader.descriptor_manager.change_image_value("specularMap", &self.materials[0].metallic_texture.create_texture());
+
+    }
+
+    pub fn render(
+        &mut self,
+        command_buffer: vk::CommandBuffer,
+        device: &Device,
+        frame_index: u32,
+        push: PushConstantData,
+        matrix: [[f32; 4]; 4],
+        lights: Vec<RawLight>,
+        view_pos: [f32; 3],
+    ) {
+        let material = &self.materials[0];
+
+        self.shader.descriptor_manager.change_buffer_value(
+            "GlobalUBO",
+            frame_index as u32,
+            &[matrix],
+        );
+
+        self.shader.descriptor_manager.change_buffer_value(
+            "MaterialInfo",
+            frame_index as u32,
+            &[material.get_material_info(view_pos)],
+        );
+
+        self.shader.descriptor_manager.change_buffer_value(
+            "LightInfo",
+            frame_index as u32,
+            &lights,
+        );
+
+        unsafe {
+            device.device().device_wait_idle().unwrap();
+
+            self.shader
+                .pipeline
+                .as_ref()
+                .unwrap()
+                .bind(device, command_buffer);
+
+            device.device().cmd_bind_descriptor_sets(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.shader.pipeline_layout.unwrap(),
+                0,
+                &[self
+                    .shader
+                    .descriptor_manager
+                    .get_descriptor_set(frame_index as u32)],
+                &[],
             );
+        }
 
-            unsafe {
-                self.device.device().cmd_bind_descriptor_sets(
-                    command_buffer,
-                    vk::PipelineBindPoint::GRAPHICS,
-                    self.shader.pipeline_layout.unwrap(),
-                    0,
-                    &[self
-                        .shader
-                        .descriptor_manager
-                        .get_descriptor_set(frame_index as u32)],
-                    &[],
-                );
-            }
+        let push_bytes: &[u8] = unsafe {
+            let struct_ptr = &push as *const _ as *const u8;
+            std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+        };
 
+        unsafe {
+            device.device().cmd_push_constants(
+                command_buffer,
+                self.shader.pipeline_layout.unwrap(),
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                push_bytes,
+            );
+        }
+
+        for (id, mesh) in self.meshes.iter().enumerate() {
             mesh.bind(command_buffer, device);
             mesh.draw(command_buffer, device);
         }
     }
+
+    
+    pub fn render_skybox(
+        &mut self,
+        command_buffer: vk::CommandBuffer,
+        device: &Device,
+        frame_index: u32,
+        push: PushConstantData,
+        matrix: [[f32; 4]; 4],
+    ) {
+        let material = &self.materials[0];
+
+        self.shader.descriptor_manager.change_buffer_value(
+            "GlobalUBO",
+            frame_index as u32,
+            &[matrix],
+        );
+
+        unsafe {
+            device.device().device_wait_idle().unwrap();
+
+            self.shader
+                .pipeline
+                .as_ref()
+                .unwrap()
+                .bind(device, command_buffer);
+
+            device.device().cmd_bind_descriptor_sets(
+                command_buffer,
+                vk::PipelineBindPoint::GRAPHICS,
+                self.shader.pipeline_layout.unwrap(),
+                0,
+                &[self
+                    .shader
+                    .descriptor_manager
+                    .get_descriptor_set(frame_index as u32)],
+                &[],
+            );
+        }
+
+        let push_bytes: &[u8] = unsafe {
+            let struct_ptr = &push as *const _ as *const u8;
+            std::slice::from_raw_parts(struct_ptr, std::mem::size_of::<PushConstantData>())
+        };
+
+        unsafe {
+            device.device().cmd_push_constants(
+                command_buffer,
+                self.shader.pipeline_layout.unwrap(),
+                vk::ShaderStageFlags::VERTEX | vk::ShaderStageFlags::FRAGMENT,
+                0,
+                push_bytes,
+            );
+        }
+
+        for (id, mesh) in self.meshes.iter().enumerate() {
+            mesh.bind(command_buffer, device);
+            mesh.draw(command_buffer, device);
+        }
+    }
+
 
     pub fn raw_render(&self, command_buffer: vk::CommandBuffer, device: &Device) {
         for (id, mesh) in self.meshes.iter().enumerate() {
@@ -218,7 +400,7 @@ impl Drop for Model {
 }
 
 impl Component for Model {
-    fn convert_to_json(&self,id:u32) -> Value {
+    fn convert_to_json(&self, id: u32) -> Value {
         let mut json = serde_json::json!({
             "id": id,
             "file": self.file_path,
@@ -241,10 +423,11 @@ impl Component for Model {
                 .push(serde_json::json!({
                     "parent_id": id,
                     "ambient": material.ambient.to_array(),
-                    "ambient_texture": material.ambient_texture.get_new_path(),
+                    "ambient_texture": material.ambient_texture.get_raw_path(),
                     "diffuse": material.diffuse.to_array(),
                     "metallic": material.metallic.to_array(),
-                    "metallic_texture": material.metallic_texture.get_new_path()
+                    "metallic_texture": material.metallic_texture.get_raw_path(),
+                    "normal_texture": material.normal_texture.get_raw_path()
                 }));
         }
 
